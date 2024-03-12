@@ -1,0 +1,12 @@
+#include funcs.brick
+brick main{
+    dec arr as array int -> 5;
+    set arr[0] to 93;
+    set arr[1] to 3;
+    set arr[2] to 345;
+    set arr[3] to 4;
+    set arr[4] to 34;
+    q_sort(&arr[0],4,0,4);
+    print_array(&arr[0],5);
+    exit 0;
+}

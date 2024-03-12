@@ -1,0 +1,9 @@
+brick main{    
+    dec str2 as strbuf -> 16;
+    while str2 != "password1234"{
+        output "Enter the correct password: " noend;
+        input str2;
+    }
+    output "Correct!";
+    exit 0;
+}

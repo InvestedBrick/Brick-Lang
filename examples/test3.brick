@@ -1,0 +1,30 @@
+brick main{
+    //Sieve of Erathosthenes
+    dec n as int -> 500;
+    dec sieve as array bool -> 501; // n + 1
+    for dec i as int -> 0 ; i < n + 1; i++;{
+        set sieve[i] to true;
+    }
+    
+    for dec p as int -> 2; p * p <= n;p++;{
+       if sieve[p] == true{
+            dec a as int -> p * p;
+            while a <= n{
+                set sieve[a] to false;
+                set a to a + p;
+            }
+        }
+    }
+    for dec i as int -> 2; i <= n; i++;{
+        if sieve[i] == true{
+            output i, " " noend;
+        }
+    }
+    
+    exit 0;
+}
+
+
+
+
+

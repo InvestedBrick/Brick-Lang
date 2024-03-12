@@ -1,6 +1,5 @@
 #ignore all .brick example files and .asm files
 
-*.brick
 *.asm
 asm_tests/
 .vs/
