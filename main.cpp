@@ -5,34 +5,7 @@
 #include "headers/preprocessor.hpp"
 #include "headers/generation.hpp"
 //compile with "g++ preprocessor.cpp tokenization.cpp parsing.cpp generation.cpp main.cpp -std=c++17 -o brick.exe"
-/*
-    1. Make it work! (not optional)
-    2. Make it beautiful (optional)
-    3. Make it efficient (optional)
-    LOGS:
-    21.01.24: about 1800 Lines
-    23.01.24: about 1940 lines
-    30.01.24: about 2060 lines
-    02.02.24: about 2200 lines
-    08.02.24: about 2400 lines
-    13.02.24: about 2700 lines (with moving to cpp)
-    15.02.24: about 2900 lines
-    27.02.24: about 3030 lines (got qsort sort working!!)
-    11.03.24: about 3200 lines (now with includes)
-    Needs to be refactored
-    
-    checklist:
-    [X] Functions and return values
-    [X] support negative numbers
-    [X] Arrays (add as function argument --> doable with start ptr and length)
-    [X] pointers
-    [X] importing other files 
-    [ ] logical operators for control statements
-    [ ] structs / larger data types??
-    [ ] change stringbuffers??
-    [ ] floating points
-    [ ] dynamic memory
-*/
+
 int main(int argc, char* argv[]) {
     if (argc != 2)
     {
