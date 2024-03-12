@@ -2,6 +2,7 @@
 1. Make it work! (not optional)
 2. Make it beautiful (optional)
 3. Make it efficient (optional)
+
 LOGS:
 21.01.24: about 1800 Lines
 23.01.24: about 1940 lines
