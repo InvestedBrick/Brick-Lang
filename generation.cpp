@@ -8,6 +8,7 @@ bool is_numeric(const std::string& str) {
     }
     return true;
 }
+
 void Generator::push(const std::string& val) {
     m_code << "    push " << val << std::endl;
     m_stack_ptr++;
