@@ -1,4 +1,4 @@
-//include statement starts with "#include" and then follows the filename
+//include statement 
 #include funcs.brick
 
 
@@ -14,8 +14,8 @@ brick function : int -> x, short -> y{
     //return statement returns value
     return (x + y)*2;
 
-//return type (optional)
-}=>
+    //return type (optional)
+}=> int
 
 //the main function
 brick main{
@@ -33,29 +33,27 @@ brick main{
     var++;
     var--;
 
-
     //change value by expression
     var += 3;
     var *= 2;
 
-
     //output string, variable or anything with output (add "noend" after last argument to make it not print a new line after printing out all the args)
-    output "This is a string literal", var, 34 noend;
+    output "This is a string literal",var, noend;
 
-
-    //if - else statements  (no elseif at the moment)
-    if var == 3 * 2{
-        var = 4;
-    }else{
-        var = 2;
-    }
     
+    //if - else statements  (no elseif at the moment)
+    if var == 5 * 2  {
+        set var to 4;
+    }else{
+        set var to 2;
+    }
 
+    
     //while loops
     while var != 0{
         var--;
     }
-
+    
     //for loops
     for dec i as int -> 0; i < 500; i++;{
         output i;
@@ -84,17 +82,17 @@ brick main{
     //for more on arrays view test3.brick
 
 
-    //A null pointer null = 0
-    dec z as int ptr -> null;
+    //set z t the memory address of n (like in C)
+    dec z as int ptr -> &n;
 
-    //set z to the memory address of n (like in C)
-    set z to &n;
 
     //dereference z using "$" before it
     set $z to 1; //changes the value of n
+    
 
     z += 1; //increments z by 4 because it is an int pointer (int = 4 bytes) 4 * 1
-
+    
+    
     //exit statement with exitcode
     exit 0;
 }

@@ -8,5 +8,6 @@ brick main{
     set arr[4] to 34;
     q_sort(&arr[0],4,0,4);
     print_array(&arr[0],5);
+    
     exit 0;
 }
