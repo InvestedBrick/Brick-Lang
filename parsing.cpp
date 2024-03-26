@@ -84,6 +84,17 @@ bool Parser::is_operator(Token_type type) {
         return false;
     }
 }
+bool Parser::is_logical_operator(Token_type type) {
+    switch (type)
+    {
+    case Token_type::_logical_and:
+        return true;
+    case Token_type::_logical_or:
+        return true;
+    default:
+        return false;
+    }
+}
 node::_statement* Parser::mk_stmt(std::variant<node::_statement_exit*, node::_statement_var_dec*, node::_statement_var_set*, node::_asm_vec*, node::_statement_scope*, node::_ctrl_statement*, node::_double_op*, node::_main_scope*, node::_null_stmt*, node::_statement_output*, node::_statement_input*, node::_statement_function*, node::_statement_ret*, node::_statement_pure_expr*,node::_op_equal*> var)
 {
     auto stmt = m_Allocator.alloc<node::_statement>();
@@ -321,6 +332,68 @@ inline std::optional<node::_expr*> Parser::parse_expr(int min_prec) {
     }
     return expr_left;
 }
+inline std::optional<node::_boolean_expr*> Parser::parse_boolean_expr() {
+    auto bool_expr = m_Allocator.alloc<node::_boolean_expr>();
+    if(auto expr = parse_expr()){
+        bool_expr->left = expr.value();
+    }else{
+        line_err("Invalid expression???");
+    }
+    if(peek().has_value() && is_operator(peek().value().type)){
+        bool_expr->op = consume().type;
+    }else{
+        line_err("Expected operator");
+    }
+    if(auto expr = parse_expr()){
+        bool_expr->right = expr.value();
+        
+    }else{
+        line_err("Invalid expression??");
+    }
+    return bool_expr;
+
+}
+inline std::optional<node::_logical_stmt*> Parser::parse_logical_stmt() {
+    //If you are confused about the variable naming, then you feel how I felt writing this code
+    std::optional<node::_boolean_expr*> bool_expr = parse_boolean_expr();
+    auto logical_left = m_Allocator.alloc<node::_logical_stmt>();
+    if (!bool_expr.has_value()) {
+        return {};
+    }else{
+        logical_left->var = bool_expr.value();
+    }
+    while(true){
+        Token_type logic_op;
+        if(!(peek_type(Token_type::_logical_and) || peek_type(Token_type::_logical_or))){
+            break;
+        }else{
+            logic_op = consume().type;
+        }
+        auto logical_right = parse_logical_stmt();
+        if (!logical_right.has_value()) {
+            line_err("Unable to parse expression");
+        }
+        auto logic_expr = m_Allocator.alloc<node::_logical_expr>();
+
+        auto logical_left_2 = m_Allocator.alloc<node::_logical_stmt>();
+        if(logic_op == Token_type::_logical_and){
+            auto logic_and = m_Allocator.alloc<node::_logical_expr_and>();
+            logical_left_2->var = logical_left->var;
+            logic_and->left = logical_left_2;
+            logic_and->right = logical_right.value();
+            logic_expr->var = logic_and;
+        }
+        else if(logic_op == Token_type::_logical_or){
+            auto logic_or = m_Allocator.alloc<node::_logical_expr_or>();
+            logical_left_2->var = logical_left->var;
+            logic_or->left = logical_left_2;
+            logic_or->right = logical_right.value();
+            logic_expr->var = logic_or;
+        }
+        logical_left->var = logic_expr;
+    }
+    return logical_left;
+}
 inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
     consume();
     auto stmt_dec = m_Allocator.alloc<node::_statement_var_dec>();
@@ -497,7 +570,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
             stmt_exit->expr = node_expr.value();
         }
         else {
-            line_err("Invalid expression!");
+            line_err("Invalid expression");
         }
         try_consume(Token_type::_semicolon, "Expected ';'");
         return mk_stmt(stmt_exit);
@@ -724,23 +797,10 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
             }
             stmt_crtl->var = _for;
         }
-        if (auto expr = parse_expr()) {
-            stmt_crtl->expr1 = expr.value();
-        }
-        else {
-            line_err("Invalid Expression");
-        }
-        if (is_operator(peek().value().type)) {
-            stmt_crtl->op = consume().type;
-        }
-        else {
-            line_err("Expected operator");
-        }
-        if (auto expr = parse_expr()) {
-            stmt_crtl->expr2 = expr.value();
-        }
-        else {
-            line_err("Invalid Expression");
+        if(auto logic = parse_logical_stmt()){
+            stmt_crtl->logic = logic.value();
+        }else{
+            line_err("Unable to parse logical statement");
         }
         if (stmt_crtl->type == Token_type::_for) {
             auto _for = std::get<node::_statement_for*>(stmt_crtl->var);
@@ -814,5 +874,6 @@ std::optional<node::_program> Parser::parse_program() {
             line_err("Invalid statement");
         }
     }
+    std::cout << "Finished Parsing..." << std::endl;
     return prog;
 }
