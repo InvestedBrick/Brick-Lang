@@ -12,7 +12,7 @@ inline char PreProcessor::consume() {
 }
 
 void PreProcessor::line_err(const std::string& err_msg) {
-    std::cerr << "Code failed in line " << this->line_counter << /*"(" << this->filestack.back() << ")´*/": " << err_msg << std::endl;
+    std::cerr << "Code failed in line " << this->line_counter << /*"(" << this->filestack.back() << ")ï¿½*/": " << err_msg << std::endl;
     exit(1);
 }
 inline void PreProcessor::pre_process_include() {
@@ -74,5 +74,6 @@ std::string PreProcessor::pre_process() {
         this->pre_process_include();
 
     }
+    std::cout << "Finished Preprocessing..." << std::endl;
     return this->m_str;
 }
