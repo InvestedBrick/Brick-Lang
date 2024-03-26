@@ -13,6 +13,7 @@ LOGS:
 15.02.24: about 2900 lines
 27.02.24: about 3030 lines (got qsort sort working!!)
 11.03.24: about 3200 lines (now with includes)
+26.03.24: about 3400 lines (added logical statements)
 Needs to be refactored
     
 checklist:
@@ -21,7 +22,8 @@ checklist:
 [X] Arrays (add as function argument --> doable with startptr and length)
 [X] pointers
 [X] importing other files 
-[ ] logical operators for control statements
+[X] logical operators for control statements
+[ ] make double operations expressions
 [ ] structs / larger data types??
 [ ] change stringbuffers??
 [ ] floating points
