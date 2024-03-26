@@ -143,6 +143,14 @@ std::vector<Token> Tokenizer::tokenize()
                 token_arr.push_back(mk_tok(Token_type::_ptr));
                 buf.clear();
             }
+            else if (buf == "and") {
+                token_arr.push_back(mk_tok(Token_type::_logical_and));
+                buf.clear();
+            }
+            else if (buf == "or") {
+                token_arr.push_back(mk_tok(Token_type::_logical_or));
+                buf.clear();
+            }
             else if (buf == "array") {
                 token_arr.push_back(mk_tok(Token_type::_array));
                 buf.clear();
@@ -319,11 +327,12 @@ std::vector<Token> Tokenizer::tokenize()
         {
             consume();
             token_arr.push_back(mk_tok(Token_type::_mod));
-        }
+        }      
         else if (peek().value() == '&')
         {
             consume();
             token_arr.push_back(mk_tok(Token_type::_ampersand));
+            
         }
         else if (peek().value() == ',')
         {
@@ -402,5 +411,7 @@ std::vector<Token> Tokenizer::tokenize()
         }
     }
     this->m_idx = 0;
+    std::cout << "Finished Tokenizing..." << std::endl;
+
     return token_arr;
 }
