@@ -9,7 +9,7 @@
 */
 
 //functions are declared with "brick [function name]" or when argumenst are following "brick [function name] : [arg type] -> [variable name], ..."
-//there can me max 4 function arguments
+//there can me max 4 function arguments due to a lack of registers in 32 bit assembly :(
 brick function : int -> x, short -> y{
     //return statement returns value
     return (x + y)*2;
@@ -89,9 +89,20 @@ brick main{
     //dereference z using "$" before it
     set $z to 1; //changes the value of n
     
+    //aaaand yes.. dereferencing null pointers is valid
+    dec p as int ptr -> 0;
+    //     output $p;     <--would crash the program
 
     z += 1; //increments z by 4 because it is an int pointer (int = 4 bytes) 4 * 1
     
+    //you can chain boolean expressions using either 'and' or 'or' like in python
+    if var > 0 and b == true{
+        output "Variable larger than 0 and b true";
+    }
+
+    if var == 1 or b == true{
+        output "Either Var or b == 1";
+    }
     
     //exit statement with exitcode
     exit 0;
