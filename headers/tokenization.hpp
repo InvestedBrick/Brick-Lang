@@ -64,7 +64,9 @@ enum class Token_type {
     _mul_eq,
     _div_eq,
     _new_file,
-    _eof
+    _eof,
+    _logical_and,
+    _logical_or
 };
 inline std::unordered_map<Token_type, std::string> tokenTypeToString = {
     {Token_type::_exit, "_exit"},
@@ -127,6 +129,8 @@ inline std::unordered_map<Token_type, std::string> tokenTypeToString = {
     {Token_type::_div_eq, "_div_eq"},
     {Token_type::_new_file, "_new_file"},
     {Token_type::_eof, "_eof"},
+    {Token_type::_logical_and, "_logical_and"},
+    {Token_type::_logical_or, "_logical_or"},
 
 };
 std::optional<int> bin_prec(Token_type type);
