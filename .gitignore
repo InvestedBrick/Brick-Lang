@@ -2,8 +2,10 @@
 
 *.asm
 asm_tests/
+.vscode/
 .vs/
 x64/
+*.bat
 *.obj
 *.vcxproj
 *.vcxproj.filters
