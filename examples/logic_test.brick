@@ -1,0 +1,14 @@
+
+brick main{
+
+    dec x as int -> 1;
+    dec y as int -> 5;
+    if x > y or x == 2 and y == 5 {
+        output "Expression true";
+        set x to 23;
+    }else{
+        output "Expression false";
+    }
+
+    exit 0;
+}
