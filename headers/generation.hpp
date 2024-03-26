@@ -17,6 +17,12 @@ private:
         bool ptr = false;
         std::string ptr_type;
     };
+    struct logic_data_packet{
+        std::string end_lbl;
+        std::optional<std::string> scope_lbl;
+        std::optional<std::string> start_lbl;//currently not in use
+        Token_type op;
+    };
     struct string_buffer {
         std::string name;
         std::string generated;
@@ -48,6 +54,9 @@ private:
     };
     bool main_proc = false;
     bool in_func = false;
+    std::optional<std::string> initial_label_or;
+    std::optional<std::string> initial_label_and;
+    std::optional<std::string> ending_label;
     size_t label_counter = 0;
     size_t string_counter = 0;
     size_t string_buffer_counter = 0;
@@ -97,8 +106,9 @@ private:
     inline std::string mk_str_lit();
     inline std::string mk_str_buf();
     inline std::string mk_func();
+    inline void reset_labels();
     inline std::string get_mov_instruc(const std::string& dest, const std::string& source);
-    size_t asm_type_to_bytes(std::string str);
+    inline size_t asm_type_to_bytes(std::string str);
     inline std::string get_correct_part_of_register(const std::string& source,bool edx = false);
     inline void scope_start(bool main_or_func_scope = false, size_t alloc = 0);
     inline void scope_end(bool main_or_func_scope = false, size_t alloc = 0);
@@ -112,6 +122,8 @@ public:
     inline std::optional<std::string> gen_term(const node::_term* term);
     inline std::optional<std::string> gen_bin_expr(const node::_bin_expr* bin_expr);
     inline std::optional<std::string> gen_expr(const node::_expr* expr);
+    inline logic_data_packet gen_logical_expr(const node::_logical_expr* logic_expr,std::optional<std::string> provided_scope_lbl,bool invert = false);
+    inline logic_data_packet gen_logical_stmt(const node::_logical_stmt* logic_stmt,std::optional<std::string> provided_scope_lbl,bool invert = false);
     inline void gen_asm_expr(const node::_asm_* _asm_);
     inline void gen_ctrl_statement(const node::_ctrl_statement* _ctrl);
     inline void gen_var_stmt(const node::_statement_var_dec* stmt_var_dec);
