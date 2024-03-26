@@ -635,29 +635,25 @@ inline void Generator::gen_ctrl_statement(const node::_ctrl_statement* _ctrl) {
         }
         //TODO fix only being able to use double expressions
         void operator()(const node::_statement_for* stmt_for) {
+
             //THIS CODE IS CURRENTLY UNDER MAINTENANCE
-            /*
             gen->gen_var_stmt(stmt_for->_stmt_var_dec);
-            std::string label = gen->mk_label();
-            gen->m_code << label << ":\n";
+            std::string scope_lbl = gen->mk_label();
+            std::string start_jump = gen->mk_label();
+            gen->m_code << "    jmp " << start_jump << std::endl;
+            gen->m_code << scope_lbl << ":" << std::endl;
             gen->gen_scope(_ctrl->scope);
             node::_statement stmt;
             stmt.var = stmt_for->_d_op;
             gen->gen_stmt(&stmt);
-            std::string str_1 = gen->gen_expr(_ctrl->expr1).value();
-            std::string str_2 = gen->gen_expr(_ctrl->expr2).value();
-            if (str_1.rfind("\"", 0) == 0 || str_2.rfind("\"", 0) == 0) {
-                gen->line_err("Invalid use of string");
+            gen->m_code << start_jump << ":" << std::endl;
+            logic_data_packet labels = gen->gen_logical_stmt(_ctrl->logic,scope_lbl,false);
+            if(labels.end_lbl == ""){ // if there is no and or or --> no returned label
+                labels.end_lbl = gen->mk_label();
+                gen->m_code  << gen->tok_to_instruc(labels.op,false).value() << " " << scope_lbl << std::endl;
             }
-            
-            std::string mov_var1 = is_numeric(str_1) ? "mov" : gen->get_mov_instruc("eax", str_1.substr(0, str_1.find_first_of(' ')));
-            std::string mov_var2 = is_numeric(str_2) ? "mov" : gen->get_mov_instruc("eax", str_2.substr(0, str_2.find_first_of(' ')));
-            gen->m_code << "    " << mov_var1 << " ebx, " << str_1 << std::endl;
-            gen->m_code << "    " << mov_var2 << " eax, " << str_2 << std::endl;
-            gen->m_code << "    cmp ebx,eax\n";
-            gen->m_code << gen->tok_to_instruc(_ctrl->op).value() << label << "\n";
+            gen->m_code << labels.end_lbl << ":" << std::endl;
             gen->m_vars.pop_back();//pop the iterator value
-            */
         }
     };
     _crtl_statement_visitor visitor;
@@ -666,123 +662,102 @@ inline void Generator::gen_ctrl_statement(const node::_ctrl_statement* _ctrl) {
     std::visit(visitor, _ctrl->var);    
 }
 inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec) {
-        struct var_visitor {
-            Generator* gen;
-            void operator()(const node::_var_dec_num* var_num) {
-                auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == var_num->ident.value.value(); });
-                if (it != gen->m_vars.cend()) {
-                    std::stringstream ss;
-                    ss << "Identifier '" << var_num->ident.value.value() << "' was already declared in this scope!" << std::endl;
-                    gen->line_err(ss.str());
+    struct var_visitor {
+        Generator* gen;
+        void operator()(const node::_var_dec_num* var_num) {
+            auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == var_num->ident.value.value(); });
+            if (it != gen->m_vars.cend()) {
+                std::stringstream ss;
+                ss << "Identifier '" << var_num->ident.value.value() << "' was already declared in this scope!" << std::endl;
+                gen->line_err(ss.str());
+            }
+            else {
+                std::string val = gen->gen_expr(var_num->expr).value();
+                Var var;
+                var.type = var_type_to_str(var_num->type);
+                var.immutable = var_num->_const;
+                if (is_numeric(val)) {
+                    int num = std::stoi(val);
+                    if (var_num->type == Token_type::_bool) {
+                        var.bool_limit = true;
+                        if (num != 0) {
+                            num = 1;
+                        }
+                    }
+                    if (var_num->_ptr) {
+                        if (num != 0) {
+                            gen->line_err("Integer value for pointer may only be null (0)");
+                        }
+                        var.ptr = true;
+                        var.ptr_type = var.type;
+                        var.type = "dword"; //pointers need to be dwords
+                    }
+                    gen->m_base_ptr_off += gen->asm_type_to_bytes(var.type);
+                    gen->m_code << "    mov " << var.type << " ptr [ebp - " << gen->m_base_ptr_off << "]" << "," << num << std::endl;
                 }
                 else {
-                    std::string val = gen->gen_expr(var_num->expr).value();
-                    Var var;
-                    var.type = var_type_to_str(var_num->type);
-                    var.immutable = var_num->_const;
-                    if (is_numeric(val)) {
-                        int num = std::stoi(val);
-                        if (var_num->type == Token_type::_bool) {
-                            var.bool_limit = true;
-                            if (num != 0) {
-                                num = 1;
+                    if (var_num->type == Token_type::_bool) {
+                        var.bool_limit = true;
+                        gen->m_code << "    cmp " << val << ", 0" << std::endl;
+                        gen->m_code << "    setne dl" << std::endl;
+                        gen->m_code << "    mov " << var.type << " ptr [ebp - " << gen->m_base_ptr_off << "]" << ", dl" << std::endl;
+                    }
+                    else {
+                        if (var_num->_ptr) {
+                            if (val == "&eax") {
+                                var.ptr = true;
+                                val = "eax";
+                                var.ptr_type = var.type;
+                                var.type = "dword"; //pointers need to be dwords
+                            }
+                            else {
+                                gen->line_err("Pointer cannot be assigned the value of a non-reference");
                             }
                         }
-                        if (var_num->_ptr) {
-                            if (num != 0) {
-                                gen->line_err("Integer value for pointer may only be null (0)");
-                            }
-                            var.ptr = true;
-                            var.ptr_type = var.type;
-                            var.type = "dword"; //pointers need to be dwords
+                        if (val == "&eax") {
+                            gen->line_err("Cannot assign reference to non-pointer");
+                        }
+                        if (val != "eax") {
+                            gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " eax, " << val << std::endl;
                         }
                         gen->m_base_ptr_off += gen->asm_type_to_bytes(var.type);
-                        gen->m_code << "    mov " << var.type << " ptr [ebp - " << gen->m_base_ptr_off << "]" << "," << num << std::endl;
+                        gen->m_code << "    mov " << var.type << " ptr [ebp - " << gen->m_base_ptr_off << "]" << ", " << gen->get_correct_part_of_register(var.type) << std::endl;
                     }
-                    else {
-                        if (var_num->type == Token_type::_bool) {
-                            var.bool_limit = true;
-                            gen->m_code << "    cmp " << val << ", 0" << std::endl;
-                            gen->m_code << "    setne dl" << std::endl;
-                            gen->m_code << "    mov " << var.type << " ptr [ebp - " << gen->m_base_ptr_off << "]" << ", dl" << std::endl;
-                        }
-                        else {
-                            if (var_num->_ptr) {
-                                if (val == "&eax") {
-                                    var.ptr = true;
-                                    val = "eax";
-                                    var.ptr_type = var.type;
-                                    var.type = "dword"; //pointers need to be dwords
-                                }
-                                else {
-                                    gen->line_err("Pointer cannot be assigned the value of a non-reference");
-                                }
-                            }
-                            if (val == "&eax") {
-                                gen->line_err("Cannot assign reference to non-pointer");
-                            }
-                            if (val != "eax") {
-                                gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " eax, " << val << std::endl;
-                            }
-                            gen->m_base_ptr_off += gen->asm_type_to_bytes(var.type);
-                            gen->m_code << "    mov " << var.type << " ptr [ebp - " << gen->m_base_ptr_off << "]" << ", " << gen->get_correct_part_of_register(var.type) << std::endl;
-                        }
-                    }
-                    var.name = var_num->ident.value.value();
-                    var.base_pointer_offset = gen->m_base_ptr_off;
-                    gen->m_vars.push_back(var);
                 }
+                var.name = var_num->ident.value.value();
+                var.base_pointer_offset = gen->m_base_ptr_off;
+                gen->m_vars.push_back(var);
             }
-            void operator()(const node::_var_dec_str* var_str) {
-                auto it = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(), [&](const String& str) {return str.name == var_str->ident.value.value(); });
-                if (it != gen->m_strs.cend()) {
+        }
+        void operator()(const node::_var_dec_str* var_str) {
+            auto it = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(), [&](const String& str) {return str.name == var_str->ident.value.value(); });
+            if (it != gen->m_strs.cend()) {
+                std::stringstream ss;
+                ss << "String with name '" << var_str->ident.value.value() << "' was already declared!" << std::endl;
+                gen->line_err(ss.str());
+            }
+            else {
+                std::string val = gen->gen_expr(var_str->expr).value();
+                str_map map;
+                map.generated = val;
+                map.ident = var_str->ident.value.value();
+                gen->m_str_map.push_back(map);
+            }
+        }
+        void operator()(const node::_var_dec_str_buf* var_str_buf) {
+            auto it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& str_buf) {return str_buf.name == var_str_buf->ident.value.value(); });
+            if (it != gen->m_str_bufs.cend()) {
+                if (!(*it).free) {
                     std::stringstream ss;
-                    ss << "String with name '" << var_str->ident.value.value() << "' was already declared!" << std::endl;
+                    ss << "String Buffer with name '" << var_str_buf->ident.value.value() << "' was already declared in this scope!" << std::endl;
                     gen->line_err(ss.str());
                 }
                 else {
-                    std::string val = gen->gen_expr(var_str->expr).value();
-                    str_map map;
-                    map.generated = val;
-                    map.ident = var_str->ident.value.value();
-                    gen->m_str_map.push_back(map);
-                }
-            }
-            void operator()(const node::_var_dec_str_buf* var_str_buf) {
-                auto it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& str_buf) {return str_buf.name == var_str_buf->ident.value.value(); });
-                if (it != gen->m_str_bufs.cend()) {
-                    if (!(*it).free) {
-                        std::stringstream ss;
-                        ss << "String Buffer with name '" << var_str_buf->ident.value.value() << "' was already declared in this scope!" << std::endl;
-                        gen->line_err(ss.str());
-                    }
-                    else {
-                        string_buffer str_buf;
-                        if ((*it).size >= stoi(var_str_buf->_int_lit.value.value())) {
-                            str_buf.size = (*it).size;
-                            str_buf.generated = (*it).generated;
-                            str_buf.name = (*it).name;
-                        }
-                        else {
-                            str_buf.size = stoi(var_str_buf->_int_lit.value.value()); //safe because it is guaranteed to be an integer literal
-                            str_buf.name = var_str_buf->ident.value.value();
-                            str_buf.generated = gen->mk_str_buf();
-                            gen->m_data << "    " << str_buf.generated << " db " << str_buf.size + 1 << " dup(0)" << std::endl; // the + 1 to prevent buffer overflows
-
-                        }
-                        gen->m_str_bufs.push_back(str_buf);
-                    }
-                }
-                else {
-                    auto free_it = std::find_if(gen->m_str_bufs.begin(), gen->m_str_bufs.end(), [&](const string_buffer& str_buf) {return str_buf.free == true; });
                     string_buffer str_buf;
-                    if (free_it != gen->m_str_bufs.cend() && free_it->size >= stoi(var_str_buf->_int_lit.value.value())) { // found a free string buffer
-                        
-                        str_buf.size = free_it->size;
-                        str_buf.generated = free_it->generated;
-                        str_buf.name = free_it->name;
-                        free_it->free = false;
-                        
+                    if ((*it).size >= stoi(var_str_buf->_int_lit.value.value())) {
+                        str_buf.size = (*it).size;
+                        str_buf.generated = (*it).generated;
+                        str_buf.name = (*it).name;
                     }
                     else {
                         str_buf.size = stoi(var_str_buf->_int_lit.value.value()); //safe because it is guaranteed to be an integer literal
@@ -791,40 +766,59 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                         gen->m_data << "    " << str_buf.generated << " db " << str_buf.size + 1 << " dup(0)" << std::endl; // the + 1 to prevent buffer overflows
                     }
                     gen->m_str_bufs.push_back(str_buf);
-
                 }
             }
-            void operator()(const node::_var_dec_array* var_array) {
-                auto it = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array& arr) {return arr.name == var_array->ident.value.value(); });
-                if (it != gen->m_arrays.cend()) {
-                    std::stringstream ss;
-                    ss << "Identifier '" << var_array->ident.value.value() << "' was already declared in this scope!" << std::endl;
-                    gen->line_err(ss.str());
+            else {
+                auto free_it = std::find_if(gen->m_str_bufs.begin(), gen->m_str_bufs.end(), [&](const string_buffer& str_buf) {return str_buf.free == true; });
+                string_buffer str_buf;
+                if (free_it != gen->m_str_bufs.cend() && free_it->size >= stoi(var_str_buf->_int_lit.value.value())) { // found a free string buffer
+                    
+                    str_buf.size = free_it->size;
+                    str_buf.generated = free_it->generated;
+                    str_buf.name = free_it->name;
+                    free_it->free = false;
+                    
                 }
                 else {
-                    Var_array arr;
-                    arr.name = var_array->ident.value.value();
-                    arr.type = var_type_to_str(var_array->type);
-                    if (var_array->type == Token_type::_bool) {
-                        arr.bool_limit = true;
-                    }
-                    arr.size = var_array->_array_size;
-                    arr.head_base_pointer_offset = gen->m_base_ptr_off + arr.size * gen->asm_type_to_bytes(arr.type);
-                    gen->m_base_ptr_off = arr.head_base_pointer_offset;
-                    arr.immutable = var_array->_const;
-                    gen->m_arrays.push_back(arr);
+                    str_buf.size = stoi(var_str_buf->_int_lit.value.value()); //safe because it is guaranteed to be an integer literal
+                    str_buf.name = var_str_buf->ident.value.value();
+                    str_buf.generated = gen->mk_str_buf();
+                    gen->m_data << "    " << str_buf.generated << " db " << str_buf.size + 1 << " dup(0)" << std::endl; // the + 1 to prevent buffer overflows
                 }
-            
+                gen->m_str_bufs.push_back(str_buf);
             }
-        };
-        if (this->in_func) {
-            var_visitor visitor;
-            visitor.gen = this;
-            std::visit(visitor, stmt_var_dec->var);
         }
-        else {
-            line_err("Can currently not declare variables outside of functions");
+        void operator()(const node::_var_dec_array* var_array) {
+            auto it = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array& arr) {return arr.name == var_array->ident.value.value(); });
+            if (it != gen->m_arrays.cend()) {
+                std::stringstream ss;
+                ss << "Identifier '" << var_array->ident.value.value() << "' was already declared in this scope!" << std::endl;
+                gen->line_err(ss.str());
+            }
+            else {
+                Var_array arr;
+                arr.name = var_array->ident.value.value();
+                arr.type = var_type_to_str(var_array->type);
+                if (var_array->type == Token_type::_bool) {
+                    arr.bool_limit = true;
+                }
+                arr.size = var_array->_array_size;
+                arr.head_base_pointer_offset = gen->m_base_ptr_off + arr.size * gen->asm_type_to_bytes(arr.type);
+                gen->m_base_ptr_off = arr.head_base_pointer_offset;
+                arr.immutable = var_array->_const;
+                gen->m_arrays.push_back(arr);
+            }
+        
         }
+    };
+    if (this->in_func) {
+        var_visitor visitor;
+        visitor.gen = this;
+        std::visit(visitor, stmt_var_dec->var);
+    }
+    else {
+        line_err("Can currently not declare variables outside of functions");
+    }
 }
 inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set) {
 
