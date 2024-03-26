@@ -2,6 +2,7 @@ namespace node {
 
     struct _expr;
     struct _statement;
+    struct _logical_stmt;
     struct _term_int_lit
     {
         Token _int_lit;
@@ -16,7 +17,6 @@ namespace node {
     {
         Token comma;
     };
-
     struct _term_ident {
         Token ident;
     };
@@ -66,6 +66,25 @@ namespace node {
     };
     struct _expr_ref {
         _expr* expr;
+    };
+    struct _boolean_expr {
+        _expr* left;
+        _expr* right;
+        Token_type op;
+    };
+    struct _logical_expr_and {
+        _logical_stmt* left;
+        _logical_stmt* right;
+    };
+    struct _logical_expr_or {
+        _logical_stmt* left;
+        _logical_stmt* right;
+    };
+    struct _logical_expr{
+        std::variant<_logical_expr_and*, _logical_expr_or*> var;
+    };
+    struct _logical_stmt {
+        std::variant<_logical_expr*,_boolean_expr*> var;
     };
     struct _expr {
         std::variant<_term*, _bin_expr*, _expr_ref*> var;
@@ -159,9 +178,7 @@ namespace node {
     };
     struct _ctrl_statement
     {
-        _expr* expr1;
-        _expr* expr2;
-        Token_type op;
+        _logical_stmt* logic;
         _statement_scope* scope;
         Token_type type;
         std::variant<_statement_if*, _statement_while*, _statement_for*> var;
