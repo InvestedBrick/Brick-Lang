@@ -42,7 +42,7 @@ inline std::string Generator::mk_func() {
     return ss.str();
 }
 
-size_t Generator::asm_type_to_bytes(std::string str) {
+inline size_t Generator::asm_type_to_bytes(std::string str) {
     if (str == "dword") {return 4;}
     else if (str == "word") { return 2;}
     else { return 1; }
@@ -61,6 +61,11 @@ inline std::string Generator::get_mov_instruc(const std::string& dest, const std
         return "mov";
     }
 
+}
+inline void Generator::reset_labels(){
+    this->initial_label_and.reset();
+    this->initial_label_or.reset();
+    this->ending_label.reset();
 }
 inline std::string Generator::get_correct_part_of_register(const std::string& source,bool edx)
 {
@@ -141,6 +146,7 @@ inline void Generator::gen_scope(const node::_statement_scope* scope) {
     scope_end();
 }
 inline std::optional<std::string> Generator::tok_to_instruc(Token_type type, bool invert) {
+
     if (invert) {
         if (type == Token_type::_same_as) { return "    jne "; }
         if (type == Token_type::_not_same_as) { return "    je "; }
@@ -296,6 +302,7 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
         std::visit(visitor, term->var);
         return visitor.ret_val;
 }
+
 inline std::optional<std::string> Generator::gen_bin_expr(const node::_bin_expr* bin_expr) {
         struct bin_expr_visitor
         {
@@ -413,6 +420,7 @@ inline std::optional<std::string> Generator::gen_bin_expr(const node::_bin_expr*
         return visitor.ret_val;
     }
 inline std::optional<std::string> Generator::gen_expr(const node::_expr* expr) {
+    
     struct expr_visitor
     {
         Generator* gen;
@@ -445,6 +453,130 @@ inline std::optional<std::string> Generator::gen_expr(const node::_expr* expr) {
     std::visit(visitor, expr->var);
     return visitor.ret_val;
 }
+
+inline Generator::logic_data_packet Generator::gen_logical_expr(const node::_logical_expr* logic_expr,std::optional<std::string> provided_scope_lbl, bool invert){
+    struct logic_expr_visitor{
+        Generator* gen;
+        logic_data_packet data;
+        bool invert_copy;
+        std::optional<std::string> provided_scope_lbl;
+        void operator()(const node::_logical_expr_and* logic_and){
+            Token_type op = gen->gen_logical_stmt(logic_and->left,provided_scope_lbl,invert_copy).op;
+            if(!gen->initial_label_and.has_value()){
+                data.end_lbl = gen->mk_label();
+                gen->initial_label_and = data.end_lbl;
+            }else{
+                data.end_lbl = gen->initial_label_and.value();
+            }
+            
+            gen->m_code << gen->tok_to_instruc(op,true).value() << data.end_lbl << std::endl;
+            Token_type op1 = gen->gen_logical_stmt(logic_and->right,provided_scope_lbl,invert_copy).op;
+            std::string last_label = data.end_lbl;
+            gen->ending_label = last_label;
+            if(provided_scope_lbl.has_value()){
+                last_label = provided_scope_lbl.value();
+            }
+            if(auto instruc = gen->tok_to_instruc(op1,invert_copy)){
+                gen->m_code << instruc.value() << last_label << std::endl;
+            }
+            
+            
+        }
+        void operator()(const node::_logical_expr_or* logic_or){
+            Token_type op = gen->gen_logical_stmt(logic_or->left,provided_scope_lbl,invert_copy).op;
+            if(!provided_scope_lbl.has_value()){
+                data.scope_lbl = gen->mk_label();
+                provided_scope_lbl = data.scope_lbl.value();
+            }else{
+                data.scope_lbl = provided_scope_lbl.value();
+            }
+            gen->m_code << gen->tok_to_instruc(op,false).value() << data.scope_lbl.value() << std::endl;
+
+            Token_type op1 = gen->gen_logical_stmt(logic_or->right,provided_scope_lbl,invert_copy).op;
+            if(!gen->ending_label.has_value()){
+                data.end_lbl = gen->mk_label();
+                gen->ending_label = data.end_lbl;
+            }else{
+                data.end_lbl = gen->ending_label.value();
+            };
+            
+            if(auto instruc = gen->tok_to_instruc(op1,invert_copy)){
+                gen->m_code << instruc.value() << data.end_lbl << std::endl;
+            }
+        }
+    
+    
+    };
+    logic_expr_visitor visitor;
+    visitor.gen = this;
+    visitor.invert_copy = invert;
+    visitor.provided_scope_lbl = provided_scope_lbl;
+    std::visit(visitor,logic_expr->var);
+    return visitor.data;
+}
+inline Generator::logic_data_packet Generator::gen_logical_stmt(const node::_logical_stmt* logic_stmt,std::optional<std::string> provided_scope_lbl,bool invert){
+    struct logic_stmt_visitor{
+        logic_data_packet data;
+        Generator* gen;
+        bool invert_copy;
+        std::optional<std::string> provided_scope_lbl;
+        void operator()(const node::_logical_expr* logic_expr){
+           data = gen->gen_logical_expr(logic_expr,provided_scope_lbl,invert_copy);
+        }
+        void operator()(const node::_boolean_expr* boolean_expr){
+            bool moved = false;
+            std::string expr1 = gen->gen_expr(boolean_expr->left).value();
+            if (expr1 == "eax" || expr1 == "&eax"){
+                gen->m_code << "    mov ecx, eax" << std::endl;
+                expr1 = "ecx"; //store the expression in ecx, since it it unused and cannoit be overwritten by other code
+                moved = true;
+            }
+            std::string expr2 = gen->gen_expr(boolean_expr->right).value();
+            if ((expr1.rfind("\"", 0) + expr2.rfind("\"", 0)) == 0) { //both are string literals
+                gen->m_code << "    push offset " << expr1.substr(1) << std::endl;
+                gen->m_code << "    push offset " << expr2.substr(1) << std::endl;
+                gen->m_code << "    call crt__stricmp" << std::endl;
+
+                if (!(boolean_expr->op == Token_type::_same_as || boolean_expr->op == Token_type::_not_same_as)) {
+                    gen->line_err("Invalid comparison for strings");
+                }
+                gen->m_code << "    cmp eax,0" << std::endl;
+            }
+            else if (expr1.rfind("\"", 0) == std::string::npos && expr1.rfind("\"", 0) == std::string::npos) { //neither are string literals
+                if (expr1 == "&eax") {
+                    expr1 = "eax";
+                }
+                if (expr2 == "&eax") {
+                    expr2 = "eax";
+                }
+                std::string mov_var1 = is_numeric(expr1) ? "mov" : gen->get_mov_instruc("ebx", expr1.substr(0, expr1.find_first_of(' ')));
+                std::string mov_var2 = is_numeric(expr2) ? "mov" : gen->get_mov_instruc("eax", expr2.substr(0, expr2.find_first_of(' ')));
+                if (moved) {
+                    gen->m_code << "    mov ebx,ecx" << std::endl;
+                }else{
+                    gen->m_code << "    " << mov_var1 << " ebx, " << expr1 << std::endl;
+                }
+                if (expr2 != "eax") {
+                    gen->m_code << "    " << mov_var2 << " eax, " << expr2 << std::endl;
+                }
+                gen->m_code << "    cmp ebx,eax\n";
+            }
+            else {
+                gen->line_err("Invalid comparison expressions!");
+            }
+            data.op = boolean_expr->op;
+        }
+    
+    
+    };
+    logic_stmt_visitor visitor;
+    visitor.gen = this;
+    visitor.invert_copy = invert;
+    visitor.provided_scope_lbl = provided_scope_lbl;
+    std::visit(visitor,logic_stmt->var);
+    return visitor.data;
+}
+
 inline void Generator::gen_asm_expr(const node::_asm_* _asm_) {
         struct asm_visitor
         {
@@ -459,116 +591,79 @@ inline void Generator::gen_asm_expr(const node::_asm_* _asm_) {
         std::visit(visitor, _asm_->var);
     }
 inline void Generator::gen_ctrl_statement(const node::_ctrl_statement* _ctrl) {
-        struct _crtl_statement_visitor
-        {
-            Generator* gen;
-            const node::_ctrl_statement* _ctrl;
-            void operator()(const node::_statement_if* stmt_if) {
-                bool moved_flag = false;
-                std::string str_1 = gen->gen_expr(_ctrl->expr1).value();
-                if (str_1 == "eax" || str_1 == "&eax") { gen->m_code << "    mov ebx, eax" << std::endl; moved_flag = true; }
-                std::string str_2 = gen->gen_expr(_ctrl->expr2).value();
-                if ((str_1.rfind("\"", 0) + str_2.rfind("\"", 0)) == 0) { //both are string literals
-                    gen->m_code << "    push offset " << str_1.substr(1) << std::endl;
-                    gen->m_code << "    push offset " << str_2.substr(1) << std::endl;
-                    gen->m_code << "    call crt__stricmp" << std::endl;
-
-                    if (!(_ctrl->op == Token_type::_same_as || _ctrl->op == Token_type::_not_same_as)) {
-                        gen->line_err("Invalid comparison for strings");
-                    }
-                    gen->m_code << "    cmp eax,0" << std::endl;
-                }
-                else if (str_1.rfind("\"", 0) == std::string::npos && str_2.rfind("\"", 0) == std::string::npos) { //neither are string literals
-                    if (str_1 == "&eax") {
-                        str_1 = "eax";
-                    }
-                    if (str_2 == "&eax") {
-                        str_2 = "eax";
-                    }
-                    std::string mov_var1 = is_numeric(str_1) ? "mov" : gen->get_mov_instruc("ebx", str_1.substr(0, str_1.find_first_of(' ')));
-                    std::string mov_var2 = is_numeric(str_2) ? "mov" : gen->get_mov_instruc("eax", str_2.substr(0, str_2.find_first_of(' ')));
-                    if (!moved_flag) {
-                        gen->m_code << "    " << mov_var1 << " ebx, " << str_1 << std::endl;
-                    }
-                    if (str_2 != "eax") {
-                        gen->m_code << "    " << mov_var2 << " eax, " << str_2 << std::endl;
-                    }
-                    gen->m_code << "    cmp ebx,eax\n";
-                }
-                else {
-                    gen->line_err("Invalid comparison expressions!");
-                }
-                std::string label = gen->mk_label();
-                gen->m_code << gen->tok_to_instruc(_ctrl->op, true).value() << label << std::endl;
-                gen->gen_scope(_ctrl->scope);
-                if (stmt_if->_else.has_value()) {
-                    std::string label_1 = gen->mk_label();
-                    gen->m_code << "    jmp " << label_1 << std::endl;
-                    gen->m_code << label << ":\n";
-                    gen->gen_scope(stmt_if->_else.value()->scope);
-                    gen->m_code << label_1 << ":\n";
-                }
-                else {
-                    gen->m_code << label << ":\n";
-                }
-
+    struct _crtl_statement_visitor
+    {
+        Generator* gen;
+        const node::_ctrl_statement* _ctrl;
+        void operator()(const node::_statement_if* stmt_if) {
+            logic_data_packet labels = gen->gen_logical_stmt(_ctrl->logic,std::nullopt,true);
+            gen->reset_labels();
+            if(labels.end_lbl == ""){ // if there is no and or or --> no returned label
+                labels.end_lbl = gen->mk_label();
+                gen->m_code  << gen->tok_to_instruc(labels.op,true).value() << " " << labels.end_lbl << std::endl;
             }
-            void operator()(const node::_statement_while* stmt_while) {
-                std::string label = gen->mk_label();
-                gen->m_code << label << ":\n";
-                gen->gen_scope(_ctrl->scope);
-                std::string str_1 = gen->gen_expr(_ctrl->expr1).value();
-                std::string str_2 = gen->gen_expr(_ctrl->expr2).value();
-                if ((str_1.rfind("\"", 0) + str_2.rfind("\"", 0)) == 0) { //both are string literals
-                    gen->m_code << "    push offset " << str_1.substr(1) << std::endl;
-                    gen->m_code << "    push offset " << str_2.substr(1) << std::endl;
-                    gen->m_code << "    call crt__stricmp" << std::endl;
+            if(labels.scope_lbl.has_value()){
+                gen->m_code << labels.scope_lbl.value() << ":" << std::endl;
+            }
+            gen->gen_scope(_ctrl->scope);
+            if (stmt_if->_else.has_value()) {
+                std::string label_1 = gen->mk_label();
+                gen->m_code << "    jmp " << label_1 << std::endl;
+                gen->m_code << labels.end_lbl << ":" << std::endl;
+                gen->gen_scope(stmt_if->_else.value()->scope);
+                gen->m_code << label_1 << ":" << std::endl;
+            }
+            else {
+                gen->m_code << labels.end_lbl << ":" << std::endl;
+            }
+        }
+        void operator()(const node::_statement_while* stmt_while) {
+            std::string scope_lbl = gen->mk_label();
+            std::string start_jump = gen->mk_label();
+            gen->m_code << "    jmp " << start_jump << std::endl;
+            gen->m_code << scope_lbl << ":" << std::endl;
+            gen->gen_scope(_ctrl->scope);
+            gen->m_code << start_jump << ":" << std::endl;
+            logic_data_packet labels = gen->gen_logical_stmt(_ctrl->logic,scope_lbl,false);
+            if(labels.end_lbl == ""){ // if there is no and or or --> no returned label
+                labels.end_lbl = gen->mk_label();
+                gen->m_code  << gen->tok_to_instruc(labels.op,false).value() << " " << scope_lbl << std::endl;
+            }
+            gen->m_code << labels.end_lbl << ":" << std::endl;
+        
 
-                    if (!(_ctrl->op == Token_type::_same_as || _ctrl->op == Token_type::_not_same_as)) {
-                        gen->line_err("Invalid comparison for strings");
-                    }
-                    gen->m_code << "    cmp eax,0" << std::endl;
-                }
-                else if (str_1.rfind("\"", 0) == std::string::npos && str_2.rfind("\"", 0) == std::string::npos) { //neither are string literals
-                    std::string mov_var1 = is_numeric(str_1) ? "mov" : gen->get_mov_instruc("eax", str_1.substr(0, str_1.find_first_of(' ')));
-                    std::string mov_var2 = is_numeric(str_2) ? "mov" : gen->get_mov_instruc("eax", str_2.substr(0, str_2.find_first_of(' ')));
-                    gen->m_code << "    " << mov_var1 << " ebx, " << str_1 << std::endl;
-                    gen->m_code << "    " << mov_var2 << " eax, " << str_2 << std::endl;
-                    gen->m_code << "    cmp ebx,eax" << std::endl;
-                }
-                else {
-                    gen->line_err("Invalid comparison expressions!");
-                }
-                gen->m_code << gen->tok_to_instruc(_ctrl->op).value() << label << "\n";
+        }
+        //TODO fix only being able to use double expressions
+        void operator()(const node::_statement_for* stmt_for) {
+            //THIS CODE IS CURRENTLY UNDER MAINTENANCE
+            /*
+            gen->gen_var_stmt(stmt_for->_stmt_var_dec);
+            std::string label = gen->mk_label();
+            gen->m_code << label << ":\n";
+            gen->gen_scope(_ctrl->scope);
+            node::_statement stmt;
+            stmt.var = stmt_for->_d_op;
+            gen->gen_stmt(&stmt);
+            std::string str_1 = gen->gen_expr(_ctrl->expr1).value();
+            std::string str_2 = gen->gen_expr(_ctrl->expr2).value();
+            if (str_1.rfind("\"", 0) == 0 || str_2.rfind("\"", 0) == 0) {
+                gen->line_err("Invalid use of string");
             }
-            //TODO fix only being able to use double expressions
-            void operator()(const node::_statement_for* stmt_for) {
-                gen->gen_var_stmt(stmt_for->_stmt_var_dec);
-                std::string label = gen->mk_label();
-                gen->m_code << label << ":\n";
-                gen->gen_scope(_ctrl->scope);
-                node::_statement stmt;
-                stmt.var = stmt_for->_d_op;
-                gen->gen_stmt(&stmt);
-                std::string str_1 = gen->gen_expr(_ctrl->expr1).value();
-                std::string str_2 = gen->gen_expr(_ctrl->expr2).value();
-                if (str_1.rfind("\"", 0) == 0 || str_2.rfind("\"", 0) == 0) {
-                    gen->line_err("Invalid use of string");
-                }
-                
-                std::string mov_var1 = is_numeric(str_1) ? "mov" : gen->get_mov_instruc("eax", str_1.substr(0, str_1.find_first_of(' ')));
-                std::string mov_var2 = is_numeric(str_2) ? "mov" : gen->get_mov_instruc("eax", str_2.substr(0, str_2.find_first_of(' ')));
-                gen->m_code << "    " << mov_var1 << " ebx, " << str_1 << std::endl;
-                gen->m_code << "    " << mov_var2 << " eax, " << str_2 << std::endl;
-                gen->m_code << "    cmp ebx,eax\n";
-                gen->m_code << gen->tok_to_instruc(_ctrl->op).value() << label << "\n";
-                gen->m_vars.pop_back();//pop the iterator value
-            }
-        };
-        _crtl_statement_visitor visitor;
-        visitor.gen = this;
-        visitor._ctrl = _ctrl;
-        std::visit(visitor, _ctrl->var);    
+            
+            std::string mov_var1 = is_numeric(str_1) ? "mov" : gen->get_mov_instruc("eax", str_1.substr(0, str_1.find_first_of(' ')));
+            std::string mov_var2 = is_numeric(str_2) ? "mov" : gen->get_mov_instruc("eax", str_2.substr(0, str_2.find_first_of(' ')));
+            gen->m_code << "    " << mov_var1 << " ebx, " << str_1 << std::endl;
+            gen->m_code << "    " << mov_var2 << " eax, " << str_2 << std::endl;
+            gen->m_code << "    cmp ebx,eax\n";
+            gen->m_code << gen->tok_to_instruc(_ctrl->op).value() << label << "\n";
+            gen->m_vars.pop_back();//pop the iterator value
+            */
+        }
+    };
+    _crtl_statement_visitor visitor;
+    visitor.gen = this;
+    visitor._ctrl = _ctrl;
+    std::visit(visitor, _ctrl->var);    
 }
 inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec) {
         struct var_visitor {
@@ -1208,5 +1303,6 @@ std::string Generator::gen_program() {
         m_output << "_main endp\n";
         m_output << m_func_space.str();
         m_output << "end _main\n";
+        std::cout << "Finished Generating..." << std::endl;
         return m_output.str();
 }
