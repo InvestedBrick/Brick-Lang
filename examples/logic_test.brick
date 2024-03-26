@@ -1,13 +1,10 @@
 
 brick main{
-
-    dec x as int -> 1;
-    dec y as int -> 5;
-    if x > y or x == 2 and y == 5 {
-        output "Expression true";
-        set x to 23;
-    }else{
-        output "Expression false";
+    
+    dec x as int -> 0;
+    for dec i as int -> 0; i < 10 and x < 5; i++;{
+        output i;
+        x++;
     }
 
     exit 0;
