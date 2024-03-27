@@ -6,6 +6,9 @@ brick main{
         output i;
         x++;
     }
-
+    output;
+    output x;
+    output x++;
+    output x--;
     exit 0;
 }
