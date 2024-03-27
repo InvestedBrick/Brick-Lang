@@ -60,9 +60,14 @@ namespace node {
         Token ident;
         _expr* index_expr;
     };
+    struct _double_op
+    {
+        Token ident;
+        Token_type op;
+    };
     struct _term
     {
-        std::variant<_term_int_lit*, _term_ident*, _term_paren*, _term_str_lit*, _function_call*,_term_negate*,_term_deref*, _term_array_index*> var;
+        std::variant<_term_int_lit*, _term_ident*, _term_paren*, _term_str_lit*, _function_call*,_term_negate*,_term_deref*, _term_array_index*,_double_op*> var;
     };
     struct _expr_ref {
         _expr* expr;
@@ -161,11 +166,7 @@ namespace node {
     {
         std::optional<_if_else*> _else;
     };
-    struct _double_op
-    {
-        Token ident;
-        Token_type op;
-    };
+    
     struct _op_equal {
         Token ident;
         Token_type op;
@@ -174,7 +175,7 @@ namespace node {
     struct _statement_for
     {
         _statement_var_dec* _stmt_var_dec;
-        _double_op* _d_op;
+        _expr* var_op;
     };
     struct _ctrl_statement
     {
@@ -232,7 +233,7 @@ namespace node {
     };
     struct _statement
     {
-        std::variant<_statement_exit*, _statement_var_dec*, _statement_var_set*, _asm_vec*, _statement_scope*, _ctrl_statement*, _double_op*, _main_scope*, _null_stmt*, _statement_output*, _statement_input*, _statement_function*, _statement_ret*, _statement_pure_expr*, _op_equal*> var;
+        std::variant<_statement_exit*, _statement_var_dec*, _statement_var_set*, _asm_vec*, _statement_scope*, _ctrl_statement*, _main_scope*, _null_stmt*, _statement_output*, _statement_input*, _statement_function*, _statement_ret*, _statement_pure_expr*, _op_equal*> var;
     };
 
     struct _program {
