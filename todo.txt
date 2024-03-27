@@ -23,7 +23,7 @@ checklist:
 [X] pointers
 [X] importing other files 
 [X] logical operators for control statements
-[ ] make double operations expressions
+[X] make double operations expressions
 [ ] structs / larger data types??
 [ ] change stringbuffers??
 [ ] floating points
