@@ -27,7 +27,7 @@ private:
 
     bool is_logical_operator(Token_type type);
     bool is_operator(Token_type type);
-    node::_statement* mk_stmt(std::variant<node::_statement_exit*, node::_statement_var_dec*, node::_statement_var_set*, node::_asm_vec*, node::_statement_scope*, node::_ctrl_statement*, node::_double_op*, node::_main_scope*, node::_null_stmt*, node::_statement_output*, node::_statement_input*, node::_statement_function*, node::_statement_ret*, node::_statement_pure_expr*, node::_op_equal*> var);
+    node::_statement* mk_stmt(std::variant<node::_statement_exit*, node::_statement_var_dec*, node::_statement_var_set*, node::_asm_vec*, node::_statement_scope*, node::_ctrl_statement*, node::_main_scope*, node::_null_stmt*, node::_statement_output*, node::_statement_input*, node::_statement_function*, node::_statement_ret*, node::_statement_pure_expr*, node::_op_equal*> var);
     inline node::_null_stmt* mk_null_stmt(std::variant<node::_newline*, node::_newfile*, node::_eof*> var);
     inline void line_err(const std::string& err_msg);
     inline Token try_consume(Token_type type, const std::string& err_msg);
