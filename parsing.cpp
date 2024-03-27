@@ -95,7 +95,7 @@ bool Parser::is_logical_operator(Token_type type) {
         return false;
     }
 }
-node::_statement* Parser::mk_stmt(std::variant<node::_statement_exit*, node::_statement_var_dec*, node::_statement_var_set*, node::_asm_vec*, node::_statement_scope*, node::_ctrl_statement*, node::_double_op*, node::_main_scope*, node::_null_stmt*, node::_statement_output*, node::_statement_input*, node::_statement_function*, node::_statement_ret*, node::_statement_pure_expr*,node::_op_equal*> var)
+node::_statement* Parser::mk_stmt(std::variant<node::_statement_exit*, node::_statement_var_dec*, node::_statement_var_set*, node::_asm_vec*, node::_statement_scope*, node::_ctrl_statement*, node::_main_scope*, node::_null_stmt*, node::_statement_output*, node::_statement_input*, node::_statement_function*, node::_statement_ret*, node::_statement_pure_expr*, node::_op_equal*> var)
 {
     auto stmt = m_Allocator.alloc<node::_statement>();
     stmt->var = var;
@@ -184,6 +184,14 @@ inline std::optional<node::_term*> Parser::parse_term() {
         term->var = arr_idx;
         return term;
     }
+    else if (peek_type(Token_type::_ident) && (peek_type(Token_type::_d_add, 1) || peek_type(Token_type::_d_sub, 1))) {
+        auto _d_op = parse_d_op();
+        if (!_d_op.has_value()) {
+            line_err("Unable to parse double operation");
+        }
+        term->var = _d_op.value();
+        return term;
+    }
     else if (peek_type(Token_type::_ident) && !peek_type(Token_type::_open_paren, 1)) { // check to ensure, that it's not a function
         auto ident = try_consume(Token_type::_ident);
         auto id = m_Allocator.alloc<node::_term_ident>();
@@ -191,6 +199,7 @@ inline std::optional<node::_term*> Parser::parse_term() {
         term->var = id;
         return term;
     }
+    
     else if (try_consume(Token_type::_open_paren)) {
         auto term_paren = m_Allocator.alloc<node::_term_paren>();
         auto expr = parse_expr();
@@ -337,7 +346,7 @@ inline std::optional<node::_boolean_expr*> Parser::parse_boolean_expr() {
     if(auto expr = parse_expr()){
         bool_expr->left = expr.value();
     }else{
-        line_err("Invalid expression???");
+        line_err("Invalid expression");
     }
     if(peek().has_value() && is_operator(peek().value().type)){
         bool_expr->op = consume().type;
@@ -348,7 +357,7 @@ inline std::optional<node::_boolean_expr*> Parser::parse_boolean_expr() {
         bool_expr->right = expr.value();
         
     }else{
-        line_err("Invalid expression??");
+        line_err("Invalid expression");
     }
     return bool_expr;
 
@@ -527,7 +536,6 @@ inline std::optional<node::_double_op*> Parser::parse_d_op() {
     auto _d_op = m_Allocator.alloc<node::_double_op>();
     _d_op->ident = consume();
     _d_op->op = consume().type;
-    try_consume(Token_type::_semicolon, "Expected ';'");
     return _d_op;
 }
 inline node::_null_stmt* Parser::mk_null_stmt(std::variant<node::_newline*, node::_newfile*, node::_eof*> var) {
@@ -594,13 +602,6 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         try_consume(Token_type::_close_cur_brac, "Expected '}'");
         try_consume(Token_type::_semicolon, "Expected ';'");
         return mk_stmt(stmt_asm);
-    }
-    else if (peek_type(Token_type::_ident) && (peek_type(Token_type::_d_add, 1) || peek_type(Token_type::_d_sub, 1))) {
-        auto _d_op = parse_d_op();
-        if (!_d_op.has_value()) {
-            line_err("Unable to parse double operation");
-        }
-        return mk_stmt(_d_op.value());
     }
     else if (peek_type(Token_type::_ident) && (peek_type(Token_type::_add_eq, 1) || peek_type(Token_type::_sub_eq, 1) || peek_type(Token_type::_mul_eq, 1) || peek_type(Token_type::_div_eq, 1))) {
         auto _op_eq = m_Allocator.alloc<node::_op_equal>();
@@ -734,17 +735,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         in_func = false;
         return mk_stmt(func);
     }
-    else if (peek_type(Token_type::_ident) && peek_type(Token_type::_open_paren, 1)) {
-        auto pure_expr = m_Allocator.alloc<node::_statement_pure_expr>();
-        if (auto call = parse_expr()) {
-            pure_expr->expr = call.value();
-            try_consume(Token_type::_semicolon, "Expected ';'");
-            return mk_stmt(pure_expr);
-        }
-        else {
-            line_err("Invalid expression in function call");
-        }
-    }
+    
     else if (peek_type(Token_type::_return)) {
         consume();
         auto stmt_ret = m_Allocator.alloc<node::_statement_ret>();
@@ -805,13 +796,14 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         if (stmt_crtl->type == Token_type::_for) {
             auto _for = std::get<node::_statement_for*>(stmt_crtl->var);
             try_consume(Token_type::_semicolon, "Expected ';' after comparison in for statement");
-            if (auto d_op = parse_d_op())
+            if (auto var_expr = parse_expr())
             {
-                _for->_d_op = d_op.value();
+                _for->var_op = var_expr.value();
             }
             else {
-                line_err("Unable to parse double operator in for statement");
+                line_err("Unable to parse operation in for statement");
             }
+            try_consume(Token_type::_semicolon, "Expected ';' after variable operation in for statement");
         }
 
         if (auto scope = parse_scope()) {
@@ -861,6 +853,12 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         stmt_input->ident = try_consume(Token_type::_ident, "Expected string buffer");
         try_consume(Token_type::_semicolon, "Expected ';'");
         return mk_stmt(stmt_input);
+    }
+    else if (auto expr = parse_expr()) {//try to parse an expression freely
+        auto pure_expr = m_Allocator.alloc<node::_statement_pure_expr>();
+        pure_expr->expr = expr.value();
+        try_consume(Token_type::_semicolon, "Expected ';'");
+        return mk_stmt(pure_expr);
     }
     return {};
 }
