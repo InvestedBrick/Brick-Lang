@@ -208,6 +208,35 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                 ret_val = offset.str();
 
             }
+            void operator()(const node::_double_op* double_op) {
+                auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == double_op->ident.value.value(); });
+                if (it == gen->m_vars.cend()) {
+                    std::stringstream ss;
+                    ss << "Identifier '" << double_op->ident.value.value() << "' was not declared in this scope!" << std::endl;
+                    gen->line_err(ss.str());
+                }
+                std::stringstream ss;
+                
+                ss << (*it).type << " ptr [ebp - " << (*it).base_pointer_offset << "]";
+                gen->m_code << "    "<< gen->get_mov_instruc("eax",(*it).type) << " eax," << ss.str() << std::endl;
+                if (double_op->op == Token_type::_d_add) {
+                    if ((*it).ptr) {
+                        gen->m_code << "    add " << ss.str() << ", " << gen->asm_type_to_bytes((*it).ptr_type) << std::endl;
+                    }
+                    else {
+                        gen->m_code << "    inc " << ss.str() << std::endl;
+                    }
+                }
+                else if (double_op->op == Token_type::_d_sub) {
+                    if ((*it).ptr) {
+                        gen->m_code << "    sub " << ss.str() << ", " << gen->asm_type_to_bytes((*it).ptr_type) << std::endl;
+                    }
+                    else {
+                        gen->m_code << "    dec " << ss.str() << std::endl;
+                    }
+                }
+                ret_val = "eax";
+            }
             void operator()(const node::_function_call* fn_call) {
                 auto it = std::find_if(gen->m_funcs.cbegin(), gen->m_funcs.cend(), [&](const function& fn) {return fn.name == fn_call->ident.value.value(); });
                 if (it == gen->m_funcs.cend()) {
@@ -643,9 +672,7 @@ inline void Generator::gen_ctrl_statement(const node::_ctrl_statement* _ctrl) {
             gen->m_code << "    jmp " << start_jump << std::endl;
             gen->m_code << scope_lbl << ":" << std::endl;
             gen->gen_scope(_ctrl->scope);
-            node::_statement stmt;
-            stmt.var = stmt_for->_d_op;
-            gen->gen_stmt(&stmt);
+            gen->gen_expr(stmt_for->var_op);
             gen->m_code << start_jump << ":" << std::endl;
             logic_data_packet labels = gen->gen_logical_stmt(_ctrl->logic,scope_lbl,false);
             if(labels.end_lbl == ""){ // if there is no and or or --> no returned label
@@ -1129,33 +1156,6 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
             void operator()(const node::_ctrl_statement* _ctrl) {
 
                 gen->gen_ctrl_statement(_ctrl);
-            }
-            void operator()(const node::_double_op* double_op) {
-                auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == double_op->ident.value.value(); });
-                if (it == gen->m_vars.cend()) {
-                    std::stringstream ss;
-                    ss << "Identifier '" << double_op->ident.value.value() << "' was not declared in this scope!" << std::endl;
-                    gen->line_err(ss.str());
-                }
-                std::stringstream ss;
-                
-                ss << (*it).type << " ptr [ebp - " << (*it).base_pointer_offset << "]";
-                if (double_op->op == Token_type::_d_add) {
-                    if ((*it).ptr) {
-                        gen->m_code << "    add " << ss.str() << ", " << gen->asm_type_to_bytes((*it).ptr_type) << std::endl;
-                    }
-                    else {
-                        gen->m_code << "    inc " << ss.str() << std::endl;
-                    }
-                }
-                else if (double_op->op == Token_type::_d_sub) {
-                    if ((*it).ptr) {
-                        gen->m_code << "    sub " << ss.str() << ", " << gen->asm_type_to_bytes((*it).ptr_type) << std::endl;
-                    }
-                    else {
-                        gen->m_code << "    dec " << ss.str() << std::endl;
-                    }
-                }
             }
             void operator()(const node::_op_equal* op_eq) {
                 auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == op_eq->ident.value.value(); });
