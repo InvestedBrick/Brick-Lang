@@ -1,0 +1,10 @@
+brick main{
+    dec x as strbuf -> 32;
+    dec y as string -> "Hello World";
+    set x to "Works?";
+    output x;
+    set x to y;
+    output x;
+
+    exit 0;
+}
