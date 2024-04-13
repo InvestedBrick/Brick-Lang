@@ -1,4 +1,4 @@
-**Brick Lang** is a compiled programming language that aims to one day be self-compiled. Initial idea and code inspiration from Pixeled on YouTube ([GitHub](https://github.com/orosmatthew/hydrogen-cpp)). 
+**Brick Lang** is a compiled programming language inspired by the C programming language that tries to minimize the use of brackets. Initial idea and code inspiration from Pixeled on YouTube ([GitHub](https://github.com/orosmatthew/hydrogen-cpp)). 
 
 *Prerequisites:* 
 - You need `masm32` installed on your computer under `C:\masm32`.
