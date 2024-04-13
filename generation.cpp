@@ -813,6 +813,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                     gen->m_data << "    " << str_buf.generated << " db " << str_buf.size + 1 << " dup(0)" << std::endl; // the + 1 to prevent buffer overflows
                 }
                 gen->m_str_bufs.push_back(str_buf);
+
             }
         }
         void operator()(const node::_var_dec_array* var_array) {
@@ -858,6 +859,19 @@ inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set)
                 ss << "Strings are immutable at the current stage of development :(";
                 gen->line_err(ss.str());
             }
+            auto str_buf_it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& var) {return var.name == var_num->ident.value.value(); });
+            if(str_buf_it != gen->m_str_bufs.cend()){
+                std::string val = gen->gen_expr(var_num->expr).value();
+                if (val.rfind("\"", 0) != 0) { 
+                    gen->line_err("Stringbuffers can only be assigned strings");               
+                }
+                gen->m_code << "    mov esi, offset " << val.substr(1) << std::endl;
+                gen->m_code << "    mov edi, offset " << (*str_buf_it).generated << std::endl;
+                gen->m_code << "    mov ecx," << (*str_buf_it).size << std::endl;
+                gen->m_code << "    rep movsb" << std::endl;
+                return;
+
+            }
             auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == var_num->ident.value.value(); });
             if (it == gen->m_vars.cend()) {
                 std::stringstream ss;
@@ -865,6 +879,7 @@ inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set)
                 gen->line_err(ss.str());
                 
             }
+            
             else {
                 if ((*it).immutable) {
                     gen->line_err("Variable not mutable!");

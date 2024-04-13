@@ -54,11 +54,3 @@ public:
 };
 
 
-/*
-
-    (expr == expr) and (expr != expr) and (x < y)
-     boolean_expr  and  boolean_expr and boolean_expr ...
-     -------> logical_expr , logical_expr <--------
-
-
-*/
