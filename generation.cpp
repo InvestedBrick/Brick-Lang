@@ -1312,6 +1312,5 @@ std::string Generator::gen_program() {
         m_output << "_main endp\n";
         m_output << m_func_space.str();
         m_output << "end _main\n";
-        std::cout << "Finished Generating..." << std::endl;
         return m_output.str();
 }

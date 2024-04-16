@@ -73,7 +73,6 @@ std::string PreProcessor::pre_process() {
         this->m_idx = 0;
         this->pre_process_include();
 
-    }
-    std::cout << "Finished Preprocessing..." << std::endl;
+    }   
     return this->m_str;
 }

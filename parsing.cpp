@@ -872,6 +872,5 @@ std::optional<node::_program> Parser::parse_program() {
             line_err("Invalid statement");
         }
     }
-    std::cout << "Finished Parsing..." << std::endl;
     return prog;
 }

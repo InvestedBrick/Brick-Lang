@@ -411,7 +411,7 @@ std::vector<Token> Tokenizer::tokenize()
         }
     }
     this->m_idx = 0;
-    std::cout << "Finished Tokenizing..." << std::endl;
+    
 
     return token_arr;
 }
