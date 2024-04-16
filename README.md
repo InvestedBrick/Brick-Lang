@@ -1,4 +1,5 @@
 **Brick Lang** is a compiled programming language inspired by the C programming language that tries to minimize the use of brackets. Initial idea and code inspiration from Pixeled on YouTube ([GitHub](https://github.com/orosmatthew/hydrogen-cpp)). 
+View exaples/everything.brick for documentation
 
 *Prerequisites:* 
 - You need `masm32` installed on your computer under `C:\masm32`.
