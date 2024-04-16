@@ -1,3 +1,5 @@
+//commandline flag  "-noinfo" can be added to supress update info of the compiling process
+//commandline flag  "-nomicrosoft" can be added to not display the microsoft copyright when assembling with masm32
 //include statement 
 #include funcs.brick
 
