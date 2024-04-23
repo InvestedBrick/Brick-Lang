@@ -186,8 +186,8 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                 auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == term_ident->ident.value.value(); });
                 std::stringstream offset;
                 if (it == gen->m_vars.cend()) {
-                    auto str_it = std::find_if(gen->m_str_map.cbegin(), gen->m_str_map.cend(), [&](const str_map& var) {return var.ident == term_ident->ident.value.value(); });
-                    if (str_it != gen->m_str_map.cend()) {
+                    auto str_it = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(), [&](const String& var) {return var.name == term_ident->ident.value.value(); });
+                    if (str_it != gen->m_strs.cend()) {
                         offset << (*str_it).generated;
                     }
                     else {
@@ -764,11 +764,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                 gen->line_err(ss.str());
             }
             else {
-                std::string val = gen->gen_expr(var_str->expr).value();
-                str_map map;
-                map.generated = val;
-                map.ident = var_str->ident.value.value();
-                gen->m_str_map.push_back(map);
+                gen->gen_expr(var_str->expr).value(); //rest is handled by the gen_str_lit function
             }
         }
         void operator()(const node::_var_dec_str_buf* var_str_buf) {
@@ -839,13 +835,13 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
         
         }
     };
-    if (this->in_func) {
+    if (this->valid_space) {
         var_visitor visitor;
         visitor.gen = this;
         std::visit(visitor, stmt_var_dec->var);
     }
     else {
-        line_err("Can currently not declare variables outside of functions");
+        line_err("Can currently not declare variables outside of valid space like function");
     }
 }
 inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set) {
@@ -853,8 +849,8 @@ inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set)
     struct set_visitor {
         Generator* gen;
         void operator()(const node::_var_set_num* var_num) {
-            auto str_it = std::find_if(gen->m_str_map.cbegin(), gen->m_str_map.cend(), [&](const str_map& var) {return var.ident == var_num->ident.value.value(); });
-            if (str_it != gen->m_str_map.cend()) {
+            auto str_it = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(), [&](const String& var) {return var.name == var_num->ident.value.value(); });
+            if (str_it != gen->m_strs.cend()) {
                 std::stringstream ss;
                 ss << "Strings are immutable at the current stage of development :(";
                 gen->line_err(ss.str());
@@ -1012,7 +1008,7 @@ inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set)
         }
 
     };
-    if (this->in_func) {
+    if (this->valid_space) {
         set_visitor visitor;
         visitor.gen = this;
         std::visit(visitor, stmt_var_set->var);
@@ -1087,8 +1083,8 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
             }
             void operator()(const node::_main_scope* main_scope) {
                 if (!gen->main_proc) {
-                    if (!gen->in_func) {
-                        gen->in_func = true;
+                    if (!gen->valid_space) {
+                        gen->valid_space = true;
                         gen->m_code << "_main proc\n";
                         gen->main_proc = true;
                         gen->scope_start(true, main_scope->stack_space);
@@ -1096,7 +1092,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                             gen->gen_stmt(stmt);
                         }
                         gen->scope_end(true, main_scope->stack_space);
-                        gen->in_func = false;
+                        gen->valid_space = false;
                     }
                     else {
                         gen->line_err("Cannot define function inside of the main scope");
@@ -1114,8 +1110,8 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                     gen->line_err(ss.str());
                 }
                 else {
-                    if (!gen->in_func) {
-                        gen->in_func = true;
+                    if (!gen->valid_space) {
+                        gen->valid_space = true;
                         std::string save = gen->m_code.str();
                         gen->m_code.str(std::string()); //clear the stringstream
                         function func;
@@ -1160,7 +1156,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                         gen->m_func_space << gen->m_code.str() << std::endl << std::endl;
                         gen->m_code.str(std::string());
                         gen->m_code << save;
-                        gen->in_func = false;
+                        gen->valid_space = false;
                         gen->curr_func_name.pop_back();
                     }
                     else {
@@ -1260,7 +1256,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
             }
 
             void operator()(const node::_statement_ret* stmt_ret) {
-                if (gen->in_func) {
+                if (gen->valid_space) {
                     if (gen->curr_func_name.size() < 1) {
                         gen->line_err("Cannot use return in 'brick' function, consider using \"exit [exitcode]\" instead");
                     }
@@ -1284,9 +1280,11 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                     gen->line_err("Cannot return when outside a function");
                 }
             }
+            void operator()(const node::_statement_struct* stmt_struct){
+
+            }
             void operator()(const node::_statement_pure_expr* pure_expr) {
-                std::string expr = gen->gen_expr(pure_expr->expr).value();
-                //expression goes to waste
+                gen->gen_expr(pure_expr->expr);
             }
         };
         stmt_visitor visitor;

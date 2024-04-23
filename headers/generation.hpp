@@ -31,11 +31,8 @@ private:
     };
     struct String {
         std::string name;
-        std::string str_val;
-    };
-    struct str_map {
-        std::string ident;
         std::string generated;
+        std::string str_val;
     };
     struct function {
         std::string name;
@@ -53,7 +50,7 @@ private:
         bool bool_limit = false;
     };
     bool main_proc = false;
-    bool in_func = false;
+    bool valid_space = false;
     std::optional<std::string> initial_label_or;
     std::optional<std::string> initial_label_and;
     std::optional<std::string> ending_label;
@@ -73,7 +70,6 @@ private:
     std::vector<std::string> curr_func_name{};
     std::vector<size_t> m_base_ptr_pos{};
     std::vector<Var> m_vars{};
-    std::vector<str_map> m_str_map{}; //merge with m_strs
     std::vector<String> m_strs{};
     std::vector<string_buffer> m_str_bufs{};
     std::vector<size_t> m_scopes{};
