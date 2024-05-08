@@ -1,9 +1,7 @@
 #pragma once
 #include <sstream>
 //#include <cassert>
-#include <algorithm>//for std::find_if
 #include "parsing.hpp"
-
 bool is_numeric(const std::string& str);
 class Generator {
 private:
@@ -49,8 +47,17 @@ private:
         bool immutable = false;
         bool bool_limit = false;
     };
+    struct Struct_info {
+        std::string name;
+        std::vector<node::_statement_var_dec*> var_decs; 
+    };
+    struct Struct{
+        std::string name;
+        std::vector<std::variant<Var,string_buffer,String,Var_array,Struct>> vars; 
+    };
     bool main_proc = false;
     bool valid_space = false;
+    bool ignore_var_already_exists = false;
     std::optional<std::string> initial_label_or;
     std::optional<std::string> initial_label_and;
     std::optional<std::string> ending_label;
@@ -72,6 +79,8 @@ private:
     std::vector<Var> m_vars{};
     std::vector<String> m_strs{};
     std::vector<string_buffer> m_str_bufs{};
+    std::vector<Struct_info> m_struct_infos{};
+    std::vector<Struct> m_structs{};
     std::vector<size_t> m_scopes{};
     std::vector<size_t> m_scope_str_bufs{};
     std::vector<function> m_funcs{};
@@ -95,6 +104,17 @@ private:
 
 
     //methods
+    template <typename T>
+    void transferElements(std::vector<T>&& source, std::vector<std::variant<Var, string_buffer, String, Var_array,Struct>>& destination, int count);
+    void var_set_str();
+    template<typename iterator,typename var_set>
+    void var_set_str_buf(iterator it,var_set var_num);
+    template<typename iterator,typename var_set>
+    void var_set_number(iterator it,var_set var_num);
+    template<typename iterator,typename var_set>
+    void var_set_array(iterator it,var_set array_set);
+    template<typename iterator,typename var_set>
+    void var_set_struct(iterator it,var_set struct_set);
     void push(const std::string& val);
     void pop(const std::string& reg);
     inline void line_err(const std::string& err_msg);
@@ -111,6 +131,8 @@ private:
     inline std::string gen_str_lit(const std::string string_lit);
     inline void gen_scope(const node::_statement_scope* scope);
     inline std::optional<std::string> tok_to_instruc(Token_type type, bool invert = false);
+    template<typename iterator, typename struct_ident>
+    std::string gen_term_struct(iterator struct_it, struct_ident struct_ident_);
 
 public:
     inline void intern_flags(const node::_null_stmt* null_stmt);

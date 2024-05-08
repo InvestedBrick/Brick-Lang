@@ -65,9 +65,14 @@ namespace node {
         Token ident;
         Token_type op;
     };
+    struct _term_struct_ident{
+        Token ident;
+        _term_struct_ident* item = nullptr;
+        _expr* index_expr;
+    };
     struct _term
     {
-        std::variant<_term_int_lit*, _term_ident*, _term_paren*, _term_str_lit*, _function_call*,_term_negate*,_term_deref*, _term_array_index*,_double_op*> var;
+        std::variant<_term_int_lit*, _term_ident*, _term_paren*, _term_str_lit*, _function_call*,_term_negate*,_term_deref*, _term_array_index*,_double_op*,_term_struct_ident*> var;
     };
     struct _expr_ref {
         _expr* expr;
@@ -133,9 +138,13 @@ namespace node {
         Token ident;
         Token _int_lit;
     };
+    struct _var_dec_struct{
+        Token ident;
+        std::string struct_name;
+    };
     struct _statement_var_dec
     {
-        std::variant<_var_dec_num*, _var_dec_str*, _var_dec_str_buf*, _var_dec_array*> var;
+        std::variant<_var_dec_num*, _var_dec_str*, _var_dec_str_buf*, _var_dec_array*,_var_dec_struct*> var;
     };
     struct _var_set_num {
         Token ident;
@@ -147,9 +156,17 @@ namespace node {
         _expr* expr;
         _expr* index_expr;
     };
+    struct _var_set_struct{
+        Token ident;
+        _var_set_struct* item = nullptr;
+        _expr* expr;
+        _expr* index_expr;
+        bool deref = false;
+
+    };
     struct _statement_var_set
     {
-        std::variant<_var_set_array*, _var_set_num*> var;
+        std::variant<_var_set_array*, _var_set_num*,_var_set_struct*> var;
     };
 
     struct _statement_scope
@@ -231,9 +248,14 @@ namespace node {
     struct _statement_ret {
         _expr* expr;
     };
+    struct _statement_struct{
+        Token ident;
+        std::vector<_statement_var_dec*>  vars;
+        int n_lines;
+    };
     struct _statement
     {
-        std::variant<_statement_exit*, _statement_var_dec*, _statement_var_set*, _asm_vec*, _statement_scope*, _ctrl_statement*, _main_scope*, _null_stmt*, _statement_output*, _statement_input*, _statement_function*, _statement_ret*, _statement_pure_expr*, _op_equal*> var;
+        std::variant<_statement_exit*, _statement_var_dec*, _statement_var_set*, _asm_vec*, _statement_scope*, _ctrl_statement*, _main_scope*, _null_stmt*, _statement_output*, _statement_input*, _statement_function*, _statement_ret*, _statement_pure_expr*, _op_equal*,_statement_struct*> var;
     };
 
     struct _program {

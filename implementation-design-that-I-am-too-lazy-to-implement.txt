@@ -1,7 +1,0 @@
-for structs:
-    seperate a struct info vector and a struct vector  
-    store struct info ( not generated vars ) in struct info vector
-    when generating struct get from struct info vector and generate variables
-    scrape variables from top of var vectors
-    put them in the struct vector struct when accessing struct variables search in the struct vector with namespace
-     
