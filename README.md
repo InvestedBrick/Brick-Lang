@@ -5,4 +5,5 @@ View examples/everything.brick for documentation
 - You need `masm32` installed on your computer under `C:\masm32`.
 
 *Note:* 
-- Currently, there is only support for Windows, but feel free to write a pull request for other operating systems.
+- Currently, there is only support for Windows 10, but feel free to write a pull request for other operating systems.
+
