@@ -24,7 +24,8 @@ checklist:
 [X] importing other files 
 [X] logical operators for control statements
 [X] make double operations expressions
-[ ] structs / larger data types??
+[X] structs
+[ ] make array indexing from startptr possible like in C
 [ ] change stringbuffers??
 [ ] floating points
 [ ] dynamic memory
