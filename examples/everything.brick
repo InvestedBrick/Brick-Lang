@@ -1,5 +1,6 @@
 //commandline flag  "-noinfo" can be added to supress update info of the compiling process
 //commandline flag  "-nomicrosoft" can be added to not display the microsoft copyright when assembling with masm32
+
 //include statement 
 #include funcs.brick
 
@@ -18,6 +19,12 @@ brick function : int -> x, short -> y{
 
     //return type (optional)
 }=> int
+
+//a bundle is like a struct in C to hold a bunch of variables
+bundle my_variable_bundle{
+    dec x as int -> 0; // variables have to be initialized
+    dec arr as array short -> 5;
+}
 
 //the main function
 brick main{
@@ -69,6 +76,7 @@ brick main{
         output "Enter the correct password: " noend;
         input str;
     }
+    //for more strings view strtest.brick
 
     //function return values can be used in expressions
     //expressions can be negated with a "-" sign
@@ -92,7 +100,7 @@ brick main{
     set $z to 1; //changes the value of n
     
     //aaaand yes.. dereferencing null pointers is valid
-    dec p as int ptr -> 0;
+    dec p as int ptr -> null;
     //     output $p;     <--would crash the program
 
     z += 1; //increments z by 4 because it is an int pointer (int = 4 bytes) 4 * 1
@@ -106,6 +114,13 @@ brick main{
         output "Either Var or b == 1";
     }
     
+    dec my_bundle_1 as my_variable_bundle; //not initialization vars 
+
+    set my_bundle_1.x to 4; // access elements using the "." operator
+
+    output my_bundle_1.x
+    //to see more about bundles view structs.brick
+
     //exit statement with exitcode
     exit 0;
 }
