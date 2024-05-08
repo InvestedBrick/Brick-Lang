@@ -95,7 +95,7 @@ bool Parser::is_logical_operator(Token_type type) {
         return false;
     }
 }
-node::_statement* Parser::mk_stmt(std::variant<node::_statement_exit*, node::_statement_var_dec*, node::_statement_var_set*, node::_asm_vec*, node::_statement_scope*, node::_ctrl_statement*, node::_main_scope*, node::_null_stmt*, node::_statement_output*, node::_statement_input*, node::_statement_function*, node::_statement_ret*, node::_statement_pure_expr*, node::_op_equal*> var)
+node::_statement* Parser::mk_stmt(std::variant<node::_statement_exit*, node::_statement_var_dec*, node::_statement_var_set*, node::_asm_vec*, node::_statement_scope*, node::_ctrl_statement*, node::_main_scope*, node::_null_stmt*, node::_statement_output*, node::_statement_input*, node::_statement_function*, node::_statement_ret*, node::_statement_pure_expr*, node::_op_equal*,node::_statement_struct*> var)
 {
     auto stmt = m_Allocator.alloc<node::_statement>();
     stmt->var = var;
@@ -192,14 +192,39 @@ inline std::optional<node::_term*> Parser::parse_term() {
         term->var = _d_op.value();
         return term;
     }
+    else if (peek_type(Token_type::_ident) && peek_type(Token_type::_dot,1))//it's a struct
+    {
+        auto term_struct = m_Allocator.alloc<node::_term_struct_ident>();
+        term_struct->ident = consume();
+        node::_term_struct_ident* current = term_struct;
+
+        while(try_consume(Token_type::_dot)){ //traverse the struct(s)
+            auto next_struct = m_Allocator.alloc<node::_term_struct_ident>();
+            next_struct->ident = try_consume(Token_type::_ident,"Expected Identifier");
+            current->item = next_struct;
+            current = next_struct;
+        }
+
+        if (try_consume(Token_type::_open_sq_brac)) {
+            if (auto expr = parse_expr()) {
+                term_struct->index_expr = expr.value();
+            }
+            else {
+                line_err("Invalid expression");
+            }
+            try_consume(Token_type::_close_sq_brac, "Expected ']'");
+        }
+
+        term->var = term_struct;
+        return term;
+    }
     else if (peek_type(Token_type::_ident) && !peek_type(Token_type::_open_paren, 1)) { // check to ensure, that it's not a function
-        auto ident = try_consume(Token_type::_ident);
+        auto ident = consume();
         auto id = m_Allocator.alloc<node::_term_ident>();
-        id->ident = ident.value();
+        id->ident = ident;
         term->var = id;
         return term;
     }
-    
     else if (try_consume(Token_type::_open_paren)) {
         auto term_paren = m_Allocator.alloc<node::_term_paren>();
         auto expr = parse_expr();
@@ -362,6 +387,28 @@ inline std::optional<node::_boolean_expr*> Parser::parse_boolean_expr() {
     return bool_expr;
 
 }
+template<typename Node>
+inline void Parser::parse_expr_and_set(Node& node, bool isArray) {
+    if constexpr (std::is_same<Node, node::_var_set_struct*>::value || std::is_same<Node, node::_var_set_array*>::value) {
+        if (isArray) {
+            if (auto expr = parse_expr()) {
+                node->index_expr = expr.value();
+            }
+            else {
+                line_err("Invalid expression");
+            }
+            try_consume(Token_type::_close_sq_brac, "Expected ']'");
+        }
+    }
+    try_consume(Token_type::_equal, "Expected equal sign");
+    if (auto expr = parse_expr()) {
+        node->expr = expr.value();
+    }
+    else {
+        line_err("Invalid expression");
+    }
+    try_consume(Token_type::_semicolon, "Expected ';'");
+}
 inline std::optional<node::_logical_stmt*> Parser::parse_logical_stmt() {
     //If you are confused about the variable naming, then you feel how I felt writing this code
     std::optional<node::_boolean_expr*> bool_expr = parse_boolean_expr();
@@ -405,6 +452,10 @@ inline std::optional<node::_logical_stmt*> Parser::parse_logical_stmt() {
 }
 inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
     consume();
+    auto it = this->struct_name_alloc_map.find(peek().value().value.value());//ah yes peak programming
+        if(it != this->struct_name_alloc_map.end()){
+            line_err("Cannot use struct name as identifier");
+        }
     auto stmt_dec = m_Allocator.alloc<node::_statement_var_dec>();
     Token t = peek(2).value(); // peek token and check if its a variable type
     if (t.type == Token_type::_int || t.type == Token_type::_short || t.type == Token_type::_byte || t.type == Token_type::_bool) {
@@ -486,6 +537,22 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
         str_buf->_int_lit = try_consume(Token_type::_int_lit, "Expected integer literal for size of string buffer!");
         stmt_dec->var = str_buf;
     }
+    else if (t.type == Token_type::_ident){
+        auto it = this->struct_name_alloc_map.find(t.value.value());
+        if(it == this->struct_name_alloc_map.end()){
+            line_err("Invalid bundle name");
+        }
+        if(in_func){
+            alloc_size += (*it).second;
+        }
+        
+        auto var_struct = m_Allocator.alloc<node::_var_dec_struct>();
+        var_struct->ident = consume();
+        var_struct->struct_name = (*it).first;
+        consume();
+        consume();
+        stmt_dec->var = var_struct;
+    }
     else
     {
         line_err("Expected variable type");
@@ -543,6 +610,7 @@ inline node::_null_stmt* Parser::mk_null_stmt(std::variant<node::_newline*, node
     stmt->var = var;
     return stmt;
 }
+
 inline std::optional<node::_statement*> Parser::parse_statement() {
     if (m_debug) {
         for (auto& token : m_tokens) {
@@ -624,53 +692,58 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         return mk_stmt(parse_var_dec().value());
 
     }
-    else if (peek_type(Token_type::_set))
-    {
-        consume();
-        auto stmt_set = m_Allocator.alloc<node::_statement_var_set>();
-        bool deref = false;
-        Token t;
-        if (try_consume(Token_type::_deref)) {
-            deref = true;
+    else if (peek_type(Token_type::_set)) {
+    consume();
+    auto stmt_set = m_Allocator.alloc<node::_statement_var_set>();
+    bool deref = false;
+    if (try_consume(Token_type::_deref)) {
+        deref = true;
+    }
+    Token t;
+
+    if(peek_type(Token_type::_ident) && peek_type(Token_type::_dot,1)){
+        auto set_struct = m_Allocator.alloc<node::_var_set_struct>();
+        set_struct->ident = consume();
+        node::_var_set_struct* current = set_struct;
+
+        while(try_consume(Token_type::_dot)){
+            auto next_struct = m_Allocator.alloc<node::_var_set_struct>();
+            next_struct->ident = try_consume(Token_type::_ident,"Expected Identifier");
+            current->item = next_struct;
+            current = next_struct;
         }
-        t = try_consume(Token_type::_ident,"Expected Indentifier");
-        if (try_consume(Token_type::_open_sq_brac)) {
-            auto set_array = m_Allocator.alloc<node::_var_set_array>();
-            set_array->ident = t;
-            if (auto expr = parse_expr()) {
-                set_array->index_expr = expr.value();
-            }
-            else {
-                line_err("Invalid expression");
-            }
-            try_consume(Token_type::_close_sq_brac, "Expected ']'");
-            try_consume(Token_type::_equal, "Expected equal sign");
-            if (auto expr = parse_expr()) {
-                set_array->expr = expr.value();
-            }
-            else {
-                line_err("Invalid expression");
-            }
-            try_consume(Token_type::_semicolon, "Expected ';'");
-            stmt_set->var = set_array;
+
+        set_struct->deref = deref;
+        bool is_array = false;
+        if(try_consume(Token_type::_open_sq_brac)){
+            is_array = true;
         }
-        else {
-            auto set_num = m_Allocator.alloc<node::_var_set_num>();
-            set_num->ident = t;
-            set_num->deref = deref;
-            try_consume(Token_type::_equal, "Expected equal sign");
-            if (auto expr = parse_expr()) {
-                set_num->expr = expr.value();
-            }
-            else {
-                line_err("Invalid expression");
-            }
-            try_consume(Token_type::_semicolon, "Expected ';'");
-            stmt_set->var = set_num;
-        }
-        
+
+        parse_expr_and_set(set_struct, is_array);
+        stmt_set->var = set_struct;
         return mk_stmt(stmt_set);
     }
+
+
+
+    t = try_consume(Token_type::_ident,"Expected Indentifier");
+
+    if (try_consume(Token_type::_open_sq_brac)) {
+        auto set_array = m_Allocator.alloc<node::_var_set_array>();
+        set_array->ident = t;
+        parse_expr_and_set(set_array, true);
+        stmt_set->var = set_array;
+    }
+    else {
+        auto set_num = m_Allocator.alloc<node::_var_set_num>();
+        set_num->ident = t;
+        set_num->deref = deref;
+        parse_expr_and_set(set_num,false);
+        stmt_set->var = set_num;
+    }
+
+    return mk_stmt(stmt_set);
+}
 
     else if (peek_type(Token_type::_func) && peek_type(Token_type::_main_scope, 1)) {
         consume();
@@ -854,6 +927,34 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         try_consume(Token_type::_semicolon, "Expected ';'");
         return mk_stmt(stmt_input);
     }
+    else if (peek_type(Token_type::_struct) && peek_type(Token_type::_ident,1)){
+        consume();
+        if(in_func){
+            line_err("Cannot create bundle inside of function or other struct");
+        }
+        in_func = true;
+        auto struct_ = m_Allocator.alloc<node::_statement_struct>();
+        struct_->ident = consume();
+        if(this->struct_name_alloc_map.find(struct_->ident.value.value()) != this->struct_name_alloc_map.end()){
+            line_err("Bundle with that name already exists");
+        }
+        try_consume(Token_type::_open_cur_brac,"Expected '{'");
+
+        while(true){
+            if(try_consume(Token_type::_back_n)){
+                struct_->n_lines++; //I really dont know of a better way rn
+                line_counter++;
+            }
+            else if(peek_type(Token_type::_dec) && peek_type(Token_type::_ident, 1) && peek_type(Token_type::_equal, 2)){
+            struct_->vars.push_back(parse_var_dec().value());
+            }else{break;}
+        }
+        try_consume(Token_type::_close_cur_brac,"Expected '}'");
+        this->struct_name_alloc_map.insert(std::make_pair(struct_->ident.value.value(),alloc_size));
+        in_func = false;
+        alloc_size = 0;
+        return mk_stmt(struct_);
+    }
     else if (auto expr = parse_expr()) {//try to parse an expression freely
         auto pure_expr = m_Allocator.alloc<node::_statement_pure_expr>();
         pure_expr->expr = expr.value();
@@ -863,7 +964,6 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
     return {};
 }
 std::optional<node::_program> Parser::parse_program() {
-    node::_program prog;
     while (peek().has_value()) {
         if (auto stmt = parse_statement()) {
             prog.statements.push_back(stmt.value());
