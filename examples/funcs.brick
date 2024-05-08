@@ -81,6 +81,25 @@ brick arr_min : int ptr -> arr_head, int -> size{
     return min;
 }=> int
 
+brick fib : int -> n{
+    dec curr as int -> 1;
+    dec prev as int -> 0;
+
+    for dec i as int -> 1; i <= n; i++;{
+        if i > 2{
+        dec result as int -> curr + prev;
+        set prev to curr;
+        set curr to result;
+        output result;
+        }
+        if i == 1{
+            output prev;
+        }
+        if i == 2{
+            output curr;
+        }
+    }
+}
 brick pseudo_rand : int ptr -> seed {
     set $seed to (1103515245 * $seed + 3456) % 2147483648;
     return $seed;
@@ -170,20 +189,9 @@ brick q_sort : int ptr -> start, int -> size, int -> low, int -> high{
         q_sort(start,size,pi + 1,high);
     }
 }
-/*
+/* Commented out for include reasons
 brick main {
-    dec size as int -> 20 const;
-    dec arr as array int -> 20;
-    for dec i as int -> 0; i < size; i++;{
-        dec seed as int -> i + 4 * 45 % 3;
-        set arr[i] to pseudo_rand(&seed) % 20;
-    }
-    print_array(&arr[0],size);
-    
-    q_sort(&arr[0],size,0,size - 1);
-    for dec i as int -> 0; i < size; i++;{
-        output arr[i] , " " noend;
-    }
+    fib(20);
     exit 0;
 }
 */
