@@ -1,5 +1,3 @@
-dec plsz_dont_work as int -> 8;
-
 brick main{    
     dec str2 as strbuf -> 16;
     while str2 != "password1234"{

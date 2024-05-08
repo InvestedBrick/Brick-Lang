@@ -1,13 +1,22 @@
 #include funcs.brick
 brick main{
-    dec arr as array int -> 5;
-    set arr[0] to 93;
-    set arr[1] to 3;
-    set arr[2] to 345;
-    set arr[3] to 4;
-    set arr[4] to 34;
-    q_sort(&arr[0],4,0,4);
-    print_array(&arr[0],5);
+    dec seed as int -> 221542513;
+    dec size as int -> 10 const;
+    dec arr as array int -> 10;
+    for dec i as int-> 0; i < size; i++;{
+        set seed to pseudo_rand(&seed);
+        set arr[i] to seed % 100;
+    }
+    print_array(&arr[0],size);
+    q_sort(&arr[0],size,0,4);
+    print_array(&arr[0],size);
     
+    output "Min: ",arr_min(&arr[0],size), " Max: " , arr_max(&arr[0],size);
+
+    if arr_contains(&arr[0],size, 338) == true{
+        output "Contains number";
+    }else{
+        output "Does not contain number";
+    }
     exit 0;
 }
