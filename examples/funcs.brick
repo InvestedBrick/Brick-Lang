@@ -127,7 +127,7 @@ brick q_sort_swap : int ptr -> a , int ptr -> b{
     set $a to $b;
     set $b to t;
 }
-//TODO: Deos currently not work, IDK why
+//TODO: Does currently not work, IDK why
 brick q_sort_partition : int ptr -> arr_head, int -> size, int -> low, int -> high{
     //pivot at end of array
     arr_head += high;
