@@ -26,7 +26,7 @@ checklist:
 [X] logical operators for control statements
 [X] make double operations expressions
 [X] structs
-[ ] make array indexing from startptr possible like in C
+[X] make array indexing from startptr possible like in C
 [ ] change stringbuffers??
 [ ] floating points
 [ ] dynamic memory
