@@ -397,23 +397,15 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                         gen->line_err("Cannot use string as an array index");
                     }
 
-                    if(is_numeric(val)) {
-                        gen->m_code << "    mov ebx, " << val << std::endl;
-                    }else{
+                    if(!is_numeric(val)) {
                         gen->m_code << "    " << gen->get_mov_instruc("ebx", val.substr(0, val.find_first_of(' '))) << " ebx, " << val << std::endl;
                     }
                     gen->m_code << "    mov eax, dword ptr [ebp - " << (*var_it).base_pointer_offset << "]" << std::endl;
-                    ss << (*var_it).ptr_type << " ptr [eax + ebx * " << gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
-                    /*if (is_numeric(val)) {
-                        ss << (*var_it).ptr_type << " ptr [ebp - " << (*var_it).base_pointer_offset - std::stoi(val) * gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
-                        std::cout << "Got here" << std::endl;
+                    if(is_numeric(val)) {
+                        ss << (*var_it).ptr_type << " ptr [eax + " << std::stoi(val) *  gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
                     }else{
-                        if (val != "eax") {
-                            gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " eax, " << val << std::endl;
-                        }
-                        ss << (*var_it).ptr_type << " ptr [ebp - " << (*var_it).base_pointer_offset << " + eax * " << gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
+                        ss << (*var_it).ptr_type << " ptr [eax + ebx * " << gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
                     }
-                    */
                     ret_val = ss.str();
                 }
             }
