@@ -379,13 +379,50 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
         void operator()(const node::_term_array_index* term_array_idx) {
             auto it = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array& var) {return var.name == term_array_idx->ident.value.value(); });
             if (it == gen->m_arrays.cend()) {
-                std::stringstream ss;
-                ss << "Array '" << term_array_idx->ident.value.value() << "' was not declared in this scope";
-                gen->line_err(ss.str());
+                auto var_it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == term_array_idx->ident.value.value(); });
+                if (var_it == gen->m_vars.cend()) {
+                    std::stringstream ss;
+                    ss << "Array '" << term_array_idx->ident.value.value() << "' was not declared in this scope";
+                    gen->line_err(ss.str());
+                }
+                else{
+                    std::stringstream ss;
+                    if(!(*var_it).ptr) {
+                        std::stringstream ss;
+                        ss << "Cannot index variable '" << term_array_idx->ident.value.value() << "' due to it not being a pointer" << std::endl;
+                        gen->line_err(ss.str());
+                    }
+                    std::string val = gen->gen_expr(term_array_idx->index_expr).value();
+                    if(val.rfind("\"",0) == 0) {
+                        gen->line_err("Cannot use string as an array index");
+                    }
+
+                    if(is_numeric(val)) {
+                        gen->m_code << "    mov ebx, " << val << std::endl;
+                    }else{
+                        gen->m_code << "    " << gen->get_mov_instruc("ebx", val.substr(0, val.find_first_of(' '))) << " ebx, " << val << std::endl;
+                    }
+                    gen->m_code << "    mov eax, dword ptr [ebp - " << (*var_it).base_pointer_offset << "]" << std::endl;
+                    ss << (*var_it).ptr_type << " ptr [eax + ebx * " << gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
+                    /*if (is_numeric(val)) {
+                        ss << (*var_it).ptr_type << " ptr [ebp - " << (*var_it).base_pointer_offset - std::stoi(val) * gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
+                        std::cout << "Got here" << std::endl;
+                    }else{
+                        if (val != "eax") {
+                            gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " eax, " << val << std::endl;
+                        }
+                        ss << (*var_it).ptr_type << " ptr [ebp - " << (*var_it).base_pointer_offset << " + eax * " << gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
+                    }
+                    */
+                    ret_val = ss.str();
+                }
             }
             else {
                 std::stringstream ss;
                 std::string val = gen->gen_expr(term_array_idx->index_expr).value();
+                if(val.rfind("\"",0) == 0) {
+                        gen->line_err("Cannot use string as an array index");
+                }
                 if (is_numeric(val)) {
                     ss << (*it).type <<" ptr[ebp - " << (*it).head_base_pointer_offset - std::stoi(val) * gen->asm_type_to_bytes((*it).type) << "] " ;
                 }
