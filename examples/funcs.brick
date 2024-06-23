@@ -48,35 +48,29 @@ brick ptr_out : short ptr-> x{
 
 brick arr_contains : int ptr -> arr_head, int -> size, int -> key{
     for dec i as int-> 1; i < size; i++;{
-        arr_head += i;
-        if $arr_head == key{
+        if arr_head[i] == key{
             return true;
         }
-        arr_head -= i;  
     }  
     return false;
 }=>bool
 
 brick arr_max : int ptr -> arr_head, int -> size{
-    dec max as int -> $arr_head;
+    dec max as int -> arr_head[0];
     for dec i as int-> 1; i < size; i++;{
-        arr_head += i;
-        if $arr_head > max{
-            set max to $arr_head;
+        if arr_head[i] > max{
+            set max to arr_head[i];
         }
-        arr_head -= i;
     }
     return max;
 }=> int
 
 brick arr_min : int ptr -> arr_head, int -> size{
-    dec min as int -> $arr_head;
+    dec min as int -> arr_head[0];
     for dec i as int-> 1; i < size; i++;{
-        arr_head += i;
-        if $arr_head < min{
-            set min to $arr_head;
+        if arr_head[i] < min{
+            set min to arr_head[i];
         }
-        arr_head -= i;
     }
     return min;
 }=> int
@@ -111,15 +105,13 @@ brick print_array : int ptr -> start, int -> size{
     }
     output;
     for dec i as int -> 0; i < size; i++;{
-        output $start, " " noend;
-        start += 1;
+        output start[i], " " noend;
     }
     output;
     for dec i as int -> 0; i < size; i++;{
         output "---" noend;
     }
     output;
-    start -= size;
 }
 
 brick q_sort_swap : int ptr -> a , int ptr -> b{
@@ -127,48 +119,25 @@ brick q_sort_swap : int ptr -> a , int ptr -> b{
     set $a to $b;
     set $b to t;
 }
-//TODO: Does currently not work, IDK why
 brick q_sort_partition : int ptr -> arr_head, int -> size, int -> low, int -> high{
     //pivot at end of array
-    arr_head += high;
-    dec pivot as int -> $arr_head;
-    arr_head -= high;
+    dec pivot as int -> arr_head[high];
+    
     dec i as int -> (low - 1);
     // traverse each element of the array
     // compare them with the pivot
     for dec j as int -> low; j < high; j++;{
-        arr_head += j;
-        if $arr_head < pivot {
+        if arr_head[j] <= pivot {
 
             // if element smaller than pivot is found
             // swap it with the greater element pointed by i
             i++;
-            // swap element at i with element at j
-            dec waste as int -> arr_head;
-            dec temp as int ptr -> 0;
-            temp += (waste / 4); // divide by sizeof int because of pointer stuff
-            arr_head -= j; //ptr to start of array
-            print_array(arr_head,size);
-            arr_head += i;
-            output "Value arr_head: ", $arr_head, " is to swapped with: ", $temp;
-            q_sort_swap(arr_head,temp);
-            arr_head -= i;
-            print_array(arr_head,size);
-            arr_head += j;
-            //arr_head is at start
+            
+            q_sort_swap(&arr_head[i],&arr_head[j]);
         }
-        arr_head -= j; // to ensure everything stays aligned
     }
 
-    // swap the pivot element with the greater element at i
-    arr_head += (i + 1);
-    dec waste as int -> arr_head;
-    dec temp as int ptr -> 0; 
-    temp += (waste / 4);
-    arr_head -= (i + 1);
-    arr_head += high;
-    q_sort_swap(temp,arr_head);
-    arr_head -= high;
+    q_sort_swap(&arr_head[i + 1],&arr_head[high]);
 
     // return the partition point
     return (i + 1);
