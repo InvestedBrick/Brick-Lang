@@ -8,7 +8,7 @@ brick main{
         set arr[i] to seed % 100;
     }
     print_array(&arr[0],size);
-    q_sort(&arr[0],size,0,4);
+    q_sort(&arr[0],size,0,size - 1);
     print_array(&arr[0],size);
     
     output "Min: ",arr_min(&arr[0],size), " Max: " , arr_max(&arr[0],size);
