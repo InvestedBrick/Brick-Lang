@@ -13,10 +13,6 @@ namespace node {
     struct _term_paren {
         _expr* expr;
     };
-    struct _asm_comma
-    {
-        Token comma;
-    };
     struct _term_ident {
         Token ident;
     };
@@ -99,23 +95,13 @@ namespace node {
     struct _expr {
         std::variant<_term*, _bin_expr*, _expr_ref*> var;
     };
-    struct _asm_int_lit
-    {
-        Token _int_lit;
-    };
-    struct _asm_ident {
-        Token ident;
-    };
+
     struct _asm_ {
-        std::variant<_asm_int_lit*, _asm_ident*, _asm_comma*> var;
+        Token str_lit;
     };
     struct _statement_exit
     {
         _expr* expr;
-    };
-    struct _asm_vec
-    {
-        std::vector<_asm_*> asm_asms;
     };
     struct _var_dec_num {
         Token_type type;
@@ -255,7 +241,7 @@ namespace node {
     };
     struct _statement
     {
-        std::variant<_statement_exit*, _statement_var_dec*, _statement_var_set*, _asm_vec*, _statement_scope*, _ctrl_statement*, _main_scope*, _null_stmt*, _statement_output*, _statement_input*, _statement_function*, _statement_ret*, _statement_pure_expr*, _op_equal*,_statement_struct*> var;
+        std::variant<_statement_exit*, _statement_var_dec*, _statement_var_set*, _asm_*, _statement_scope*, _ctrl_statement*, _main_scope*, _null_stmt*, _statement_output*, _statement_input*, _statement_function*, _statement_ret*, _statement_pure_expr*, _op_equal*,_statement_struct*> var;
     };
 
     struct _program {
