@@ -79,6 +79,7 @@ int main(int argc, char* argv[]) {
         output << generator.gen_program();
         if (output_info)
             std::cout << "Finished Generating..." << std::endl;
+        output.close();
     }
     std::string assemble_command = "C:\\masm32\\bin\\ml.exe /c /coff " + nologo + output_filename.str();
     std::string link_command = "C:\\masm32\\bin\\link.exe /subsystem:console /entry:_main " + nologo +
