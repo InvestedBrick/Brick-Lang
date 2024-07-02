@@ -142,7 +142,6 @@ public:
     inline std::optional<std::string> gen_expr(const node::_expr* expr);
     inline logic_data_packet gen_logical_expr(const node::_logical_expr* logic_expr,std::optional<std::string> provided_scope_lbl,bool invert = false);
     inline logic_data_packet gen_logical_stmt(const node::_logical_stmt* logic_stmt,std::optional<std::string> provided_scope_lbl,bool invert = false);
-    inline void gen_asm_expr(const node::_asm_* _asm_);
     inline void gen_ctrl_statement(const node::_ctrl_statement* _ctrl);
     inline void gen_var_stmt(const node::_statement_var_dec* stmt_var_dec);
     inline void gen_var_set(const node::_statement_var_set* stmt_var_set);
