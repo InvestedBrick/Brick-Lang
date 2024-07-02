@@ -3,12 +3,13 @@ brick main{
     
     dec x as int -> 0;
     for dec i as int -> 0; i < 10 and x < 5; i++;{
-        output i;
+        output i, " " noend;
         x++;
     }
     output;
     output x;
     output x++;
     output x--;
+    __asm__{"mov eax,eax"};
     exit 0;
 }
