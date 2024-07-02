@@ -1,5 +1,5 @@
 #ignore all .brick example files and .asm files
-
+inline_asm_tests.brick
 *.asm
 asm_tests/
 .vscode/
