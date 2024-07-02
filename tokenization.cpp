@@ -47,7 +47,7 @@ std::vector<Token> Tokenizer::tokenize()
     std::string buf;
     while (peek().has_value())
     {
-        if (std::isalpha(peek().value()))
+        if (std::isalpha(peek().value()) || peek().value() == '_')
         {
             buf.push_back(consume());
             while (peek().has_value() && std::isalnum(peek().value()) || peek().has_value() && peek().value() == '_')
@@ -90,7 +90,7 @@ std::vector<Token> Tokenizer::tokenize()
                 buf.clear();
                 continue;
             }
-            else if (buf == "ASM") {
+            else if (buf == "__asm__") {
                 token_arr.push_back(mk_tok(Token_type::_asm_tok));
                 buf.clear();
                 continue;
