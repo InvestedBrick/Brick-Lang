@@ -707,20 +707,6 @@ inline Generator::logic_data_packet Generator::gen_logical_stmt(const node::_log
     std::visit(visitor,logic_stmt->var);
     return visitor.data;
 }
-
-inline void Generator::gen_asm_expr(const node::_asm_* _asm_) {
-        struct asm_visitor
-        {
-            Generator* gen;
-            void operator()(const node::_asm_int_lit* asm_int_lit) { gen->m_code << asm_int_lit->_int_lit.value.value() << " "; }
-            void operator()(const node::_asm_ident* asm_ident) { gen->m_code << asm_ident->ident.value.value() << " "; }
-            void operator()(const node::_asm_comma* asm_comma) { gen->m_code << asm_comma->comma.value.value(); }
-
-        };
-        asm_visitor visitor;
-        visitor.gen = this;
-        std::visit(visitor, _asm_->var);
-    }
 inline void Generator::gen_ctrl_statement(const node::_ctrl_statement* _ctrl) {
     struct _crtl_statement_visitor
     {
@@ -1240,281 +1226,263 @@ inline void Generator::intern_flags(const node::_null_stmt* null_stmt) {
 
 }
 inline void Generator::gen_stmt(const node::_statement* stmt) {
-        struct stmt_visitor
-        {
-            Generator* gen;
-            void operator()(const node::_statement_exit* stmt_exit) {
-                std::string expr_val = gen->gen_expr(stmt_exit->expr).value();
-                std::string mov_val;
-                if (is_numeric(expr_val))
-                {
-                    int num = std::stoi(expr_val);
-                    mov_val = "mov";
-                }
-                else
-                {
-                    mov_val = gen->get_mov_instruc("eax", expr_val.substr(0, expr_val.find_first_of(' ')));
-                }
-                gen->m_code << "    " << mov_val << " eax," << expr_val << std::endl;
-                gen->m_code << "    invoke ExitProcess,eax" << std::endl;
-
+    struct stmt_visitor
+    {
+        Generator* gen;
+        void operator()(const node::_statement_exit* stmt_exit) {
+            std::string expr_val = gen->gen_expr(stmt_exit->expr).value();
+            std::string mov_val;
+            if (is_numeric(expr_val))
+            {
+                int num = std::stoi(expr_val);
+                mov_val = "mov";
             }
-            void operator()(const node::_null_stmt* null_stmt) {
-                gen->intern_flags(null_stmt);
+            else
+            {
+                mov_val = gen->get_mov_instruc("eax", expr_val.substr(0, expr_val.find_first_of(' ')));
             }
-
-            void operator()(const node::_statement_var_dec* stmt_var_dec) {
-                gen->gen_var_stmt(stmt_var_dec);
-            }
-            void operator()(const node::_statement_var_set* stmt_var_set) {
-                gen->gen_var_set(stmt_var_set);
-            }
-
-            void operator()(const node::_asm_vec* _asm_vec) {
-                gen->m_code << "    ";
-                for (auto& asm_expr : _asm_vec->asm_asms)
-                {
-                    gen->gen_asm_expr(asm_expr);
-                }
-                gen->m_code << std::endl;
-            }
-            void operator()(const node::_statement_scope* statement_scope) {
-                gen->gen_scope(statement_scope);
-            }
-            void operator()(const node::_main_scope* main_scope) {
-                if (!gen->main_proc) {
-                    if (!gen->valid_space) {
-                        gen->valid_space = true;
-                        gen->m_code << "_main proc\n";
-                        gen->main_proc = true;
-                        gen->scope_start(true, main_scope->stack_space);
-                        for (const node::_statement* stmt : main_scope->scope->statements) {
-                            gen->gen_stmt(stmt);
-                        }
-                        gen->scope_end(true, main_scope->stack_space);
-                        gen->valid_space = false;
+            gen->m_code << "    " << mov_val << " eax," << expr_val << std::endl;
+            gen->m_code << "    invoke ExitProcess,eax" << std::endl;
+        }
+        void operator()(const node::_null_stmt* null_stmt) {
+            gen->intern_flags(null_stmt);
+        }
+        void operator()(const node::_statement_var_dec* stmt_var_dec) {
+            gen->gen_var_stmt(stmt_var_dec);
+        }
+        void operator()(const node::_statement_var_set* stmt_var_set) {
+            gen->gen_var_set(stmt_var_set);
+        }
+        void operator()(const node::_asm_* _asm_) {
+            gen->m_code << "    " << _asm_->str_lit.value.value() << " ; Inline assembly here"<< std::endl;
+        }
+        void operator()(const node::_statement_scope* statement_scope) {
+            gen->gen_scope(statement_scope);
+        }
+        void operator()(const node::_main_scope* main_scope) {
+            if (!gen->main_proc) {
+                if (!gen->valid_space) {
+                    gen->valid_space = true;
+                    gen->m_code << "_main proc\n";
+                    gen->main_proc = true;
+                    gen->scope_start(true, main_scope->stack_space);
+                    for (const node::_statement* stmt : main_scope->scope->statements) {
+                        gen->gen_stmt(stmt);
                     }
-                    else {
-                        gen->line_err("Cannot define function inside of the main scope");
-                    }
+                    gen->scope_end(true, main_scope->stack_space);
+                    gen->valid_space = false;
                 }
                 else {
-                    gen->line_err("Main procedure already found!");
+                    gen->line_err("Cannot define function inside of the main scope");
                 }
             }
-            void operator()(const node::_statement_function* stmt_func) {
-                auto it = std::find_if(gen->m_funcs.cbegin(), gen->m_funcs.cend(), [&](const function& fn) {return fn.name == stmt_func->ident.value.value(); });
-                if (it != gen->m_funcs.cend()) {
-                    std::stringstream ss;
-                    ss << "Function with the name '" << stmt_func->ident.value.value() << "' was already declared" << std::endl;
-                    gen->line_err(ss.str());
-                }
-                else {
-                    if (!gen->valid_space) {
-                        gen->valid_space = true;
-                        std::string save = gen->m_code.str();
-                        gen->m_code.str(std::string()); //clear the stringstream
-                        function func;
-                        func.name = stmt_func->ident.value.value();
-                        func.generated = gen->mk_func();
-                        gen->m_code << func.generated << " proc" << std::endl;
-                        int stack_space_add = 0;
-                        for (int i = 0; i < stmt_func->arguments.size(); i++) {
-                            stack_space_add += (gen->str_bit_sizes.find(stmt_func->arguments[i]->type)->second) / 8; //get bit size and devide by 8 for bytes
-                        }
-                        gen->scope_start(true, stmt_func->stack_space + stack_space_add);
-                        for (int i = 0; i < stmt_func->arguments.size(); i++) {
-                            Var var;
-                            var.type = stmt_func->arguments[i]->type;
-                            if (stmt_func->arguments[i]->_ptr) {
-                                var.ptr_type = var.type;
-                                stmt_func->arguments[i]->ptr_type = var.ptr_type;
-                                var.type = "dword";
-                                stmt_func->arguments[i]->type = "dword";
-                                var.ptr = true;
-                            }
-                            var.name = stmt_func->arguments[i]->ident.value.value();
-                            gen->m_base_ptr_off += gen->asm_type_to_bytes(stmt_func->arguments[i]->type);
-
-                            gen->m_code << "    mov eax," << gen->m_func_registers[i] << std::endl;
-                            gen->m_code << "    mov" << " " << var.type << " ptr [ebp - " << gen->m_base_ptr_off << "]" << ", " << gen->get_correct_part_of_register(var.type) << std::endl;
-                            var.base_pointer_offset = gen->m_base_ptr_off;
-                            gen->m_vars.push_back(var);
-
-                            func.arguments.push_back(*stmt_func->arguments[i]);
-                        }
-                        func.ret_lbl = gen->mk_label();
-                        gen->curr_func_name.push_back(func.name);
-                        gen->m_funcs.push_back(func);
-                        for (const node::_statement* stmt : stmt_func->scope->statements) {
-                            gen->gen_stmt(stmt);
-                        }
-                        gen->m_code << func.ret_lbl << ":" << std::endl;
-                        gen->scope_end(true, stmt_func->stack_space + stack_space_add);
-                        gen->m_code << "    ret" << std::endl;
-                        gen->m_code << func.generated << " endp" << std::endl;
-                        gen->m_func_space << gen->m_code.str() << std::endl << std::endl;
-                        gen->m_code.str(std::string());
-                        gen->m_code << save;
-                        gen->valid_space = false;
-                        gen->curr_func_name.pop_back();
-                    }
-                    else {
-                        gen->line_err("Cannot declare a function inside of a function");
-                    }
-                }
+            else {
+                gen->line_err("Main procedure already found!");
             }
-            void operator()(const node::_ctrl_statement* _ctrl) {
-
-                gen->gen_ctrl_statement(_ctrl);
-            }
-            void operator()(const node::_op_equal* op_eq) {
-                auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == op_eq->ident.value.value(); });
-                if (it == gen->m_vars.cend()) {
-                    std::stringstream ss;
-                    ss << "Identifier '" << op_eq->ident.value.value() << "' was not declared in this scope!" << std::endl;
-                    gen->line_err(ss.str());
-                }
-                std::string val = gen->gen_expr(op_eq->expr).value();
-                if (val.rfind("\"", 0) == 0) {
-                    gen->line_err("Cannot change value of string");
-                }
-                if (is_numeric(val)) {
-                    gen->m_code << "    mov eax, " << val << std::endl;
-                }
-                else if (val != "eax") {
-                    gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(" "))) << " eax, " << val << std::endl;
-                }
+        }
+        void operator()(const node::_statement_function* stmt_func) {
+            auto it = std::find_if(gen->m_funcs.cbegin(), gen->m_funcs.cend(), [&](const function& fn) {return fn.name == stmt_func->ident.value.value(); });
+            if (it != gen->m_funcs.cend()) {
                 std::stringstream ss;
-                ss << (*it).type << " ptr [ebp - " <<  (*it).base_pointer_offset << "]";
-                if ((*it).ptr) {
-                    gen->m_code << "    imul eax, " << gen->asm_type_to_bytes((*it).ptr_type) << std::endl;
-                }
-                switch (op_eq->op)
-                {
-                    case Token_type::_add_eq: {
-                        gen->m_code << "    add " << ss.str() << ", " << gen->get_correct_part_of_register((*it).type) << std::endl;
-                        break;
-                    }
-                    case Token_type::_sub_eq: {
-                        gen->m_code << "    sub " << ss.str() << ", " << gen->get_correct_part_of_register((*it).type) << std::endl;
-                        break;
-                    }
-                    case Token_type::_mul_eq: {
-                        gen->m_code << "    " << gen->get_mov_instruc("ebx", (*it).type) << " edx, " << ss.str() << std::endl;
-                        gen->m_code << "    imul edx,eax" << std::endl;
-                        gen->m_code << "    mov " << ss.str() << ", " << gen->get_correct_part_of_register((*it).type,true) << std::endl;
-                        break;
-                    }
-                    case Token_type::_div_eq: {
-                        gen->m_code << "    " << gen->get_mov_instruc("ebx", (*it).type) << " edx, " << ss.str() << std::endl;
-                        gen->m_code << "    idiv edx,eax" << std::endl;
-                        gen->m_code << "    mov " << ss.str() << ", " << gen->get_correct_part_of_register((*it).type,true) << std::endl;
-                        break;
-                    }
-
-                }
+                ss << "Function with the name '" << stmt_func->ident.value.value() << "' was already declared" << std::endl;
+                gen->line_err(ss.str());
             }
-
-            void operator()(const node::_statement_output* stmt_output) {
-                for (auto expr : stmt_output->expr_vec)
-                {
-                    std::string val = gen->gen_expr(expr).value();
-
-                    if (val.rfind("\"", 0) == 0) { //Hard encoded shit here
-                        gen->m_code << "    invoke StdOut, offset " << val.substr(1) << std::endl;
+            else {
+                if (!gen->valid_space) {
+                    gen->valid_space = true;
+                    std::string save = gen->m_code.str();
+                    gen->m_code.str(std::string()); //clear the stringstream
+                    function func;
+                    func.name = stmt_func->ident.value.value();
+                    func.generated = gen->mk_func();
+                    gen->m_code << func.generated << " proc" << std::endl;
+                    int stack_space_add = 0;
+                    for (int i = 0; i < stmt_func->arguments.size(); i++) {
+                        stack_space_add += (gen->str_bit_sizes.find(stmt_func->arguments[i]->type)->second) / 8; //get bit size and devide by 8 for bytes
                     }
-                    else {
-                        if (is_numeric(val)) {
-                            gen->m_code << "    mov eax, " << val << std::endl;
+                    gen->scope_start(true, stmt_func->stack_space + stack_space_add);
+                    for (int i = 0; i < stmt_func->arguments.size(); i++) {
+                        Var var;
+                        var.type = stmt_func->arguments[i]->type;
+                        if (stmt_func->arguments[i]->_ptr) {
+                            var.ptr_type = var.type;
+                            stmt_func->arguments[i]->ptr_type = var.ptr_type;
+                            var.type = "dword";
+                            stmt_func->arguments[i]->type = "dword";
+                            var.ptr = true;
                         }
-                        if (val == "&eax") {
-                            val = "eax";
-                        }
-                        else if (val != "eax") { //if val == eax no need to mov eax, eax
-                            gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " eax," << val << std::endl;
-                        }
-                        gen->m_code << "    invoke dwtoa,eax,offset buffer ;dword to ascii" << std::endl;
-                        gen->m_code << "    invoke StdOut, offset buffer" << std::endl;
+                        var.name = stmt_func->arguments[i]->ident.value.value();
+                        gen->m_base_ptr_off += gen->asm_type_to_bytes(stmt_func->arguments[i]->type);
+                        gen->m_code << "    mov eax," << gen->m_func_registers[i] << std::endl;
+                        gen->m_code << "    mov" << " " << var.type << " ptr [ebp - " << gen->m_base_ptr_off << "]" << ", " << gen->get_correct_part_of_register(var.type) << std::endl;
+                        var.base_pointer_offset = gen->m_base_ptr_off;
+                        gen->m_vars.push_back(var);
+                        func.arguments.push_back(*stmt_func->arguments[i]);
                     }
-                }
-                if (!stmt_output->noend) {
-                    gen->m_code << "    invoke StdOut, offset backn" << std::endl;
-                }
-            }
-            void operator()(const node::_statement_input* stmt_input) {
-                auto it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& var) {return var.name == stmt_input->ident.value.value(); });
-                if (it == gen->m_str_bufs.cend()) {
-                    std::stringstream ss;
-                    ss << "String buffer '" << stmt_input->ident.value.value() << "' was not declared in this scope" << std::endl;
-                    gen->line_err(ss.str());
+                    func.ret_lbl = gen->mk_label();
+                    gen->curr_func_name.push_back(func.name);
+                    gen->m_funcs.push_back(func);
+                    for (const node::_statement* stmt : stmt_func->scope->statements) {
+                        gen->gen_stmt(stmt);
+                    }
+                    gen->m_code << func.ret_lbl << ":" << std::endl;
+                    gen->scope_end(true, stmt_func->stack_space + stack_space_add);
+                    gen->m_code << "    ret" << std::endl;
+                    gen->m_code << func.generated << " endp" << std::endl;
+                    gen->m_func_space << gen->m_code.str() << std::endl << std::endl;
+                    gen->m_code.str(std::string());
+                    gen->m_code << save;
+                    gen->valid_space = false;
+                    gen->curr_func_name.pop_back();
                 }
                 else {
-                    gen->m_code << "    invoke StdIn, offset " << (*it).generated << ", " << (*it).size << std::endl;
-                    gen->m_code << "    invoke StdIn, offset buffer, 255 ;clear the rest of the input buffer " << std::endl;
+                    gen->line_err("Cannot declare a function inside of a function");
                 }
             }
-
-            void operator()(const node::_statement_ret* stmt_ret) {
-                if (gen->valid_space) {
-                    if (gen->curr_func_name.size() < 1) {
-                        gen->line_err("Cannot use return in 'brick' function, consider using \"exit [exitcode]\" instead");
-                    }
-                    else {
-                        std::string str_it = gen->curr_func_name.back();
-                        auto it = std::find_if(gen->m_funcs.cbegin(), gen->m_funcs.cend(), [&](const function& fn) {return fn.name == str_it; });
-                        if (it == gen->m_funcs.cend()) {
-                            gen->line_err("Function name label failed");
-                        }
-                        std::string expr = gen->gen_expr(stmt_ret->expr).value();
-                        if (is_numeric(expr) || expr == "edx") {
-                            gen->m_code << "    mov eax," << expr << std::endl;
-                        }
-                        else if (expr != "eax") {
-                            gen->m_code << "    " << gen->get_mov_instruc("eax", expr.substr(0, expr.find_first_of(" "))) << " eax," << expr << std::endl;
-                        } // if expr == eax no need to move it
-                        gen->m_code << "    jmp " << (*it).ret_lbl << std::endl;
-                    }
+        }
+        void operator()(const node::_ctrl_statement* _ctrl) {
+            gen->gen_ctrl_statement(_ctrl);
+        }
+        void operator()(const node::_op_equal* op_eq) {
+            auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == op_eq->ident.value.value(); });
+            if (it == gen->m_vars.cend()) {
+                std::stringstream ss;
+                ss << "Identifier '" << op_eq->ident.value.value() << "' was not declared in this scope!" << std::endl;
+                gen->line_err(ss.str());
+            }
+            std::string val = gen->gen_expr(op_eq->expr).value();
+            if (val.rfind("\"", 0) == 0) {
+                gen->line_err("Cannot change value of string");
+            }
+            if (is_numeric(val)) {
+                gen->m_code << "    mov eax, " << val << std::endl;
+            }
+            else if (val != "eax") {
+                gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(" "))) << " eax, " << val << std::endl;
+            }
+            std::stringstream ss;
+            ss << (*it).type << " ptr [ebp - " <<  (*it).base_pointer_offset << "]";
+            if ((*it).ptr) {
+                gen->m_code << "    imul eax, " << gen->asm_type_to_bytes((*it).ptr_type) << std::endl;
+            }
+            switch (op_eq->op)
+            {
+                case Token_type::_add_eq: {
+                    gen->m_code << "    add " << ss.str() << ", " << gen->get_correct_part_of_register((*it).type) << std::endl;
+                    break;
+                }
+                case Token_type::_sub_eq: {
+                    gen->m_code << "    sub " << ss.str() << ", " << gen->get_correct_part_of_register((*it).type) << std::endl;
+                    break;
+                }
+                case Token_type::_mul_eq: {
+                    gen->m_code << "    " << gen->get_mov_instruc("ebx", (*it).type) << " edx, " << ss.str() << std::endl;
+                    gen->m_code << "    imul edx,eax" << std::endl;
+                    gen->m_code << "    mov " << ss.str() << ", " << gen->get_correct_part_of_register((*it).type,true) << std::endl;
+                    break;
+                }
+                case Token_type::_div_eq: {
+                    gen->m_code << "    " << gen->get_mov_instruc("ebx", (*it).type) << " edx, " << ss.str() << std::endl;
+                    gen->m_code << "    idiv edx,eax" << std::endl;
+                    gen->m_code << "    mov " << ss.str() << ", " << gen->get_correct_part_of_register((*it).type,true) << std::endl;
+                    break;
+                }
+            }
+        }
+        void operator()(const node::_statement_output* stmt_output) {
+            for (auto expr : stmt_output->expr_vec)
+            {
+                std::string val = gen->gen_expr(expr).value();
+                if (val.rfind("\"", 0) == 0) { //Hard encoded shit here
+                    gen->m_code << "    invoke StdOut, offset " << val.substr(1) << std::endl;
                 }
                 else {
-                    gen->line_err("Cannot return when outside a function");
+                    if (is_numeric(val)) {
+                        gen->m_code << "    mov eax, " << val << std::endl;
+                    }
+                    if (val == "&eax") {
+                        val = "eax";
+                    }
+                    else if (val != "eax") { //if val == eax no need to mov eax, eax
+                        gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " eax," << val << std::endl;
+                    }
+                    gen->m_code << "    invoke dwtoa,eax,offset buffer ;dword to ascii" << std::endl;
+                    gen->m_code << "    invoke StdOut, offset buffer" << std::endl;
                 }
             }
-            void operator()(const node::_statement_struct* stmt_struct){
-                
-                Struct_info struct_;
-                struct_.name = stmt_struct->ident.value.value();
-                struct_.var_decs = stmt_struct->vars;
-                gen->line_counter+=stmt_struct->n_lines;//I really dont know of a better way rn and I dont want to
-                gen->m_struct_infos.push_back(struct_);
+            if (!stmt_output->noend) {
+                gen->m_code << "    invoke StdOut, offset backn" << std::endl;
             }
+        }
+        void operator()(const node::_statement_input* stmt_input) {
+            auto it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& var) {return var.name == stmt_input->ident.value.value(); });
+            if (it == gen->m_str_bufs.cend()) {
+                std::stringstream ss;
+                ss << "String buffer '" << stmt_input->ident.value.value() << "' was not declared in this scope" << std::endl;
+                gen->line_err(ss.str());
+            }
+            else {
+                gen->m_code << "    invoke StdIn, offset " << (*it).generated << ", " << (*it).size << std::endl;
+                gen->m_code << "    invoke StdIn, offset buffer, 255 ;clear the rest of the input buffer " << std::endl;
+            }
+        }
+        void operator()(const node::_statement_ret* stmt_ret) {
+            if (gen->valid_space) {
+                if (gen->curr_func_name.size() < 1) {
+                    gen->line_err("Cannot use return in 'brick' function, consider using \"exit [exitcode]\" instead");
+                }
+                else {
+                    std::string str_it = gen->curr_func_name.back();
+                    auto it = std::find_if(gen->m_funcs.cbegin(), gen->m_funcs.cend(), [&](const function& fn) {return fn.name == str_it; });
+                    if (it == gen->m_funcs.cend()) {
+                        gen->line_err("Function name label failed");
+                    }
+                    std::string expr = gen->gen_expr(stmt_ret->expr).value();
+                    if (is_numeric(expr) || expr == "edx") {
+                        gen->m_code << "    mov eax," << expr << std::endl;
+                    }
+                    else if (expr != "eax") {
+                        gen->m_code << "    " << gen->get_mov_instruc("eax", expr.substr(0, expr.find_first_of(" "))) << " eax," << expr << std::endl;
+                    } // if expr == eax no need to move it
+                    gen->m_code << "    jmp " << (*it).ret_lbl << std::endl;
+                }
+            }
+            else {
+                gen->line_err("Cannot return when outside a function");
+            }
+        }
+        void operator()(const node::_statement_struct* stmt_struct){
             
-            void operator()(const node::_statement_pure_expr* pure_expr) {
-                gen->gen_expr(pure_expr->expr);
-            }
-        };
-        stmt_visitor visitor;
-        visitor.gen = this;
-        std::visit(visitor, stmt->var); //matches based on variant type
+            Struct_info struct_;
+            struct_.name = stmt_struct->ident.value.value();
+            struct_.var_decs = stmt_struct->vars;
+            gen->line_counter+=stmt_struct->n_lines;//I really dont know of a better way rn and I dont want to
+            gen->m_struct_infos.push_back(struct_);
+        }
+        
+        void operator()(const node::_statement_pure_expr* pure_expr) {
+            gen->gen_expr(pure_expr->expr);
+        }
+    };
+    stmt_visitor visitor;
+    visitor.gen = this;
+    std::visit(visitor, stmt->var); //matches based on variant type
 }
 std::string Generator::gen_program() {
-        m_output << m_header;
-
-        for (const node::_statement* stmt : m_prog.statements) {
-
-            gen_stmt(stmt);
-        }
-
-        m_output << "\n.data\n";
-        if (flags.needs_buffer) {
-            m_output << "    buffer dd 256 dup (0)\n";
-            m_output << "    backn db 13,10,0 ;ASCII new line char\n";
-        }
-        m_output << m_data.str();
-        m_output << "\n.code\n";
-        m_output << m_code.str();
-        m_output << "_main endp\n";
-        m_output << m_func_space.str();
-        m_output << "end _main\n";
-        return m_output.str();
+    m_output << m_header;
+    for (const node::_statement* stmt : m_prog.statements) {
+        gen_stmt(stmt);
+    }
+    m_output << "\n.data\n";
+    if (flags.needs_buffer) {
+        m_output << "    buffer dd 256 dup (0)\n";
+        m_output << "    backn db 13,10,0 ;ASCII new line char\n";
+    }
+    m_output << m_data.str();
+    m_output << "\n.code\n";
+    m_output << m_code.str();
+    m_output << "_main endp\n";
+    m_output << m_func_space.str();
+    m_output << "end _main\n";
+    return m_output.str();
 }
