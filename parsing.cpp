@@ -95,7 +95,7 @@ bool Parser::is_logical_operator(Token_type type) {
         return false;
     }
 }
-node::_statement* Parser::mk_stmt(std::variant<node::_statement_exit*, node::_statement_var_dec*, node::_statement_var_set*, node::_asm_vec*, node::_statement_scope*, node::_ctrl_statement*, node::_main_scope*, node::_null_stmt*, node::_statement_output*, node::_statement_input*, node::_statement_function*, node::_statement_ret*, node::_statement_pure_expr*, node::_op_equal*,node::_statement_struct*> var)
+node::_statement* Parser::mk_stmt(std::variant<node::_statement_exit*, node::_statement_var_dec*, node::_statement_var_set*, node::_asm_*, node::_statement_scope*, node::_ctrl_statement*, node::_main_scope*, node::_null_stmt*, node::_statement_output*, node::_statement_input*, node::_statement_function*, node::_statement_ret*, node::_statement_pure_expr*, node::_op_equal*,node::_statement_struct*> var)
 {
     auto stmt = m_Allocator.alloc<node::_statement>();
     stmt->var = var;
@@ -561,34 +561,6 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
     try_consume(Token_type::_semicolon, "Expected ';'");
     return stmt_dec;
 }
-inline std::optional<node::_asm_*> Parser::parse_asm() {
-    if (peek().has_value() && peek().value().type == Token_type::_int_lit) {
-        auto _asm_a = m_Allocator.alloc<node::_asm_>();
-        auto id = m_Allocator.alloc<node::_asm_int_lit>();
-        id->_int_lit = consume();
-        _asm_a->var = id;
-        return _asm_a;
-    }
-    else if (peek().has_value() && peek().value().type == Token_type::_ident)
-    {
-        auto _asm_a = m_Allocator.alloc<node::_asm_>();
-        auto id = m_Allocator.alloc<node::_asm_ident>();
-        id->ident = consume();
-        _asm_a->var = id;
-        return _asm_a;
-    }
-    else if (peek().has_value() && peek().value().type == Token_type::_comma)
-    {
-        auto _asm_a = m_Allocator.alloc<node::_asm_>();
-        auto com = m_Allocator.alloc<node::_asm_comma>();
-        com->comma = consume();
-        _asm_a->var = com;
-        return _asm_a;
-    }
-    else {
-        return {};
-    }
-}
 inline std::optional<node::_statement_scope*> Parser::parse_scope() {
     if (!try_consume(Token_type::_open_cur_brac).has_value()) { return {}; }
 
@@ -656,17 +628,9 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
     */
     else if (peek_type(Token_type::_asm_tok)) {
         consume();
-        auto stmt_asm = m_Allocator.alloc< node::_asm_vec>();
+        auto stmt_asm = m_Allocator.alloc< node::_asm_>();
         try_consume(Token_type::_open_cur_brac, "Expected '{'");
-        while (peek_type(Token_type::_ident) || peek_type(Token_type::_int_lit) || peek_type(Token_type::_comma))
-        {
-            if (auto node_asm = parse_asm()) {
-                stmt_asm->asm_asms.push_back(node_asm.value());
-            }
-            else {
-                line_err("Invalid assembly expression");
-            }
-        }
+        stmt_asm->str_lit = try_consume(Token_type::_str_lit, "Expected string literal");
         try_consume(Token_type::_close_cur_brac, "Expected '}'");
         try_consume(Token_type::_semicolon, "Expected ';'");
         return mk_stmt(stmt_asm);
