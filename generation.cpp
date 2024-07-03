@@ -1057,7 +1057,7 @@ void Generator::var_set_ptr_array(iterator it,var_set array_set){
         }
         this->m_code << "    mov ebx, dword ptr [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
         if(is_numeric(index_val)){
-            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,"eax") << " " << (*it).ptr_type << " ptr [eax + " << std::stoi(index_val) * this->asm_type_to_bytes((*it).ptr_type) << "], "  << num << std::endl;
+            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,"ebx") << " " << (*it).ptr_type << " ptr [ebx + " << std::stoi(index_val) * this->asm_type_to_bytes((*it).ptr_type) << "], "  << num << std::endl;
         }else{
             if(index_val != "eax"){
                 this->m_code << "    " << this->get_mov_instruc("eax", index_val.substr(0, index_val.find_first_of(" "))) << " eax, " << index_val << std::endl;
