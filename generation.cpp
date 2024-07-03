@@ -1062,7 +1062,7 @@ void Generator::var_set_ptr_array(iterator it,var_set array_set){
             if(index_val != "eax"){
                 this->m_code << "    " << this->get_mov_instruc("eax", index_val.substr(0, index_val.find_first_of(" "))) << " eax, " << index_val << std::endl;
             }
-            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,"eax") << (*it).ptr_type << " ptr [ebx + eax * " << this->asm_type_to_bytes((*it).ptr_type) << "], "  << num << std::endl;
+            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,"eax") <<" " << (*it).ptr_type << " ptr [ebx + eax * " << this->asm_type_to_bytes((*it).ptr_type) << "], "  << num << std::endl;
         }
         
     }else{
