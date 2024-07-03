@@ -338,8 +338,9 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                         gen->line_err("Invalid argument");
                     }
                 }
+                
                 gen->m_code << "    call " << (*it).generated << std::endl;
-                ret_val = "eax";
+                ret_val = (*it).ret_type_is_ptr ? "&eax" : "eax";
             }
         }
         void operator()(const node::_term_paren* term_paren) {
@@ -416,7 +417,7 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                         gen->line_err("Cannot use string as an array index");
                 }
                 if (is_numeric(val)) {
-                    ss << (*it).type <<" ptr[ebp - " << (*it).head_base_pointer_offset - std::stoi(val) * gen->asm_type_to_bytes((*it).type) << "] " ;
+                    ss << (*it).type <<" ptr [ebp - " << (*it).head_base_pointer_offset - std::stoi(val) * gen->asm_type_to_bytes((*it).type) << "] " ;
                 }
                 else {
                     if (val != "eax") {
@@ -1041,6 +1042,64 @@ void Generator::var_set_number(iterator it,var_set var_num){
     }
 }
 template<typename iterator,typename var_set>
+void Generator::var_set_ptr_array(iterator it,var_set array_set){
+    if ((*it).immutable) {
+        this->line_err("Pointer array not mutable!");
+    }
+    std::string val = this->gen_expr(array_set->expr).value();
+    if (is_numeric(val)) {
+        std::string index_val = this->gen_expr(array_set->index_expr).value();
+        int num = std::stoi(val);
+        if ((*it).bool_limit) {
+            if (num != 0) {
+                num = 1;
+            }
+        }
+        this->m_code << "    mov ebx, dword ptr [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
+        if(is_numeric(index_val)){
+            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,"eax") << " " << (*it).ptr_type << " ptr [eax + " << std::stoi(index_val) * this->asm_type_to_bytes((*it).ptr_type) << "], "  << num << std::endl;
+        }else{
+            if(index_val != "eax"){
+                this->m_code << "    " << this->get_mov_instruc("eax", index_val.substr(0, index_val.find_first_of(" "))) << " eax, " << index_val << std::endl;
+            }
+            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,"eax") << (*it).ptr_type << " ptr [ebx + eax * " << this->asm_type_to_bytes((*it).ptr_type) << "], "  << num << std::endl;
+        }
+        
+    }else{
+        if (val == "eax") { // to prevent the two expressions from overwriting if they are both eax
+            this->m_code << "    mov edx, eax" << std::endl;
+        }
+        else {
+            this->m_code << "    " << this->get_mov_instruc("edx", val.substr(0, val.find_first_of(" "))) << " edx, " << val << std::endl;
+        }
+        val = "edx";
+        std::string index_val = this->gen_expr(array_set->index_expr).value();
+        if ((*it).bool_limit) {
+            this->m_code << "    cmp " << val << ", 0" << std::endl;
+            this->m_code << "    setne bl" << std::endl;
+        }
+        this->m_code << "    mov ecx, dword ptr [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
+        if (is_numeric(index_val)) {
+            std::string mov_reg = "edx";
+            if((*it).bool_limit){
+                mov_reg = "bl";
+            }
+            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,mov_reg) << " " << (*it).ptr_type << " ptr [ecx + " << std::stoi(index_val) * this->asm_type_to_bytes((*it).ptr_type) << "], "  << mov_reg << std::endl;
+        }
+        else {
+            std::string mov_reg =  "edx";
+            if ((*it).bool_limit) {
+                mov_reg = "bl";
+            }
+            
+            if (index_val != "eax") {
+                this->m_code << "    " << this->get_mov_instruc("eax", index_val.substr(0, index_val.find_first_of(" "))) << " eax, " << index_val << std::endl;
+            } // now: index value in eax and expression value in edx or bl
+            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,mov_reg) << " " << (*it).ptr_type << " ptr [ecx + eax * " << this->asm_type_to_bytes((*it).ptr_type) << "], "  << mov_reg << std::endl;
+        }
+    }
+}    
+template<typename iterator,typename var_set>
 void Generator::var_set_array(iterator it,var_set array_set){
     if ((*it).immutable) {
         this->line_err("Array not mutable!");
@@ -1055,16 +1114,17 @@ void Generator::var_set_array(iterator it,var_set array_set){
             }
         }
         if (is_numeric(index_val)) {
-            this->m_code << "    mov " << (*it).type << " ptr [ebp - " << (*it).head_base_pointer_offset - std::stoi(index_val) * this->asm_type_to_bytes((*it).type) << "], " << val << std::endl;
+            this->m_code << "    mov " << (*it).type << " ptr [ebp - " << (*it).head_base_pointer_offset - std::stoi(index_val) * this->asm_type_to_bytes((*it).type) << "], " << num << std::endl;
         }
         else {
             if (index_val != "eax") {
                 this->m_code << "    " << this->get_mov_instruc("eax", index_val.substr(0, index_val.find_first_of(" "))) << " eax, " << index_val << std::endl;
             }
-            this->m_code << "    mov " << (*it).type << " ptr [ebp - " << (*it).head_base_pointer_offset << " + eax * " << this->asm_type_to_bytes((*it).type) << "], " << val << std::endl;
+            this->m_code << "    mov " << (*it).type << " ptr [ebp - " << (*it).head_base_pointer_offset << " + eax * " << this->asm_type_to_bytes((*it).type) << "], " << num << std::endl;
         }
     }
     else {
+        
         if (val == "eax") { // to prevent the two expressions from overwriting if they are both eax
             this->m_code << "    mov edx, eax" << std::endl;
         }
@@ -1078,31 +1138,34 @@ void Generator::var_set_array(iterator it,var_set array_set){
             this->m_code << "    setne bl" << std::endl;
         }
         if (is_numeric(index_val)) {
-            std::string mov_reg;
+            std::string mov_reg = "edx";
             if((*it).bool_limit){
                 mov_reg = "bl";
             }
-            else {
-                mov_reg = "edx";
-            }
-            this->m_code << "    mov " << (*it).type << " ptr [ebp - " << (*it).head_base_pointer_offset - std::stoi(index_val) * this->asm_type_to_bytes((*it).type) << "], " << mov_reg << std::endl;
+            
+            this->m_code << "    " << this->get_mov_instruc((*it).type,mov_reg) << " " << (*it).type << " ptr [ebp - " << (*it).head_base_pointer_offset - std::stoi(index_val) * this->asm_type_to_bytes((*it).type) << "], " << mov_reg << std::endl;
+            
         }
         else {
             std::string mov_reg =  "edx";
             if ((*it).bool_limit) {
                 mov_reg = "bl";
             }
-            else {
-                if (index_val != "eax") {
-                    this->m_code << "    " << this->get_mov_instruc("eax", index_val.substr(0, index_val.find_first_of(" "))) << " eax, " << index_val << std::endl;
-                } // now: index value in eax and expression value in edx or bl
-                this->m_code << "    mov " << (*it).type << " ptr [ebp - " << (*it).head_base_pointer_offset << " + eax * " << this->asm_type_to_bytes((*it).type) << "], " << mov_reg << std::endl;
-            }
+            
+            if (index_val != "eax") {
+                this->m_code << "    " << this->get_mov_instruc("eax", index_val.substr(0, index_val.find_first_of(" "))) << " eax, " << index_val << std::endl;
+            } // now: index value in eax and expression value in edx or bl
+            
+            this->m_code << "    mov " << (*it).type << " ptr [ebp - " << (*it).head_base_pointer_offset << " + eax * " << this->asm_type_to_bytes((*it).type) << "], " << mov_reg << std::endl;
         }
+        
     }
 }
 template<typename iterator,typename var_set>
 void Generator::var_set_struct(iterator struct_it,var_set struct_set){
+    if constexpr (std::is_same<var_set, node::_var_set_array*>::value) {
+        std::cout << "Array" << std::endl;
+    }
    /* for (const auto& element : (*struct_it).vars) {
             std::visit([](const auto& var) {
              std::cout << var.name << std::endl;
@@ -1127,7 +1190,11 @@ void Generator::var_set_struct(iterator struct_it,var_set struct_set){
     
     if(std::holds_alternative<Var>(*it)){
         Var var = std::get<Var>(*it);
-        this->var_set_number(&var,struct_set);
+        if constexpr (std::is_same<var_set, node::_var_set_array*>::value){
+            this->var_set_ptr_array(&var,struct_set);
+        }else{
+            this->var_set_number(&var,struct_set);
+        }
     }
     else if(std::holds_alternative<string_buffer>(*it)){
         string_buffer buf = std::get<string_buffer>(*it);
@@ -1173,9 +1240,13 @@ inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set)
         void operator()(const node::_var_set_array* array_set) {
             auto it = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array var) {return var.name == array_set->ident.value.value(); });
             if (it == gen->m_arrays.cend()) {
-                std::stringstream ss;
-                ss << "Array with the name '" << array_set->ident.value.value() << "' was not declared in this scope";
-                gen->line_err(ss.str());
+                auto ptr_it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var var) {return var.name == array_set->ident.value.value(); });
+                if (ptr_it == gen->m_vars.cend()) {
+                    std::stringstream ss;
+                    ss << "Array with the name '" << array_set->ident.value.value() << "' was not declared in this scope";
+                    gen->line_err(ss.str());
+                }
+                gen->var_set_ptr_array(ptr_it,array_set);
             }
             else {
                 gen->var_set_array(it,array_set);
@@ -1319,6 +1390,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                         gen->m_vars.push_back(var);
                         func.arguments.push_back(*stmt_func->arguments[i]);
                     }
+                    func.ret_type_is_ptr = stmt_func->ret_type_is_ptr;
                     func.ret_lbl = gen->mk_label();
                     gen->curr_func_name.push_back(func.name);
                     gen->m_funcs.push_back(func);
