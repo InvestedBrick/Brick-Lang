@@ -27,7 +27,7 @@ checklist:
 [X] make double operations expressions
 [X] structs
 [X] make array indexing from startptr possible like in C
-[ ] allow setting of indexed ptr (heap?)
+[X] allow setting of indexed ptr 
 [ ] change stringbuffers??
 [ ] floating points
 [ ] dynamic memory
