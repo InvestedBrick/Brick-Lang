@@ -657,57 +657,57 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
 
     }
     else if (peek_type(Token_type::_set)) {
-    consume();
-    auto stmt_set = m_Allocator.alloc<node::_statement_var_set>();
-    bool deref = false;
-    if (try_consume(Token_type::_deref)) {
-        deref = true;
-    }
-    Token t;
-
-    if(peek_type(Token_type::_ident) && peek_type(Token_type::_dot,1)){
-        auto set_struct = m_Allocator.alloc<node::_var_set_struct>();
-        set_struct->ident = consume();
-        node::_var_set_struct* current = set_struct;
-
-        while(try_consume(Token_type::_dot)){
-            auto next_struct = m_Allocator.alloc<node::_var_set_struct>();
-            next_struct->ident = try_consume(Token_type::_ident,"Expected Identifier");
-            current->item = next_struct;
-            current = next_struct;
+        consume();
+        auto stmt_set = m_Allocator.alloc<node::_statement_var_set>();
+        bool deref = false;
+        if (try_consume(Token_type::_deref)) {
+            deref = true;
         }
-
-        set_struct->deref = deref;
-        bool is_array = false;
-        if(try_consume(Token_type::_open_sq_brac)){
-            is_array = true;
+        Token t;
+    
+        if(peek_type(Token_type::_ident) && peek_type(Token_type::_dot,1)){
+            auto set_struct = m_Allocator.alloc<node::_var_set_struct>();
+            set_struct->ident = consume();
+            node::_var_set_struct* current = set_struct;
+    
+            while(try_consume(Token_type::_dot)){
+                auto next_struct = m_Allocator.alloc<node::_var_set_struct>();
+                next_struct->ident = try_consume(Token_type::_ident,"Expected Identifier");
+                current->item = next_struct;
+                current = next_struct;
+            }
+    
+            set_struct->deref = deref;
+            bool is_array = false;
+            if(try_consume(Token_type::_open_sq_brac)){
+                is_array = true;
+            }
+    
+            parse_expr_and_set(set_struct, is_array);
+            stmt_set->var = set_struct;
+            return mk_stmt(stmt_set);
         }
-
-        parse_expr_and_set(set_struct, is_array);
-        stmt_set->var = set_struct;
+    
+    
+    
+        t = try_consume(Token_type::_ident,"Expected Indentifier");
+    
+        if (try_consume(Token_type::_open_sq_brac)) {
+            auto set_array = m_Allocator.alloc<node::_var_set_array>();
+            set_array->ident = t;
+            parse_expr_and_set(set_array, true);
+            stmt_set->var = set_array;
+        }
+        else {
+            auto set_num = m_Allocator.alloc<node::_var_set_num>();
+            set_num->ident = t;
+            set_num->deref = deref;
+            parse_expr_and_set(set_num,false);
+            stmt_set->var = set_num;
+        }
+    
         return mk_stmt(stmt_set);
     }
-
-
-
-    t = try_consume(Token_type::_ident,"Expected Indentifier");
-
-    if (try_consume(Token_type::_open_sq_brac)) {
-        auto set_array = m_Allocator.alloc<node::_var_set_array>();
-        set_array->ident = t;
-        parse_expr_and_set(set_array, true);
-        stmt_set->var = set_array;
-    }
-    else {
-        auto set_num = m_Allocator.alloc<node::_var_set_num>();
-        set_num->ident = t;
-        set_num->deref = deref;
-        parse_expr_and_set(set_num,false);
-        stmt_set->var = set_num;
-    }
-
-    return mk_stmt(stmt_set);
-}
 
     else if (peek_type(Token_type::_func) && peek_type(Token_type::_main_scope, 1)) {
         consume();
@@ -762,6 +762,9 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
             if (peek().has_value() && is_data_type(peek().value().type))
             {
                 func->ret_type = consume().type;
+                if(try_consume(Token_type::_ptr)){
+                    func->ret_type_is_ptr = true;
+                }
             }
             else {
                 line_err("Invalid or missing return type");
