@@ -226,6 +226,7 @@ namespace node {
         _statement_scope* scope;
         std::optional<Token_type> ret_type;
         std::vector<_argument*> arguments{};
+        bool ret_type_is_ptr = false;
 
     };
     struct _statement_pure_expr {
