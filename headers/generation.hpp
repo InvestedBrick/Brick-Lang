@@ -38,6 +38,7 @@ private:
         std::string ret_lbl;
         std::optional<Token_type> ret_type;
         std::vector<node::_argument> arguments{};
+        bool ret_type_is_ptr;
     };
     struct Var_array {
         size_t head_base_pointer_offset;
@@ -115,6 +116,8 @@ private:
     void var_set_array(iterator it,var_set array_set);
     template<typename iterator,typename var_set>
     void var_set_struct(iterator it,var_set struct_set);
+    template<typename iterator,typename var_set>
+    void var_set_ptr_array(iterator it,var_set array_set);
     void push(const std::string& val);
     void pop(const std::string& reg);
     inline void line_err(const std::string& err_msg);
