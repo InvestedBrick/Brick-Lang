@@ -12,7 +12,7 @@ inline char PreProcessor::consume() {
 }
 
 void PreProcessor::line_err(const std::string& err_msg) {
-    std::cerr << "Code failed in line " << this->line_counter << /*"(" << this->filestack.back() << ")�*/": " << err_msg << std::endl;
+    std::cerr << "Code failed in line " << this->line_counter << /*"(" << this->filestack.back() << ")*/": " << err_msg << std::endl;
     exit(1);
 }
 inline void PreProcessor::pre_process_include() {
@@ -66,6 +66,39 @@ inline void PreProcessor::pre_process_include() {
         }
     }
 }
+void PreProcessor::rem_included_main_funcs() {
+    if (this->m_str.length() < 4) return;
+    
+    size_t idx = this->m_str.rfind("brick main");
+    if (idx == std::string::npos) return;
+
+    while (true) {
+        std::cout << "Main Func: " << this->m_str.substr(idx, 10) << std::endl;
+        size_t prev_idx = this->m_str.rfind("brick main", idx - 1);
+        if (prev_idx == std::string::npos) break;
+        
+        size_t func_start = this->m_str.find('{', prev_idx);
+        if (func_start == std::string::npos) break;
+
+        size_t func_end = func_start;
+        int brace_count = 1;
+        while (brace_count > 0 && func_end < this->m_str.length() - 1) {
+            func_end++;
+            if (this->m_str[func_end] == '{') brace_count++;
+            else if (this->m_str[func_end] == '}') brace_count--;
+        }
+
+        if (brace_count == 0) {
+            this->m_str.erase(prev_idx, func_end - prev_idx + 1);
+        } else {
+            break;
+        }
+
+        // Update idx to the position of the last kept main function
+        idx = this->m_str.rfind("brick main");
+        if (idx == std::string::npos) break;
+    }
+}
 
 std::string PreProcessor::pre_process() {
     this->m_str.insert(0, " FILE " + this->filename + ' ');
@@ -74,5 +107,6 @@ std::string PreProcessor::pre_process() {
         this->pre_process_include();
 
     }   
+    this->rem_included_main_funcs();
     return this->m_str;
 }
