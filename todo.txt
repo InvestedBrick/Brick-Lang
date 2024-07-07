@@ -28,6 +28,6 @@ checklist:
 [X] structs
 [X] make array indexing from startptr possible like in C
 [X] allow setting of indexed ptr 
+[X] dynamic memory (view examples/memory.brick)
 [ ] change stringbuffers??
 [ ] floating points
-[ ] dynamic memory
