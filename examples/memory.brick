@@ -1,0 +1,33 @@
+brick alloc : int -> n_bytes {
+    __asm__{"invoke GetProcessHeap"};
+    __asm__{"invoke HeapAlloc, eax, HEAP_ZERO_MEMORY, edi"};
+}=>int ptr
+
+brick free : int ptr -> mem_ptr {
+    __asm__{"invoke GetProcessHeap"};
+    __asm__{"invoke HeapFree, eax, 0, edi"};
+}
+
+brick realloc : int ptr -> mem_ptr, int -> size, int -> n_bytes{
+    dec new_data as int ptr -> alloc(n_bytes);
+    for dec i as int -> 0; i < size;i++;{
+        set new_data[i] to mem_ptr[i];
+    }
+    free(mem_ptr);
+    return new_data;
+}=>int ptr
+
+/*
+brick main{
+    dec myarray as int ptr -> alloc(32 * 4);
+    output myarray;
+    dec x as int -> 5;
+    set myarray[3] to 23;
+    set myarray[x] to x;
+    set myarray[15] to 9;
+
+    print_array(myarray,32);
+    free(myarray);
+    exit(0);
+}
+*/
