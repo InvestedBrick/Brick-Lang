@@ -13,6 +13,7 @@ private:
 	size_t line_counter = 1;
 	size_t m_idx = 0;
 	inline void pre_process_include();
+	void rem_included_main_funcs();
 	inline std::optional<char> peek(int offset = 0) const;
 	inline char consume();
 	void line_err(const std::string& err_msg);
@@ -20,5 +21,5 @@ public:
 
 	inline explicit PreProcessor(std::string str, std::string filename) : m_str(std::move(str)) { this->filename = filename; }
 
-	 std::string pre_process();
+	std::string pre_process();
 };
