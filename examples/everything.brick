@@ -92,6 +92,9 @@ brick main{
     //for more on arrays view test3.brick
 
 
+    //You can also index pointers, as if they were arrays
+    //view dynamic_array.brick for a practical use of this
+
     //set z t the memory address of n (like in C)
     dec z as int ptr -> &n;
 
@@ -120,6 +123,7 @@ brick main{
 
     output my_bundle_1.x
     //to see more about bundles view structs.brick
+
 
     //exit statement with exitcode
     exit 0;
