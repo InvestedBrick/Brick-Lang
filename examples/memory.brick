@@ -17,7 +17,7 @@ brick realloc : int ptr -> mem_ptr, int -> size, int -> n_bytes{
     return new_data;
 }=>int ptr
 
-/*
+
 brick main{
     dec myarray as int ptr -> alloc(32 * 4);
     output myarray;
@@ -30,4 +30,3 @@ brick main{
     free(myarray);
     exit(0);
 }
-*/

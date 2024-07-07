@@ -1,5 +1,5 @@
-#include memory.brick
 #include funcs.brick
+#include memory.brick
 bundle dynamic_array{
     dec capacity as int -> 1;
     dec size as int -> 0;
