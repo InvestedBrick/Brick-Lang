@@ -389,7 +389,6 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                 else{
                     std::stringstream ss;
                     if(!(*var_it).ptr) {
-                        std::stringstream ss;
                         ss << "Cannot index variable '" << term_array_idx->ident.value.value() << "' due to it not being a pointer" << std::endl;
                         gen->line_err(ss.str());
                     }
@@ -660,7 +659,7 @@ inline Generator::logic_data_packet Generator::gen_logical_stmt(const node::_log
             std::string expr1 = gen->gen_expr(boolean_expr->left).value();
             if (expr1 == "eax" || expr1 == "&eax"){
                 gen->m_code << "    mov ecx, eax" << std::endl;
-                expr1 = "ecx"; //store the expression in ecx, since it it unused and cannoit be overwritten by other code
+                expr1 = "ecx"; //store the expression in ecx, since it it unused and cannot be overwritten by other code
                 moved = true;
             }
             std::string expr2 = gen->gen_expr(boolean_expr->right).value();
@@ -798,9 +797,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                 int num = std::stoi(val);
                 if (var_num->type == Token_type::_bool) {
                     var.bool_limit = true;
-                    if (num != 0) {
-                        num = 1;
-                    }
+                    num = (num != 0) ? 1 : 0;
                 }
                 if (var_num->_ptr) {
                     if (num != 0) {
@@ -1044,16 +1041,15 @@ void Generator::var_set_number(iterator it,var_set var_num){
 template<typename iterator,typename var_set>
 void Generator::var_set_ptr_array(iterator it,var_set array_set){
     if ((*it).immutable) {
-        this->line_err("Pointer array not mutable!");
+        this->line_err("Array not mutable!");
     }
     std::string val = this->gen_expr(array_set->expr).value();
+    if(val.rfind("\"",0) == 0){this->line_err("Cannot use string to index array");}
     if (is_numeric(val)) {
         std::string index_val = this->gen_expr(array_set->index_expr).value();
         int num = std::stoi(val);
         if ((*it).bool_limit) {
-            if (num != 0) {
-                num = 1;
-            }
+            num = (num != 0) ? 1 : 0;
         }
         this->m_code << "    mov ebx, dword ptr [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
         if(is_numeric(index_val)){
@@ -1105,13 +1101,12 @@ void Generator::var_set_array(iterator it,var_set array_set){
         this->line_err("Array not mutable!");
     }
     std::string val = this->gen_expr(array_set->expr).value();
+    if(val.rfind("\"",0) == 0){this->line_err("Cannot use string to index array");}
     if (is_numeric(val)) {
         std::string index_val = this->gen_expr(array_set->index_expr).value();
         int num = std::stoi(val);
         if ((*it).bool_limit) {
-            if (num != 0) {
-                num = 1;
-            }
+            num = (num != 0) ? 1 : 0;
         }
         if (is_numeric(index_val)) {
             this->m_code << "    mov " << (*it).type << " ptr [ebp - " << (*it).head_base_pointer_offset - std::stoi(index_val) * this->asm_type_to_bytes((*it).type) << "], " << num << std::endl;

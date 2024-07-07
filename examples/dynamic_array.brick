@@ -65,6 +65,6 @@ brick main{
     print_array(vector.data,vector.capacity);
     array_shrink_to_fit(&vector.data);
     print_array(vector.data,vector.capacity);
-
+    free(vector.data);
     exit(0);
 }
