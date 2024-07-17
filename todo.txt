@@ -11,7 +11,7 @@ LOGS:
 08.02.24: about 2400 lines
 13.02.24: about 2700 lines (with moving to cpp)
 15.02.24: about 2900 lines
-27.02.24: about 3030 lines (got qsort sort working!!) currently broken
+27.02.24: about 3030 lines (got qsort sort working!!)
 11.03.24: about 3200 lines (now with includes)
 26.03.24: about 3400 lines (added logical statements)
 08.05.24: about 3769 lines and around 370 lines of brick code (added structs + some refactoring)
@@ -29,5 +29,7 @@ checklist:
 [X] make array indexing from startptr possible like in C
 [X] allow setting of indexed ptr 
 [X] dynamic memory (view examples/memory.brick)
-[ ] change stringbuffers??
+[ ] change stringbuffers / dynamic strings?
 [ ] floating points
+[ ] reading/writing from and to files
+[ ] struct pointers
