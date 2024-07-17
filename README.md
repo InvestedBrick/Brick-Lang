@@ -7,6 +7,8 @@ View examples/everything.brick for documentation
 
 *Building*
 - In the directory with all the *.cpp run `g++ preprocessor.cpp tokenization.cpp parsing.cpp generation.cpp main.cpp -std=c++17 -o brick.exe`
+
+
 *Note:* 
 - Currently, there is only support for Windows 10, but feel free to write a pull request for other operating systems.
 
