@@ -750,10 +750,8 @@ inline void Generator::gen_ctrl_statement(const node::_ctrl_statement* _ctrl) {
         
 
         }
-        //TODO fix only being able to use double expressions
         void operator()(const node::_statement_for* stmt_for) {
 
-            //THIS CODE IS CURRENTLY UNDER MAINTENANCE
             gen->gen_var_stmt(stmt_for->_stmt_var_dec);
             std::string scope_lbl = gen->mk_label();
             std::string start_jump = gen->mk_label();
