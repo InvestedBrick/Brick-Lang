@@ -6,7 +6,6 @@
 #include "headers/generation.hpp"
 bool output_info = true;
 std::string nologo = "";
-//compile with "g++ preprocessor.cpp tokenization.cpp parsing.cpp generation.cpp main.cpp -std=c++17 -o brick.exe"
 bool is_arg(std::string arg){
     if(arg == "-noinfo"){
         output_info = false;
