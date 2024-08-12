@@ -33,3 +33,6 @@ checklist:
 [ ] floating points
 [ ] reading/writing from and to files
 [ ] struct pointers
+[ ] port generation to Linux / split win && Linux
+[ ] write own malloc / free for Linux
+
