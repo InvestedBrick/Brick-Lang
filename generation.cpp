@@ -1,5 +1,4 @@
 #include "headers/generation.hpp"
-#include <optional>
 bool is_numeric(const std::string& str) {
     for (char c : str) {
         if (!std::isdigit(c)) {
@@ -15,17 +14,9 @@ void Generator::transferElements(std::vector<T>&& source, std::vector<std::varia
         source.pop_back();
     }
 }
-void Generator::push(const std::string& val) {
-    m_code << "    push " << val << std::endl;
-    m_stack_ptr++;
-}
-void Generator::pop(const std::string& reg) {
-    m_code << "    pop " << reg << std::endl;
-    m_stack_ptr--;
-}
 inline void Generator::line_err(const std::string& err_msg) {
     std::cerr << "Code failed in line " << this->line_counter << "(" << this->filestack.back() << "): " << err_msg << std::endl;
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 inline std::string Generator::mk_label() {
     std::stringstream ss;
@@ -42,32 +33,26 @@ inline std::string Generator::mk_str_buf() {
     ss << "string_buffer_" << string_buffer_counter++;
     return ss.str();
 }
-inline std::string Generator::mk_func() {
-    std::stringstream ss;
-    ss << "func_" << func_counter++;
-    return ss.str();
-}
 
 inline size_t Generator::asm_type_to_bytes(std::string str) {
-    if (str == "dword") {return 4;}
-    else if (str == "word") { return 2;}
-    else { return 1; }
+    return str_bit_sizes.find(str)->second >> 3; // fast div by 8
 }
 inline std::string Generator::get_mov_instruc(const std::string& dest, const std::string& source) {
-    auto source_it = str_bit_sizes.find(source);
-    auto dest_it = str_bit_sizes.find(dest);
+    const auto source_it = str_bit_sizes.find(source);
+    const auto dest_it = str_bit_sizes.find(dest);
     if (source_it->second > dest_it->second) {
         line_err("Something's wrong I can feel it (how tf did this happen)");
-        exit(1); //to make g++ happy
+        exit(EXIT_FAILURE); //to make g++ happy
     }
     else if (source_it->second < dest_it->second) {
-        return "movsx";
+        return "movzx";
     }
     else {
         return "mov";
     }
 
 }
+//clear labels
 inline void Generator::reset_labels(){
     this->initial_label_and.reset();
     this->initial_label_or.reset();
@@ -75,7 +60,7 @@ inline void Generator::reset_labels(){
 }
 inline std::string Generator::get_correct_part_of_register(const std::string& source,bool edx)
 {
-    auto source_it = str_bit_sizes.find(source);
+    const auto  source_it = str_bit_sizes.find(source);
     if (source_it->second == 32) {
         return edx ? "edx" : "eax";
     }
@@ -88,52 +73,66 @@ inline std::string Generator::get_correct_part_of_register(const std::string& so
     else
     {
         line_err("Weird Input was given, you fd up");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 }
 inline void Generator::scope_start(bool main_or_func_scope, size_t alloc) {
+    //init a new stackframe
     if (main_or_func_scope) {
         this->m_base_ptr_pos.push_back(this->m_base_ptr_off);
         this->m_base_ptr_off = 0;
-        push("ebp");
+        m_code << "    ebp" << std::endl;
         m_code << "    mov ebp,esp" << std::endl;
         m_code << "    sub esp," << alloc << std::endl;
 
     }
+    //save states
     m_scope_arrays.push_back(m_arrays.size());
-    m_scope_str_bufs.push_back(m_str_bufs.size());
     m_scopes.push_back(m_vars.size());//sets the scope position to the num of variables
+
+#ifdef _WIN32
+    m_scope_str_bufs.push_back(m_str_bufs.size());
+#endif
 
 }
 inline void Generator::scope_end(bool main_or_func_scope, size_t alloc) {
-    size_t str_bufs_dec = m_str_bufs.size() - this->m_scope_str_bufs.back();
+#ifdef _WIN32    
+    const size_t str_bufs_dec = m_str_bufs.size() - this->m_scope_str_bufs.back();
     for (auto it = m_str_bufs.end() - str_bufs_dec; it != m_str_bufs.end(); ++it) { //free all the string buffers declared in the scope
         (*it).free = true;
     }
     m_scope_str_bufs.pop_back();
-    size_t vars_dec = m_vars.size() - this->m_scopes.back();
+    
+#endif
+
+    const size_t vars_dec = m_vars.size() - this->m_scopes.back();
     for (size_t i = 0; i < vars_dec; i++) {
         m_vars.pop_back();
     }
-    size_t arrays_dec = m_arrays.size() - this->m_scope_arrays.back();
+    
+    const size_t arrays_dec = m_arrays.size() - this->m_scope_arrays.back();
     for (size_t i = 0; i < arrays_dec; i++) {
         m_arrays.pop_back();
     }
     m_scopes.pop_back();
+    //pop the stackframe
     if (main_or_func_scope && alloc != 0) {
-        std::vector<size_t>::iterator it = this->m_base_ptr_pos.end();
+        const std::vector<size_t>::iterator it = this->m_base_ptr_pos.end();
         this->m_base_ptr_off = *it;
         this->m_base_ptr_pos.pop_back();
         m_code << "    add esp," << alloc << std::endl;
-        pop("ebp");
+        m_code << "    pop ebp" << std::endl;
     }
 }
 inline std::string Generator::gen_str_lit(const std::string string_lit) {
-    auto it = std::find_if(this->m_strs.cbegin(), this->m_strs.cend(), [&](const String& str1) {return str1.str_val == string_lit; });
+    const auto it = std::find_if(this->m_strs.cbegin(), this->m_strs.cend(), [&](const String& str1) {return str1.str_val == string_lit; });
     if (it == this->m_strs.cend()) { // string lit value was not already declared
         String str;
         std::string generated = mk_str_lit();
-        this->m_data << "    " << generated << " db \"" << string_lit << "\",0" << std::endl;
+        this->m_data << "    " << generated << " db \"" << string_lit << "\"" << std::endl;
+#ifdef __linux__        
+        this->m_data << "    " << generated << "_len equ $ - " << generated << std::endl;
+#endif        
         str.generated = generated;
         str.str_val = string_lit;
         this->m_strs.push_back(str);
@@ -151,41 +150,29 @@ inline void Generator::gen_scope(const node::_statement_scope* scope) {
     }
     scope_end();
 }
-inline std::optional<std::string> Generator::tok_to_instruc(Token_type type, bool invert) {
+inline std::optional<std::string> Generator::tok_to_instruc(const Token_type type, bool invert) {
 
-    if (invert) {
-        if (type == Token_type::_same_as) { return "    jne "; }
-        if (type == Token_type::_not_same_as) { return "    je "; }
-        if (type == Token_type::_greater_as) { return "    jle "; }
-        if (type == Token_type::_greater_eq_as) { return "    jl "; }
-        if (type == Token_type::_less_as) { return "    jge "; }
-        if (type == Token_type::_less_eq_as) { return "    jg "; }
-        else {
-            return {};
-        }
-    }
-    else {
-        if (type == Token_type::_same_as) { return "    je "; }
-        if (type == Token_type::_not_same_as) { return "    jne "; }
-        if (type == Token_type::_greater_as) { return "    jg "; }
-        if (type == Token_type::_greater_eq_as) { return "    jge "; }
-        if (type == Token_type::_less_as) { return "    jl "; }
-        if (type == Token_type::_less_eq_as) { return "    jle "; }
-        else {
-            return {};
-        }
+    switch(type){
+        case Token_type::_same_as:       { return invert ? "    jne " : "    je ";  }
+        case Token_type::_not_same_as:   { return invert ? "    je "  : "    jne "; }
+        case Token_type::_greater_as:    { return invert ? "    jle " : "    jg ";  }
+        case Token_type::_greater_eq_as: { return invert ? "    jl "  : "    jge "; }
+        case Token_type::_less_as:       { return invert ? "    jge " : "    jl ";  }
+        case Token_type::_less_eq_as:    { return invert ? "    jg "  : "    jle "; }
+        default:                         {return {};}
     }
 } 
 template<typename iterator, typename struct_ident>
 std::string Generator::gen_term_struct(iterator struct_it, struct_ident struct_ident_){
     
-    std::string expected = struct_ident_->item->ident.value.value();
+    const std::string expected = struct_ident_->item->ident.value.value();
+    //traverse the linked list of structs (for declaration in another struct)
     if(struct_ident_->item->item != nullptr){
         struct_ident_->item = struct_ident_->item->item;
     }
 
     //find the first element in the vars vector of the struct that has the name of our searched item and return an iterator to it
-    auto it = std::find_if((*struct_it).vars.cbegin(), (*struct_it).vars.cend(), [&](const auto& var) {
+    const auto it = std::find_if((*struct_it).vars.cbegin(), (*struct_it).vars.cend(), [&](const auto& var) {
     return std::visit([&](const auto& element) { return element.name == expected; }, var);
     });
     
@@ -213,7 +200,7 @@ std::string Generator::gen_term_struct(iterator struct_it, struct_ident struct_i
     }
     else if(std::holds_alternative<Var_array>(*it)){
         Var_array arr = std::get<Var_array>(*it);
-        //repetivitve code is okay here because another template is not worth it
+        //repetitive code is okay here because another template is not worth it
         std::string val = this->gen_expr(struct_ident_->index_expr).value();
         if (is_numeric(val)) {
             offset << arr.type <<" ptr[ebp - " << arr.head_base_pointer_offset - std::stoi(val) * this->asm_type_to_bytes(arr.type) << "] " ;
@@ -228,10 +215,11 @@ std::string Generator::gen_term_struct(iterator struct_it, struct_ident struct_i
     }
     else if(std::holds_alternative<Struct>(*it)){
         Struct struct_ = std::get<Struct>(*it);
+        //recursively descend the structs
         return this->gen_term_struct(&struct_,struct_ident_);
     }
     this->line_err("Struct item generation failed");
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
     struct term_visitor {
@@ -246,23 +234,29 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
             ret_val = ss.str();
         }
         void operator()(const node::_term_ident* term_ident) {
-            auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == term_ident->ident.value.value(); });
+            //try to find in the variables
+            const auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == term_ident->ident.value.value(); });
             std::stringstream offset;
             if (it == gen->m_vars.cend()) {
-                auto str_it = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(), [&](const String& var) {return var.name == term_ident->ident.value.value(); });
+                const auto str_it = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(), [&](const String& var) {return var.name == term_ident->ident.value.value(); });
                 if (str_it != gen->m_strs.cend()) {
                     offset << "\"" << (*str_it).generated;
                 }
                 else {
-                    auto str_buf_it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& var) {return var.name == term_ident->ident.value.value(); });
+#ifdef _WIN32
+                    const auto str_buf_it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), 
+                        [&](const string_buffer& var) { return var.name == term_ident->ident.value.value(); });
+
                     if (str_buf_it != gen->m_str_bufs.cend()) {
-                        offset << "\"" << (*str_buf_it).generated;
-                    }
-                    else {
+                        offset << "\"" << str_buf_it->generated;
+                    } else {
+#endif
                         std::stringstream ss;
                         ss << "Identifier '" << term_ident->ident.value.value() << "' was not declared in this scope!" << std::endl;
                         gen->line_err(ss.str());
+#ifdef _WIN32
                     }
+#endif
                 }
             }
             else {
@@ -271,7 +265,7 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
             ret_val = offset.str();
         }
         void operator()(node::_term_struct_ident* struct_ident){
-            auto struct_it = std::find_if(gen->m_structs.cbegin(),gen->m_structs.cend(), [&](Struct _struct){return _struct.name == struct_ident->ident.value.value();});
+            const auto struct_it = std::find_if(gen->m_structs.cbegin(),gen->m_structs.cend(), [&](Struct _struct){return _struct.name == struct_ident->ident.value.value();});
             if(struct_it == gen->m_structs.cend()){
                 std::stringstream ss;
                 ss << "Bundle with the name '" << struct_ident->ident.value.value() << "' was not declared in this scope";
@@ -282,7 +276,7 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
 
         }
         void operator()(const node::_double_op* double_op) {
-            auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == double_op->ident.value.value(); });
+            const auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == double_op->ident.value.value(); });
             if (it == gen->m_vars.cend()) {
                 std::stringstream ss;
                 ss << "Identifier '" << double_op->ident.value.value() << "' was not declared in this scope!" << std::endl;
@@ -292,62 +286,57 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
             
             ss << (*it).type << " ptr [ebp - " << (*it).base_pointer_offset << "]";
             gen->m_code << "    "<< gen->get_mov_instruc("eax",(*it).type) << " eax," << ss.str() << std::endl;
-            if (double_op->op == Token_type::_d_add) {
-                if ((*it).ptr) {
-                    gen->m_code << "    add " << ss.str() << ", " << gen->asm_type_to_bytes((*it).ptr_type) << std::endl;
-                }
-                else {
-                    gen->m_code << "    inc " << ss.str() << std::endl;
-                }
-            }
-            else if (double_op->op == Token_type::_d_sub) {
-                if ((*it).ptr) {
-                    gen->m_code << "    sub " << ss.str() << ", " << gen->asm_type_to_bytes((*it).ptr_type) << std::endl;
-                }
-                else {
-                    gen->m_code << "    dec " << ss.str() << std::endl;
-                }
+            //check if it is a ptr, if so increment by the ptr_type
+            if ((*it).ptr) {
+                const char* op_str = (double_op->op == Token_type::_d_add) ? "    add " : "    sub ";
+                gen->m_code << op_str << ss.str() << ", " << gen->asm_type_to_bytes((*it).ptr_type) << std::endl;
+            } else {
+                const char* op_str = (double_op->op == Token_type::_d_add) ? "    inc " : "    dec ";
+                gen->m_code << op_str << ss.str() << std::endl;
             }
             ret_val = "eax";
         }
         void operator()(const node::_function_call* fn_call) {
-            auto it = std::find_if(gen->m_funcs.cbegin(), gen->m_funcs.cend(), [&](const function& fn) {return fn.name == fn_call->ident.value.value(); });
+            const auto it = std::find_if(gen->m_funcs.cbegin(), gen->m_funcs.cend(), [&](const function& fn) {return fn.name == fn_call->ident.value.value(); });
             if (it == gen->m_funcs.cend()) {
                 std::stringstream ss;
                 ss << "Function '" << fn_call->ident.value.value() << "' was not found" << std::endl;
                 gen->line_err(ss.str());
             }
-            else {
-                if ((*it).arguments.size() != fn_call->arguments.size()) {
-                    std::stringstream ss;
-                    ss << "Not same number of arguments for function '" << (*it).name << "' provided";
-                    gen->line_err(ss.str());
-                }
-                for (int i = 0; i < (*it).arguments.size(); i++) {
-                    std::string expr = gen->gen_expr(fn_call->arguments[i]).value(); //expr can be: int_lit, eax, type ptr 
-                    if (expr == "eax" || expr == "&eax") {
-                        gen->m_code << "    mov " << gen->m_func_registers[i] << ", eax" << std::endl;
-                    }
-                    else if (is_numeric(expr)) {
-                        gen->m_code << "    mov " << gen->m_func_registers[i] << ", " << expr << std::endl;
-                    }
-                    else if (expr.substr(0, expr.find_first_of(" ")) == (*it).arguments[i].type) { 
-                        gen->m_code << "    " << gen->get_mov_instruc("eax", (*it).arguments[i].type) << " " << gen->m_func_registers[i] << ", " << expr << std::endl; //eax used as a general 32-bit register
-                    }
-                    else {
-                        gen->line_err("Invalid argument");
-                    }
-                }
-                
-                gen->m_code << "    call " << (*it).generated << std::endl;
-                ret_val = (*it).ret_type_is_ptr ? "&eax" : "eax";
+            
+            if ((*it).arguments.size() != fn_call->arguments.size()) {
+                std::stringstream ss;
+                ss << "Not same number of arguments for function '" << (*it).name << "' provided";
+                gen->line_err(ss.str());
             }
+
+            for (int i = 0; i < (*it).arguments.size(); i++) {
+                const std::string expr = gen->gen_expr(fn_call->arguments[i]).value(); //expr can be: int_lit, eax, type ptr 
+                if (expr == "eax" || expr == "&eax") {
+                    gen->m_code << "    mov " << gen->m_func_registers[i] << ", eax" << std::endl;
+                }
+                else if (is_numeric(expr)) {
+                    gen->m_code << "    mov " << gen->m_func_registers[i] << ", " << expr << std::endl;
+                }
+                else if (expr.substr(0, expr.find_first_of(" ")) == (*it).arguments[i].type) { 
+                    gen->m_code << "    " << gen->get_mov_instruc("eax", (*it).arguments[i].type) << " " << gen->m_func_registers[i] << ", " << expr << std::endl; //eax used as a general 32-bit register
+                }
+                else {
+                    gen->line_err("Invalid argument");
+                }
+            }
+            
+            gen->m_code << "    call " << (*it).name << std::endl;
+            ret_val = (*it).ret_type_is_ptr ? "&eax" : "eax";
+            
         }
         void operator()(const node::_term_paren* term_paren) {
             ret_val = gen->gen_expr(term_paren->expr);
         }
+
         void operator()(const node::_term_negate* term_neg) {
-            std::string expr = gen->gen_expr(term_neg->expr).value();
+            const std::string expr = gen->gen_expr(term_neg->expr).value();
+
             if (expr != "eax") {
                 if (is_numeric(expr)) {
                     gen->m_code << "    mov eax," << expr << std::endl;
@@ -360,60 +349,61 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
             ret_val = "eax";
         }
         void operator()(const node::_term_deref* deref) {
-            auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == deref->ident.value.value(); });
+            const auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == deref->ident.value.value(); });
             if (it == gen->m_vars.cend()) {
                 std::stringstream ss;
                 ss << "Identifier '" << deref->ident.value.value() << "' was not declared in this scope";
                 gen->line_err(ss.str());
             }
-            else {
-                if (!(*it).ptr) {
-                    std::stringstream ss;
-                    ss << "Cannot dereference variable '" << deref->ident.value.value() << "' due to it not being a pointer" << std::endl;
-                    gen->line_err(ss.str());
-                }
-                gen->m_code << "    mov eax, dword ptr [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
-                gen->m_code << "    " << gen->get_mov_instruc("eax", (*it).ptr_type) << " eax, " << (*it).ptr_type << " ptr [eax]" << std::endl;
-                ret_val = "eax";
+         
+            if (!(*it).ptr) {
+                std::stringstream ss;
+                ss << "Cannot dereference variable '" << deref->ident.value.value() << "' due to it not being a pointer" << std::endl;
+                gen->line_err(ss.str());
             }
+
+            gen->m_code << "    mov eax, dword ptr [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
+            gen->m_code << "    " << gen->get_mov_instruc("eax", (*it).ptr_type) << " eax, " << (*it).ptr_type << " ptr [eax]" << std::endl;
+            ret_val = "eax";
         }
         void operator()(const node::_term_array_index* term_array_idx) {
-            auto it = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array& var) {return var.name == term_array_idx->ident.value.value(); });
+            const auto it = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array& var) {return var.name == term_array_idx->ident.value.value(); });
             if (it == gen->m_arrays.cend()) {
-                auto var_it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == term_array_idx->ident.value.value(); });
+                const auto var_it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == term_array_idx->ident.value.value(); });
                 if (var_it == gen->m_vars.cend()) {
                     std::stringstream ss;
                     ss << "Array '" << term_array_idx->ident.value.value() << "' was not declared in this scope";
                     gen->line_err(ss.str());
                 }
-                else{
-                    std::stringstream ss;
-                    if(!(*var_it).ptr) {
-                        ss << "Cannot index variable '" << term_array_idx->ident.value.value() << "' due to it not being a pointer" << std::endl;
-                        gen->line_err(ss.str());
-                    }
-                    std::string val = gen->gen_expr(term_array_idx->index_expr).value();
-                    if(val.rfind("\"",0) == 0) {
-                        gen->line_err("Cannot use string as an array index");
-                    }
-
-                    if(!is_numeric(val)) {
-                        gen->m_code << "    " << gen->get_mov_instruc("ebx", val.substr(0, val.find_first_of(' '))) << " ebx, " << val << std::endl;
-                    }
-                    gen->m_code << "    mov eax, dword ptr [ebp - " << (*var_it).base_pointer_offset << "]" << std::endl;
-                    if(is_numeric(val)) {
-                        ss << (*var_it).ptr_type << " ptr [eax + " << std::stoi(val) *  gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
-                    }else{
-                        ss << (*var_it).ptr_type << " ptr [eax + ebx * " << gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
-                    }
-                    ret_val = ss.str();
+                
+                std::stringstream ss;
+                if(!(*var_it).ptr) {
+                    ss << "Cannot index variable '" << term_array_idx->ident.value.value() << "' due to it not being a pointer" << std::endl;
+                    gen->line_err(ss.str());
                 }
+
+                std::string val = gen->gen_expr(term_array_idx->index_expr).value();
+                if(val.rfind("\"",0) == 0) {
+                    gen->line_err("Cannot use string as an array index");
+                }
+                bool numeric = is_numeric(val);
+                if(!numeric) {
+                    gen->m_code << "    " << gen->get_mov_instruc("ebx", val.substr(0, val.find_first_of(' '))) << " ebx, " << val << std::endl;
+                }
+                gen->m_code << "    mov eax, dword ptr [ebp - " << (*var_it).base_pointer_offset << "]" << std::endl;
+                if(numeric) {
+                    ss << (*var_it).ptr_type << " ptr [eax + " << std::stoi(val) *  gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
+                }else{
+                    ss << (*var_it).ptr_type << " ptr [eax + ebx * " << gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
+                }
+                ret_val = ss.str();
+                
             }
             else {
                 std::stringstream ss;
                 std::string val = gen->gen_expr(term_array_idx->index_expr).value();
                 if(val.rfind("\"",0) == 0) {
-                        gen->line_err("Cannot use string as an array index");
+                    gen->line_err("Cannot use string as an array index");
                 }
                 if (is_numeric(val)) {
                     ss << (*it).type <<" ptr [ebp - " << (*it).head_base_pointer_offset - std::stoi(val) * gen->asm_type_to_bytes((*it).type) << "] " ;
@@ -571,12 +561,12 @@ inline std::optional<std::string> Generator::gen_expr(const node::_expr* expr) {
             if (val.rfind("\"", 0) == 0) {
                 gen->line_err("Cannot reference string");
             }
-            if (val == "eax") {
+            if (val == "eax" || val == "&eax") {
                 gen->line_err("Invalid Reference Argument");
             }
             gen->m_code << "    lea eax, " << val << std::endl;
             
-            ret_val = "&eax";//ampersand to show that a ref was returned
+            ret_val = "&eax";//ampersand to show that a reference was returned
         }
     };
     expr_visitor visitor;
@@ -610,8 +600,6 @@ inline Generator::logic_data_packet Generator::gen_logical_expr(const node::_log
             if(auto instruc = gen->tok_to_instruc(op1,invert_copy)){
                 gen->m_code << instruc.value() << last_label << std::endl;
             }
-            
-            
         }
         void operator()(const node::_logical_expr_or* logic_or){
             Token_type op = gen->gen_logical_stmt(logic_or->left,provided_scope_lbl,invert_copy).op;
@@ -664,14 +652,12 @@ inline Generator::logic_data_packet Generator::gen_logical_stmt(const node::_log
             }
             std::string expr2 = gen->gen_expr(boolean_expr->right).value();
             if ((expr1.rfind("\"", 0) + expr2.rfind("\"", 0)) == 0) { //both are string literals
-                gen->m_code << "    push offset " << expr1.substr(1) << std::endl;
-                gen->m_code << "    push offset " << expr2.substr(1) << std::endl;
-                gen->m_code << "    call crt__stricmp" << std::endl;
 
                 if (!(boolean_expr->op == Token_type::_same_as || boolean_expr->op == Token_type::_not_same_as)) {
                     gen->line_err("Invalid comparison for strings");
                 }
-                gen->m_code << "    cmp eax,0" << std::endl;
+                //string comparison at compile time 
+                gen->m_code << "    mov eax, " << std::to_string(expr1.substr(1) == expr2.substr(1)) << std::endl;
             }
             else if (expr1.rfind("\"", 0) == std::string::npos && expr1.rfind("\"", 0) == std::string::npos) { //neither are string literals
                 if (expr1 == "&eax") {
@@ -778,7 +764,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
     struct var_visitor {
         Generator* gen;
         void operator()(const node::_var_dec_num* var_num) {
-            auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == var_num->ident.value.value(); });
+            const auto it  = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == var_num->ident.value.value(); });
             if(!gen->ignore_var_already_exists){
                 if (it != gen->m_vars.cend()) {
                     std::stringstream ss;
@@ -821,7 +807,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                             var.ptr = true;
                             val = "eax";
                             var.ptr_type = var.type;
-                            var.type = "dword"; //pointers need to be dwords
+                            var.type = "dword"; //pointers need to be dwords bc we are in 32-bit-land
                         }
                         else {
                             gen->line_err("Pointer cannot be assigned the value of a non-reference");
@@ -843,7 +829,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             
         }
         void operator()(const node::_var_dec_str* var_str) {
-            auto it = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(), [&](const String& str) {return str.name == var_str->ident.value.value(); });
+            const auto it  = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(), [&](const String& str) {return str.name == var_str->ident.value.value(); });
             if(!gen->ignore_var_already_exists){
                 if (it != gen->m_strs.cend()) {
                     std::stringstream ss;
@@ -857,7 +843,10 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             
         }
         void operator()(const node::_var_dec_str_buf* var_str_buf) {
-            auto it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& str_buf) {return str_buf.name == var_str_buf->ident.value.value(); });
+#ifdef __linux__
+            assert(false && "Not implemented / not compatible");
+#endif
+            const auto it  = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& str_buf) {return str_buf.name == var_str_buf->ident.value.value(); });
             if (it != gen->m_str_bufs.cend()) {
                 if (!(*it).free) {
                     std::stringstream ss;
@@ -881,7 +870,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                 }
             }
             else {
-                auto free_it = std::find_if(gen->m_str_bufs.begin(), gen->m_str_bufs.end(), [&](const string_buffer& str_buf) {return str_buf.free == true; });
+                const auto free_it = std::find_if(gen->m_str_bufs.begin(), gen->m_str_bufs.end(), [&](const string_buffer& str_buf) {return str_buf.free == true; });
                 string_buffer str_buf;
                 if (free_it != gen->m_str_bufs.cend() && free_it->size >= stoi(var_str_buf->_int_lit.value.value())) { // found a free string buffer
                     
@@ -902,7 +891,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             }
         }
         void operator()(const node::_var_dec_array* var_array) {
-            auto it = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array& arr) {return arr.name == var_array->ident.value.value(); });
+            const auto it  = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array& arr) {return arr.name == var_array->ident.value.value(); });
             if(!gen->ignore_var_already_exists){
                 if (it != gen->m_arrays.cend()) {
                     std::stringstream ss;
@@ -924,15 +913,15 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
         
         }
         void operator()(const node::_var_dec_struct* var_struct){
-            auto it = std::find_if(gen->m_struct_infos.cbegin(), gen->m_struct_infos.cend(), [&](const Struct_info& inf) {return inf.name == var_struct->struct_name; });
+            const auto it  = std::find_if(gen->m_struct_infos.cbegin(), gen->m_struct_infos.cend(), [&](const Struct_info& inf) {return inf.name == var_struct->struct_name; });
             if(it == gen->m_struct_infos.cend()){
                 gen->line_err("How did this happen??");
             }
-            int var_len = gen->m_vars.size(); //if this is a problem to you then you should reconsider using more than 2147483647 variables
-            int str_len = gen->m_strs.size();
-            int str_buf_len = gen->m_str_bufs.size();
-            int arr_len = gen->m_arrays.size();
-            int struct_len = gen->m_structs.size();
+            const int var_len = gen->m_vars.size(); //if this is a problem to you then you should reconsider using more than 2147483647 variables
+            const int str_len = gen->m_strs.size();
+            const int str_buf_len = gen->m_str_bufs.size();
+            const int arr_len = gen->m_arrays.size();
+            const int struct_len = gen->m_structs.size();
             gen->ignore_var_already_exists = true;
             for (node::_statement_var_dec* var_dec : (*it).var_decs){
                 gen->gen_var_stmt(var_dec);
@@ -1125,7 +1114,7 @@ void Generator::var_set_array(iterator it,var_set array_set){
             this->m_code << "    " << this->get_mov_instruc("edx", val.substr(0, val.find_first_of(" "))) << " edx, " << val << std::endl;
         }
         val = "edx";
-        std::string index_val = this->gen_expr(array_set->index_expr).value();
+        const std::string index_val = this->gen_expr(array_set->index_expr).value();
         if ((*it).bool_limit) {
             this->m_code << "    cmp " << val << ", 0" << std::endl;
             this->m_code << "    setne bl" << std::endl;
@@ -1159,19 +1148,12 @@ void Generator::var_set_struct(iterator struct_it,var_set struct_set){
     if constexpr (std::is_same<var_set, node::_var_set_array*>::value) {
         std::cout << "Array" << std::endl;
     }
-   /* for (const auto& element : (*struct_it).vars) {
-            std::visit([](const auto& var) {
-             std::cout << var.name << std::endl;
-            }, element);
-            }
-            */
     std::string expected = struct_set->item->ident.value.value();
     if(struct_set->item->item != nullptr){
         struct_set->item = struct_set->item->item;
     }
-    //std::cout << "Name: " << (*struct_it).name<<  " Expected: " << expected << std::endl; 
     //find the first element in the vars vector of the struct that has the name of our searched item and return an iterator to it
-    auto it = std::find_if((*struct_it).vars.cbegin(), (*struct_it).vars.cend(), [&](const auto& var) {
+    const auto it  = std::find_if((*struct_it).vars.cbegin(), (*struct_it).vars.cend(), [&](const auto& var) {
     return std::visit([&](const auto& element) { return element.name == expected; }, var);
     });
     
@@ -1194,7 +1176,7 @@ void Generator::var_set_struct(iterator struct_it,var_set struct_set){
         this->var_set_str_buf(&buf,struct_set);
     }
     else if(std::holds_alternative<String>(*it)){
-        this->var_set_str(); //doesnt matter
+        this->var_set_str(); //doesn't matter
     }
     else if(std::holds_alternative<Var_array>(*it)){
         Var_array arr = std::get<Var_array>(*it);
@@ -1211,15 +1193,15 @@ inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set)
     struct set_visitor {
         Generator* gen;
         void operator()(const node::_var_set_num* var_num) {
-            auto str_it = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(), [&](const String& var) {return var.name == var_num->ident.value.value(); });
+            const auto str_it = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(), [&](const String& var) {return var.name == var_num->ident.value.value(); });
             if (str_it != gen->m_strs.cend()) {gen->var_set_str();return;}//in case I want to strings mutable one day and forget this
             
-            auto str_buf_it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& var) {return var.name == var_num->ident.value.value(); });
+            const auto str_buf_it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& var) {return var.name == var_num->ident.value.value(); });
             if(str_buf_it != gen->m_str_bufs.cend()){
                 gen->var_set_str_buf(str_buf_it,var_num);
                 return;
             }
-            auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == var_num->ident.value.value(); });
+            const auto it  = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == var_num->ident.value.value(); });
             if (it == gen->m_vars.cend()) {
                 std::stringstream ss;
                 ss << "Identifier '" << var_num->ident.value.value() << "' was not declared in this scope!" << std::endl;
@@ -1231,9 +1213,9 @@ inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set)
             }
         }
         void operator()(const node::_var_set_array* array_set) {
-            auto it = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array var) {return var.name == array_set->ident.value.value(); });
+            const auto it  = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array var) {return var.name == array_set->ident.value.value(); });
             if (it == gen->m_arrays.cend()) {
-                auto ptr_it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var var) {return var.name == array_set->ident.value.value(); });
+                const auto  ptr_it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var var) {return var.name == array_set->ident.value.value(); });
                 if (ptr_it == gen->m_vars.cend()) {
                     std::stringstream ss;
                     ss << "Array with the name '" << array_set->ident.value.value() << "' was not declared in this scope";
@@ -1246,7 +1228,7 @@ inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set)
             }
         }
         void operator()(node::_var_set_struct* struct_set){
-            auto struct_it = std::find_if(gen->m_structs.cbegin(),gen->m_structs.cend(), [&](Struct _struct){return _struct.name == struct_set->ident.value.value();});
+            const auto  struct_it = std::find_if(gen->m_structs.cbegin(),gen->m_structs.cend(), [&](Struct _struct){return _struct.name == struct_set->ident.value.value();});
             if(struct_it == gen->m_structs.cend()){
                 std::stringstream ss;
                 ss << "Bundle with the name '" << struct_set->ident.value.value() << "' was not declared in this scope";
@@ -1301,12 +1283,22 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                 int num = std::stoi(expr_val);
                 mov_val = "mov";
             }
+#ifdef _WIN32
             else
             {
                 mov_val = gen->get_mov_instruc("eax", expr_val.substr(0, expr_val.find_first_of(' ')));
             }
+
             gen->m_code << "    " << mov_val << " eax," << expr_val << std::endl;
             gen->m_code << "    invoke ExitProcess,eax" << std::endl;
+#elif __linux__
+            else{
+                mov_val = "movzx";
+            }
+            gen->m_code << "    "<< mov_val <<" rdi " << expr_val << std::endl;
+            gen->m_code << "    mov rax, 60 ; sys_exit" << std::endl;
+            gen->m_code << "    syscall" << std::endl;
+#endif
         }
         void operator()(const node::_null_stmt* null_stmt) {
             gen->intern_flags(null_stmt);
@@ -1327,7 +1319,11 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
             if (!gen->main_proc) {
                 if (!gen->valid_space) {
                     gen->valid_space = true;
+#ifdef _WIN32
                     gen->m_code << "_main proc\n";
+#elif __linux__
+                    gen->m_code << "_start:\n"; 
+#endif
                     gen->main_proc = true;
                     gen->scope_start(true, main_scope->stack_space);
                     for (const node::_statement* stmt : main_scope->scope->statements) {
@@ -1345,7 +1341,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
             }
         }
         void operator()(const node::_statement_function* stmt_func) {
-            auto it = std::find_if(gen->m_funcs.cbegin(), gen->m_funcs.cend(), [&](const function& fn) {return fn.name == stmt_func->ident.value.value(); });
+            const auto it  = std::find_if(gen->m_funcs.cbegin(), gen->m_funcs.cend(), [&](const function& fn) {return fn.name == stmt_func->ident.value.value(); });
             if (it != gen->m_funcs.cend()) {
                 std::stringstream ss;
                 ss << "Function with the name '" << stmt_func->ident.value.value() << "' was already declared" << std::endl;
@@ -1358,13 +1354,17 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                     gen->m_code.str(std::string()); //clear the stringstream
                     function func;
                     func.name = stmt_func->ident.value.value();
-                    func.generated = gen->mk_func();
-                    gen->m_code << func.generated << " proc" << std::endl;
+#ifdef _WIN32                    
+                    gen->m_code << func.name << " proc" << std::endl;
+#elif __linux__
+                    gen->m_code << func.name << ":" << std::endl;
+#endif
                     int stack_space_add = 0;
                     for (int i = 0; i < stmt_func->arguments.size(); i++) {
                         stack_space_add += (gen->str_bit_sizes.find(stmt_func->arguments[i]->type)->second) / 8; //get bit size and devide by 8 for bytes
                     }
                     gen->scope_start(true, stmt_func->stack_space + stack_space_add);
+                    //for each argumend, generate a local var
                     for (int i = 0; i < stmt_func->arguments.size(); i++) {
                         Var var;
                         var.type = stmt_func->arguments[i]->type;
@@ -1393,8 +1393,10 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                     gen->m_code << func.ret_lbl << ":" << std::endl;
                     gen->scope_end(true, stmt_func->stack_space + stack_space_add);
                     gen->m_code << "    ret" << std::endl;
-                    gen->m_code << func.generated << " endp" << std::endl;
-                    gen->m_func_space << gen->m_code.str() << std::endl << std::endl;
+#ifdef _WIN32                    
+                    gen->m_code << func.name << " endp" << std::endl;
+#endif
+                    gen->m_func_space << gen->m_code.str() << std::endl;
                     gen->m_code.str(std::string());
                     gen->m_code << save;
                     gen->valid_space = false;
@@ -1409,7 +1411,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
             gen->gen_ctrl_statement(_ctrl);
         }
         void operator()(const node::_op_equal* op_eq) {
-            auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == op_eq->ident.value.value(); });
+            const auto it  = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == op_eq->ident.value.value(); });
             if (it == gen->m_vars.cend()) {
                 std::stringstream ss;
                 ss << "Identifier '" << op_eq->ident.value.value() << "' was not declared in this scope!" << std::endl;
@@ -1441,13 +1443,13 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                     break;
                 }
                 case Token_type::_mul_eq: {
-                    gen->m_code << "    " << gen->get_mov_instruc("ebx", (*it).type) << " edx, " << ss.str() << std::endl;
+                    gen->m_code << "    " << gen->get_mov_instruc("edx", (*it).type) << " edx, " << ss.str() << std::endl;
                     gen->m_code << "    imul edx,eax" << std::endl;
                     gen->m_code << "    mov " << ss.str() << ", " << gen->get_correct_part_of_register((*it).type,true) << std::endl;
                     break;
                 }
                 case Token_type::_div_eq: {
-                    gen->m_code << "    " << gen->get_mov_instruc("ebx", (*it).type) << " edx, " << ss.str() << std::endl;
+                    gen->m_code << "    " << gen->get_mov_instruc("edx", (*it).type) << " edx, " << ss.str() << std::endl;
                     gen->m_code << "    idiv edx,eax" << std::endl;
                     gen->m_code << "    mov " << ss.str() << ", " << gen->get_correct_part_of_register((*it).type,true) << std::endl;
                     break;
@@ -1459,7 +1461,15 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
             {
                 std::string val = gen->gen_expr(expr).value();
                 if (val.rfind("\"", 0) == 0) { //Hard encoded shit here
+#ifdef _WIN32                
                     gen->m_code << "    invoke StdOut, offset " << val.substr(1) << std::endl;
+#elif __linux__
+                    gen->m_code << "    mov rax, 1" << std::endl;
+                    gen->m_code << "    mov rdi, 1" << std::endl;
+                    gen->m_code << "    mov rsi, " << val.substr(1) << std::endl;
+                    gen->m_code << "    mov rdx, " << val.substr(1) + "_len" << std::endl; //length was declared in gen_str_lit
+                    gen->m_code << "    syscall" << std::endl;
+#endif
                 }
                 else {
                     if (is_numeric(val)) {
@@ -1471,22 +1481,32 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                     else if (val != "eax") { //if val == eax no need to mov eax, eax
                         gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " eax," << val << std::endl;
                     }
+                    //TODO: make this work w/ Linux, prob make own dwtoa implementation
                     gen->m_code << "    invoke dwtoa,eax,offset buffer ;dword to ascii" << std::endl;
                     gen->m_code << "    invoke StdOut, offset buffer" << std::endl;
                 }
             }
             if (!stmt_output->noend) {
+#ifdef _WIN32                
                 gen->m_code << "    invoke StdOut, offset backn" << std::endl;
+#elif __linux__
+                gen->m_code << "    mov rax, 1" << std::endl;
+                gen->m_code << "    mov rdi, 1" << std::endl;
+                gen->m_code << "    mov rsi, newline" << std::endl;
+                gen->m_code << "    mov rdx, 1" << std::endl;
+                gen->m_code << "    syscall" << std::endl;
+#endif
             }
         }
         void operator()(const node::_statement_input* stmt_input) {
-            auto it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& var) {return var.name == stmt_input->ident.value.value(); });
+            const auto it  = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& var) {return var.name == stmt_input->ident.value.value(); });
             if (it == gen->m_str_bufs.cend()) {
                 std::stringstream ss;
                 ss << "String buffer '" << stmt_input->ident.value.value() << "' was not declared in this scope" << std::endl;
                 gen->line_err(ss.str());
             }
             else {
+                //TODO: enable writing to buffers (arrays) for linux
                 gen->m_code << "    invoke StdIn, offset " << (*it).generated << ", " << (*it).size << std::endl;
                 gen->m_code << "    invoke StdIn, offset buffer, 255 ;clear the rest of the input buffer " << std::endl;
             }
@@ -1498,7 +1518,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                 }
                 else {
                     std::string str_it = gen->curr_func_name.back();
-                    auto it = std::find_if(gen->m_funcs.cbegin(), gen->m_funcs.cend(), [&](const function& fn) {return fn.name == str_it; });
+                    const auto it  = std::find_if(gen->m_funcs.cbegin(), gen->m_funcs.cend(), [&](const function& fn) {return fn.name == str_it; });
                     if (it == gen->m_funcs.cend()) {
                         gen->line_err("Function name label failed");
                     }
@@ -1538,16 +1558,35 @@ std::string Generator::gen_program() {
     for (const node::_statement* stmt : m_prog.statements) {
         gen_stmt(stmt);
     }
-    m_output << "\n.data\n";
+    m_output << "\n";
+
+#ifdef __linux__
+    m_output << "section ";
+#endif 
+    m_output << ".data\n";
     if (flags.needs_buffer) {
+#ifdef _WIN32        
         m_output << "    buffer dd 256 dup (0)\n";
-        m_output << "    backn db 13,10,0 ;ASCII new line char\n";
+        m_output << "    backn db 13,10 ;ASCII new line char\n";
+#elif __linux__
+        m_output << "    newline db 10 ; ASCII newline char\n";
+#endif
     }
     m_output << m_data.str();
+
+#ifdef _WIN32    
     m_output << "\n.code\n";
+#elif __linux__
+    m_output << "\nsection .text\n"; 
+#endif
     m_output << m_code.str();
+
+#ifdef _WIN32
     m_output << "_main endp\n";
+#endif    
     m_output << m_func_space.str();
+#ifdef _WIN32
     m_output << "end _main\n";
+#endif    
     return m_output.str();
 }
