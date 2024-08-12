@@ -14,6 +14,7 @@ SRC_FILES = main.cpp \
             parsing.cpp \
             tokenization.cpp
 
+
 # Object files
 OBJ_FILES = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC_FILES))
 
