@@ -1,9 +1,7 @@
 #ignore all .brick example files and .asm files
 *.asm
-asm_tests/
 .vscode/
 .vs/
-test/
 x64/
 *.bat
 *.obj
@@ -11,4 +9,3 @@ x64/
 *.vcxproj.filters
 *.vcxproj.user
 *.exe
-!brick.exe
