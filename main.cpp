@@ -5,7 +5,10 @@
 #include "headers/preprocessor.hpp"
 #include "headers/generation.hpp"
 bool output_info = true;
-std::string nologo = "";
+#ifdef _WIN32
+
+
+
 bool is_arg(std::string arg){
     if(arg == "-noinfo"){
         output_info = false;
@@ -15,7 +18,21 @@ bool is_arg(std::string arg){
         return true;
     }
     return false;
+
 }
+
+void parse_commandline_args(int argc, char* argv[]){
+    if(argc > 2){
+        for(int i = 2; i < argc; i++){
+            if(!is_arg(argv[i])){
+                std::cerr << "Invalid Argment '" << argv[i] << "' was supplied" << std::endl;
+                return 1; 
+            }
+        }
+    }
+}
+    
+#endif
 int main(int argc, char* argv[]) {
     if (argc < 2)
     {
@@ -23,7 +40,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "brick <input.brick>" << std::endl;
         return 1;
     }
-    
+    int x = 2;
     std::string filename = argv[1];
     if (filename.substr(filename.find_last_of(".") + 1) != "brick") {
         std::cerr << "Invalid input file, has to have .brick extension!" << std::endl;
@@ -36,14 +53,9 @@ int main(int argc, char* argv[]) {
             return 1;
         }
     }
-    if(argc > 2){
-        for(int i = 2; i < argc; i++){
-            if(!is_arg(argv[i])){
-                std::cerr << "Invalid Argment '" << argv[i] << "' was supplied" << std::endl;
-                return 1; 
-            }
-        }
-    }
+    #ifdef _WIN32
+    parse_commandline_arguments(argc,argv)
+    #endif
     std::string contents;
     {
         std::stringstream contents_stream;
@@ -80,12 +92,22 @@ int main(int argc, char* argv[]) {
             std::cout << "Finished Generating..." << std::endl;
         output.close();
     }
-    std::string assemble_command = "C:\\masm32\\bin\\ml.exe /c /coff " + nologo + output_filename.str();
-    std::string link_command = "C:\\masm32\\bin\\link.exe /subsystem:console /entry:_main " + nologo +
-        filename.substr(0, filename.find_last_of(".")) + ".obj";
+    std::string assemble_command, link_command;
+#ifdef _WIN32    
+    assemble_command = "C:\\masm32\\bin\\ml.exe /c /coff " + nologo + output_filename.str();
+    link_command = "C:\\masm32\\bin\\link.exe /subsystem:console /entry:_main " + nologo + \
+    filename.substr(0, filename.find_last_of(".")) + ".obj";
 
     system(assemble_command.c_str());
     system(link_command.c_str());
-    //std::cout << assemble_command.c_str() << std::endl << link_command.c_str() << std::endl;
+#elif __linux__
+    assemble_command =  "nasm -f elf64 -o " + filename.substr(0,filename.find_last_of(".") ) + ".o"+ " " + output_filename.str();
+    link_command = "ld -o " + filename.substr(0,filename.find_last_of(".")) + " " + filename.substr(0,filename.find_last_of(".") ) + ".o";
+    
+    
+    //NOT CURRENTLY IMPLEMENTED FOR LINUX
+    //system(assemble_command.c_str());
+    //system(link_command.c_str());
+#endif
     return 0;
 }
