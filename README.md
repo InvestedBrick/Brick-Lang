@@ -6,12 +6,12 @@ View examples/everything.brick for documentation
 - Additionally, you need g++ that supports up to c++ 17
 
 *Building*
-- In the directory with all the *.cpp run `g++ preprocessor.cpp tokenization.cpp parsing.cpp generation.cpp main.cpp -std=c++17 -o brick.exe`
+- just run `make`to build using the makefile
 
 
 *Note:* 
-- Currently, there is only support for Windows 10, but feel free to write a pull request for other operating systems.
+- I am currently rewriting this to work with windows 10 and Linux
 
 *Development status:*
-- Due to Windows not working anymore on my computer, I have shifted to Ubuntu and since I do not want to rewrite the entire generation code right now, the development of this compiler is no longer active
+- Active Again
 
