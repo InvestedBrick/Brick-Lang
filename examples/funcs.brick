@@ -158,9 +158,8 @@ brick q_sort : int ptr -> start, int -> size, int -> low, int -> high{
         q_sort(start,size,pi + 1,high);
     }
 }
-/* Commented out for include reasons
 brick main {
+    dec x as int -> 0;
     fib(20);
-    exit 0;
+    exit x;
 }
-*/
