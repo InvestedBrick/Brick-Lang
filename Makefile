@@ -18,7 +18,7 @@ SRC_FILES = main.cpp \
 OBJ_FILES = $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC_FILES))
 
 # Target executable
-TARGET = main
+TARGET = brick
 
 # Default target
 all: $(TARGET)
