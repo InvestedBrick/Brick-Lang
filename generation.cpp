@@ -207,7 +207,7 @@ std::string Generator::gen_term_struct(iterator struct_it, struct_ident struct_i
         //repetitive code is okay here because another template is not worth it
         std::string val = this->gen_expr(struct_ident_->index_expr).value();
         if (is_numeric(val)) {
-            offset << arr.type << PTR_KEYWORD << "[ebp - " << arr.head_base_pointer_offset - std::stoi(val) * this->asm_type_to_bytes(arr.type) << "] " ;
+            offset << arr.type << PTR_KEYWORD << " [ebp - " << arr.head_base_pointer_offset - std::stoi(val) * this->asm_type_to_bytes(arr.type) << "] " ;
         }
         else {
             if (val != "eax") {
@@ -665,7 +665,13 @@ inline Generator::logic_data_packet Generator::gen_logical_stmt(const node::_log
                 flags.needs_str_cout_func = true;
                 gen->m_code << "    mov edi," << expr1.substr(1) << std::endl;
                 gen->m_code << "    call sys~internal~str_buf_len" << std::endl;
-                gen->m_code << "    dec ecx" << std::endl; //compare for one less char bc \n for inserted strings and \0 for constant strings
+                gen->m_code << "    mov eax, ecx" << std::endl;
+                
+                gen->m_code << "    mov edi," << expr2.substr(1) << std::endl;
+                gen->m_code << "    call sys~internal~str_buf_len" << std::endl;
+                gen->m_code << "    cmp eax,ecx" << std::endl;
+                gen->m_code << "    jne " << provided_scope_lbl.value() << std::endl;
+
                 gen->m_code << "    mov esi, "<< expr1.substr(1) << std::endl;
                 gen->m_code << "    mov edi, " << expr2.substr(1) << std::endl;
                 gen->m_code << "    repe cmpsb" << std::endl; 
@@ -1321,7 +1327,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                 mov_val = "movzx";
             }
             gen->m_code << "    "<< mov_val <<" ebx, " << expr_val << std::endl;
-            gen->m_code << "    mov eax, 1 ; sys_exit" << std::endl;
+            gen->m_code << "    mov eax, 1 ; sys-exit" << std::endl;
             gen->m_code << "    int 0x80" << std::endl;
 #endif
         }
@@ -1506,22 +1512,30 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                 }
                 else {
                     if (is_numeric(val)) {
-                        gen->m_code << "    mov edi, " << val << std::endl;
+#ifdef _WIN32                        
+                        gen->m_code << "    mov eax, " << val << std::endl;
+#elif __linux__
+                        gen->m_code << "    mov dword [num_buffer], " << val << std::endl;
+#endif
+                        val = "eax";
                     }
                     if (val == "&eax") {
                         val = "eax";
                     }
-                    else if (val != "edi") { //if val == eax no need to mov eax, eax
-                        gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " edi," << val << std::endl;
+                    else if (val != "eax") { //if val == eax no need to mov eax, eax                    
+                        gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " eax," << val << std::endl;
+#ifdef __linux__
+                    gen->m_code << "    mov dword [num_buffer], eax" << std::endl;
+#endif
                     }
-                    //TODO: make this work w/ Linux, prob make own dwtoa implementation
 #ifdef _WIN32                    
-                    gen->m_code << "    invoke dwtoa,edi,offset buffer ;dword to ascii" << std::endl;
+                    gen->m_code << "    invoke dwtoa,eax,offset buffer ;dword to ascii" << std::endl;
                     gen->m_code << "    invoke StdOut, offset buffer" << std::endl;
 #elif __linux__
                     flags.needs_buffer = true;
                     flags.needs_str_cout_func = true;
-                    gen->m_code << "    mov esi, num_buffer" << std::endl;
+                    //the programmer is expected to have called int_to_ascii from the stdlib
+                    gen->m_code << "    mov edi, num_buffer" << std::endl;
                     gen->m_code << "    call sys~internal~str_buf_len" << std::endl;
                     gen->m_code << "    mov edi, ecx" << std::endl;
                     gen->m_code << "    mov eax, 4 ; sys-write" << std::endl;
