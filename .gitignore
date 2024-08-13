@@ -1,5 +1,7 @@
 #ignore all .brick example files and .asm files
 *.asm
+*.o
+*
 .vscode/
 .vs/
 x64/
