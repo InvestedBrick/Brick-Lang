@@ -1,4 +1,4 @@
-
+#include stdlib/int_to_ascii.brick
 bundle my_struct{
     dec x as int -> 5;
     dec pointer as int ptr -> null;
@@ -14,7 +14,7 @@ brick main{
     dec x as int -> 4;
     dec struct_1 as my_struct_1;
     set struct_1.test.int_arr[2] to 53;
-    output struct_1.test.int_arr[2];
+    output itoa(struct_1.test.int_arr[2]);
 
     exit 0;
 }

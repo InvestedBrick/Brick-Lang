@@ -1,5 +1,5 @@
-//commandline flag  "-noinfo" can be added to supress update info of the compiling process
-//commandline flag  "-nomicrosoft" can be added to not display the microsoft copyright when assembling with masm32
+//commandline flag  "-info" can be added to get info about the compiling process
+//commandline flag  "-nomicrosoft" can be added to not display the microsoft copyright when assembling with masm32 (on Windows)
 
 //include statement 
 #include funcs.brick
@@ -65,7 +65,7 @@ brick main{
     
     //for loops
     for dec i as int -> 0; i < 500; i++;{
-        output i;
+        output itoa(i);
     }
 
     //string buffers as a storage container for strings
@@ -104,7 +104,7 @@ brick main{
     
     //aaaand yes.. dereferencing null pointers is valid
     dec p as int ptr -> null;
-    //     output $p;     <--would crash the program
+    //     output itoa($p);     <--would crash the program
 
     z += 1; //increments z by 4 because it is an int pointer (int = 4 bytes) 4 * 1
     
@@ -117,11 +117,11 @@ brick main{
         output "Either Var or b == 1";
     }
     
-    dec my_bundle_1 as my_variable_bundle; //not initialization vars 
+    dec my_bundle_1 as my_variable_bundle; //no initialization of variables
 
     set my_bundle_1.x to 4; // access elements using the "." operator
 
-    output my_bundle_1.x
+    output itoa(my_bundle_1.x);
     //to see more about bundles view structs.brick
 
 

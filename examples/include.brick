@@ -1,2 +1,2 @@
-#include test4.brick
+#include stdlib/dynamic_array.brick
 

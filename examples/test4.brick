@@ -1,4 +1,4 @@
-#include funcs.brick
+#include funcs.brick //funcs hs itoa
 brick main{
     dec seed as int -> 221542513;
     dec size as int -> 10 const;
@@ -11,7 +11,7 @@ brick main{
     q_sort(&arr[0],size,0,size - 1);
     print_array(&arr[0],size);
     
-    output "Min: ",arr_min(&arr[0],size), " Max: " , arr_max(&arr[0],size);
+    output "Min: ",itoa(arr_min(&arr[0],size)), " Max: " , itoa(arr_max(&arr[0],size));
 
     if arr_contains(&arr[0],size, 338) == true{
         output "Contains number";

@@ -1,3 +1,5 @@
+#include stdlib/int_to_ascii.brick
+
 brick fac : int -> n{
     if n > 1{
         return n * fac(n - 1);
@@ -38,12 +40,12 @@ brick floorSqrt : int -> x{
     return i - 1;
 }=> int
 
-brick abs : int -> x{
+brick abs_val : int -> x{
     return floorSqrt(square(x));
 }=> int
 
 brick ptr_out : short ptr-> x{
-    output $x;
+    output itoa($x);
 }
 
 brick arr_contains : int ptr -> arr_head, int -> size, int -> key{
@@ -84,13 +86,13 @@ brick fib : int -> n{
         dec result as int -> curr + prev;
         set prev to curr;
         set curr to result;
-        output result;
+        output itoa(result);
         }
         if i == 1{
-            output prev;
+            output itoa(prev);
         }
         if i == 2{
-            output curr;
+            output itoa(curr);
         }
     }
 }
@@ -105,7 +107,7 @@ brick print_array : int ptr -> start, int -> size{
     }
     output;
     for dec i as int -> 0; i < size; i++;{
-        output start[i], " " noend;
+        output itoa(start[i]), " " noend;
     }
     output;
     for dec i as int -> 0; i < size; i++;{

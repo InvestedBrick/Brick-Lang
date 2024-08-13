@@ -1,3 +1,4 @@
+#include stdlib/int_to_ascii.brick
 brick main{
     //Sieve of Erathosthenes
     dec n as int -> 500;
@@ -17,7 +18,7 @@ brick main{
     }
     for dec i as int -> 2; i <= n; i++;{
         if sieve[i] == true{
-            output i, " " noend;
+            output itoa(i), " " noend;
         }
     }
     
