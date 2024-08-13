@@ -29,10 +29,10 @@ checklist:
 [X] make array indexing from startptr possible like in C
 [X] allow setting of indexed ptr 
 [X] dynamic memory (view examples/memory.brick)
-[ ] change stringbuffers / dynamic strings?
+[X] port generation to Linux / split win && Linux
 [ ] floating points
 [ ] reading/writing from and to files
 [ ] struct pointers
-[ ] port generation to Linux / split win && Linux
 [ ] write own malloc / free for Linux
+[ ] unit tests
 
