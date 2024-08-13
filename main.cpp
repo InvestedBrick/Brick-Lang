@@ -2,38 +2,31 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <chrono>
 #include "headers/preprocessor.hpp"
 #include "headers/generation.hpp"
-bool output_info = true;
-#ifdef _WIN32
+bool output_info = false;
 
 
 
 bool is_arg(std::string arg){
-    if(arg == "-noinfo"){
-        output_info = false;
+    if(arg == "-info"){
+        output_info = true;
         return true;
-    }else if(arg == "-nomicrosoft"){
+    }
+#ifdef _WIN32
+    else if(arg == "-nomicrosoft"){
         nologo = "/nologo ";
         return true;
     }
+#endif    
     return false;
 
 }
-
-void parse_commandline_args(int argc, char* argv[]){
-    if(argc > 2){
-        for(int i = 2; i < argc; i++){
-            if(!is_arg(argv[i])){
-                std::cerr << "Invalid Argment '" << argv[i] << "' was supplied" << std::endl;
-                return 1; 
-            }
-        }
-    }
-}
     
-#endif
 int main(int argc, char* argv[]) {
+
+    auto start_time = std::chrono::high_resolution_clock::now();
     if (argc < 2)
     {
         std::cerr << "Invalid amount of inputs, Correct Usage:" << std::endl;
@@ -53,9 +46,14 @@ int main(int argc, char* argv[]) {
             return 1;
         }
     }
-    #ifdef _WIN32
-    parse_commandline_arguments(argc,argv)
-    #endif
+    if(argc > 2){
+        for(int i = 2; i < argc; i++){
+            if(!is_arg(argv[i])){
+                std::cerr << "Invalid Argment '" << argv[i] << "' was supplied" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
     std::string contents;
     {
         std::stringstream contents_stream;
@@ -92,6 +90,10 @@ int main(int argc, char* argv[]) {
             std::cout << "Finished Generating..." << std::endl;
         output.close();
     }
+    auto stop_time = std::chrono::high_resolution_clock::now();
+    auto compile_time = std::chrono::duration_cast<std::chrono::milliseconds>(stop_time - start_time);
+    std::cout << "Compilation finished successfully in " << compile_time.count() << "ms " << std::endl;
+
     std::string assemble_command, link_command;
 #ifdef _WIN32    
     assemble_command = "C:\\masm32\\bin\\ml.exe /c /coff " + nologo + output_filename.str();
@@ -101,13 +103,12 @@ int main(int argc, char* argv[]) {
     system(assemble_command.c_str());
     system(link_command.c_str());
 #elif __linux__
-    assemble_command =  "nasm -f elf64 -o " + filename.substr(0,filename.find_last_of(".") ) + ".o"+ " " + output_filename.str();
-    link_command = "ld -o " + filename.substr(0,filename.find_last_of(".")) + " " + filename.substr(0,filename.find_last_of(".") ) + ".o";
+    assemble_command =  "nasm -f elf32 -o " + filename.substr(0,filename.find_last_of(".") ) + ".o"+ " " + output_filename.str();
+    link_command = "ld -m elf_i386 -o " + filename.substr(0,filename.find_last_of(".")) + " " + filename.substr(0,filename.find_last_of(".") ) + ".o";
     
     
-    //NOT CURRENTLY IMPLEMENTED FOR LINUX
-    //system(assemble_command.c_str());
-    //system(link_command.c_str());
+    system(assemble_command.c_str());
+    system(link_command.c_str());
 #endif
     return 0;
 }
