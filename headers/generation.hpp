@@ -1,6 +1,6 @@
 #pragma once
 #include <sstream>
-//#include <cassert>
+#include <cassert>
 #include "parsing.hpp"
 bool is_numeric(const std::string& str);
 class Generator {
@@ -34,7 +34,6 @@ private:
     };
     struct function {
         std::string name;
-        std::string generated;
         std::string ret_lbl;
         std::optional<Token_type> ret_type;
         std::vector<node::_argument> arguments{};
@@ -65,14 +64,19 @@ private:
     size_t label_counter = 0;
     size_t string_counter = 0;
     size_t string_buffer_counter = 0;
-    size_t func_counter = 0;
     const node::_program m_prog;
+#ifdef __linux    
+    std::stringstream m_bss;
+#endif    
     std::stringstream m_data;
     std::stringstream m_code;
     std::stringstream m_output;
     std::stringstream m_func_space;
+#ifdef _WIN32
     std::string m_header = ".686p\noption casemap:none\ninclude <C:\\masm32\\include\\masm32rt.inc>\n\n";
-    size_t m_stack_ptr = 0;
+#elif __linux__
+    std::string m_header = "global _start\n";
+#endif
     size_t m_base_ptr_off = 0;
     size_t line_counter = 1;
     std::vector<std::string> curr_func_name{};
@@ -103,10 +107,9 @@ private:
     {"dl",8},
     };
 
-
     //methods
     template <typename T>
-    void transferElements(std::vector<T>&& source, std::vector<std::variant<Var, string_buffer, String, Var_array,Struct>>& destination, int count);
+    void transferElements(std::vector<T>&& source, std::vector<std::variant<Var, string_buffer, String, Var_array, Struct>>& destination, int count);
     void var_set_str();
     template<typename iterator,typename var_set>
     void var_set_str_buf(iterator it,var_set var_num);
@@ -118,13 +121,10 @@ private:
     void var_set_struct(iterator it,var_set struct_set);
     template<typename iterator,typename var_set>
     void var_set_ptr_array(iterator it,var_set array_set);
-    void push(const std::string& val);
-    void pop(const std::string& reg);
     inline void line_err(const std::string& err_msg);
     inline std::string mk_label();
     inline std::string mk_str_lit();
     inline std::string mk_str_buf();
-    inline std::string mk_func();
     inline void reset_labels();
     inline std::string get_mov_instruc(const std::string& dest, const std::string& source);
     inline size_t asm_type_to_bytes(std::string str);
