@@ -73,7 +73,6 @@ void PreProcessor::rem_included_main_funcs() {
     if (idx == std::string::npos) return;
 
     while (true) {
-        std::cout << "Main Func: " << this->m_str.substr(idx, 10) << std::endl;
         size_t prev_idx = this->m_str.rfind("brick main", idx - 1);
         if (prev_idx == std::string::npos) break;
         
