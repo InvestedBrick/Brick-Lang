@@ -656,8 +656,20 @@ inline Generator::logic_data_packet Generator::gen_logical_stmt(const node::_log
                 if (!(boolean_expr->op == Token_type::_same_as || boolean_expr->op == Token_type::_not_same_as)) {
                     gen->line_err("Invalid comparison for strings");
                 }
-                //string comparison at compile time 
-                gen->m_code << "    mov eax, " << std::to_string(expr1.substr(1) == expr2.substr(1)) << std::endl;
+#ifdef _WIN32
+                gen->m_code << "    push offset " << expr1.substr(1) << std::endl;
+                gen->m_code << "    push offset " << expr2.substr(1) << std::endl;
+                gen->m_code << "    call crt__stricmp" << std::endl;
+                gen->m_code << "    cmp eax, 0" << std::endl;
+#elif __linux__
+                flags.needs_str_cout_func = true;
+                gen->m_code << "    mov edi," << expr1.substr(1) << std::endl;
+                gen->m_code << "    call sys~internal~str_buf_len" << std::endl;
+                gen->m_code << "    dec ecx" << std::endl; //compare for one less char bc \n for inserted strings and \0 for constant strings
+                gen->m_code << "    mov esi, "<< expr1.substr(1) << std::endl;
+                gen->m_code << "    mov edi, " << expr2.substr(1) << std::endl;
+                gen->m_code << "    repe cmpsb" << std::endl; 
+#endif
             }
             else if (expr1.rfind("\"", 0) == std::string::npos && expr1.rfind("\"", 0) == std::string::npos) { //neither are string literals
                 if (expr1 == "&eax") {
@@ -1323,7 +1335,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
             gen->gen_var_set(stmt_var_set);
         }
         void operator()(const node::_asm_* _asm_) {
-            gen->m_code << "    " << _asm_->str_lit.value.value() << " ; Inline assembly here"<< std::endl;
+            gen->m_code << _asm_->str_lit.value.value() << " ; Inline assembly here"<< std::endl;
         }
         void operator()(const node::_statement_scope* statement_scope) {
             gen->gen_scope(statement_scope);
@@ -1494,17 +1506,30 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                 }
                 else {
                     if (is_numeric(val)) {
-                        gen->m_code << "    mov eax, " << val << std::endl;
+                        gen->m_code << "    mov edi, " << val << std::endl;
                     }
                     if (val == "&eax") {
                         val = "eax";
                     }
-                    else if (val != "eax") { //if val == eax no need to mov eax, eax
-                        gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " eax," << val << std::endl;
+                    else if (val != "edi") { //if val == eax no need to mov eax, eax
+                        gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " edi," << val << std::endl;
                     }
                     //TODO: make this work w/ Linux, prob make own dwtoa implementation
-                    gen->m_code << "    invoke dwtoa,eax,offset buffer ;dword to ascii" << std::endl;
+#ifdef _WIN32                    
+                    gen->m_code << "    invoke dwtoa,edi,offset buffer ;dword to ascii" << std::endl;
                     gen->m_code << "    invoke StdOut, offset buffer" << std::endl;
+#elif __linux__
+                    flags.needs_buffer = true;
+                    flags.needs_str_cout_func = true;
+                    gen->m_code << "    mov esi, num_buffer" << std::endl;
+                    gen->m_code << "    call sys~internal~str_buf_len" << std::endl;
+                    gen->m_code << "    mov edi, ecx" << std::endl;
+                    gen->m_code << "    mov eax, 4 ; sys-write" << std::endl;
+                    gen->m_code << "    mov ebx, 1" << std::endl;
+                    gen->m_code << "    mov ecx, num_buffer" << std::endl;
+                    gen->m_code << "    mov edx, edi" << std::endl;
+                    gen->m_code << "    int 0x80" << std::endl;
+#endif
                 }
             }
             if (!stmt_output->noend) {
@@ -1527,12 +1552,19 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                 gen->line_err(ss.str());
             }
             else {
-                //TODO: enable writing to buffers (arrays) for linux
+                //TODO: enable writing to arrays for linux
 #ifdef _WIN32                
                 gen->m_code << "    invoke StdIn, offset " << (*it).generated << ", " << (*it).size << std::endl;
                 gen->m_code << "    invoke StdIn, offset buffer, 255 ;clear the rest of the input buffer " << std::endl;
 #elif __linux__
-
+                gen->m_code << "    mov eax, 3 ;sys-read" << std::endl;
+                gen->m_code << "    xor ebx, ebx" << std::endl;
+                gen->m_code << "    mov ecx, " << (*it).generated << std::endl;
+                gen->m_code << "    mov edx, " << (*it).size << std::endl;
+                gen->m_code << "    int 0x80" << std::endl;
+                flags.needs_nl_replace_func = true;
+                gen->m_code << "    mov edi, " << (*it).generated << std::endl;
+                gen->m_code << "    call sys~internal_replace_nl_null" << std::endl;
 #endif
             }
         }
@@ -1601,6 +1633,10 @@ std::string Generator::gen_program() {
 
 #ifdef __linux__
     m_output << "section .bss\n";
+
+    if(flags.needs_buffer){
+        m_output << "    num_buffer resb 12 " << std::endl;
+    }
     m_output << m_bss.str();
 
 #endif
@@ -1639,6 +1675,21 @@ if(flags.needs_str_cout_func){
     m_output << "    jmp .loop             " << std::endl;
     m_output << ".done:                    " << std::endl;
     m_output << "    ret                   " << std::endl;
+}
+
+if(flags.needs_nl_replace_func){
+m_output << "sys~internal_replace_nl_null:           " << std::endl;
+m_output << "    ; Loop to find the newline character" << std::endl;
+m_output << "    mov al, 10                          " << std::endl;
+m_output << "find_newline:                           " << std::endl;
+m_output << "    cmp byte [edi], al                  " << std::endl;
+m_output << "    je replace_char                     " << std::endl;
+m_output << "    inc edi                             " << std::endl;
+m_output << "    jmp find_newline                    " << std::endl;
+m_output << "replace_char:                           " << std::endl;
+m_output << "    mov byte [edi], 0                   " << std::endl;
+m_output << "    ret                                 " << std::endl;                   
+
 }
 #endif
 
