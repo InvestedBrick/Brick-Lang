@@ -12,6 +12,7 @@ struct _flags
     bool needs_buffer = false;
     bool needs_str_cpy_func = false;
     bool needs_str_cout_func = false;
+    bool needs_nl_replace_func = false;
 };
 inline _flags flags;
 void print_token(Token token);
