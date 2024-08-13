@@ -4,13 +4,16 @@
 #include "arena_allocator.hpp"
 #include "tokenization.hpp"
 #include "namespaces/node.hpp"
+
+#define MAX_FUNC_ARGS 4
 //sorry for global variable but I need it
 struct _flags
 {
     bool needs_buffer = false;
+    bool needs_str_cpy_func = false;
+    bool needs_str_cout_func = false;
 };
 inline _flags flags;
-const int MAX_FUNC_ARGS = 4;
 void print_token(Token token);
 bool is_data_type(Token_type type);
 size_t var_type_to_bytes(Token_type type);
