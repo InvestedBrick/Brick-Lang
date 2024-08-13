@@ -1,4 +1,12 @@
 #include "headers/generation.hpp"
+
+#ifdef _WIN32
+#define PTR_KEYWORD " ptr "
+#elif __linux__
+#define PTR_KEYWORD ""
+#endif
+
+
 bool is_numeric(const std::string& str) {
     for (char c : str) {
         if (!std::isdigit(c)) {
@@ -78,10 +86,10 @@ inline std::string Generator::get_correct_part_of_register(const std::string& so
 }
 inline void Generator::scope_start(bool main_or_func_scope, size_t alloc) {
     //init a new stackframe
-    if (main_or_func_scope) {
+    if (main_or_func_scope && alloc != 0) {
         this->m_base_ptr_pos.push_back(this->m_base_ptr_off);
         this->m_base_ptr_off = 0;
-        m_code << "    ebp" << std::endl;
+        m_code << "    push ebp" << std::endl;
         m_code << "    mov ebp,esp" << std::endl;
         m_code << "    sub esp," << alloc << std::endl;
 
@@ -90,20 +98,16 @@ inline void Generator::scope_start(bool main_or_func_scope, size_t alloc) {
     m_scope_arrays.push_back(m_arrays.size());
     m_scopes.push_back(m_vars.size());//sets the scope position to the num of variables
 
-#ifdef _WIN32
     m_scope_str_bufs.push_back(m_str_bufs.size());
-#endif
 
 }
 inline void Generator::scope_end(bool main_or_func_scope, size_t alloc) {
-#ifdef _WIN32    
     const size_t str_bufs_dec = m_str_bufs.size() - this->m_scope_str_bufs.back();
     for (auto it = m_str_bufs.end() - str_bufs_dec; it != m_str_bufs.end(); ++it) { //free all the string buffers declared in the scope
         (*it).free = true;
     }
     m_scope_str_bufs.pop_back();
     
-#endif
 
     const size_t vars_dec = m_vars.size() - this->m_scopes.back();
     for (size_t i = 0; i < vars_dec; i++) {
@@ -129,7 +133,7 @@ inline std::string Generator::gen_str_lit(const std::string string_lit) {
     if (it == this->m_strs.cend()) { // string lit value was not already declared
         String str;
         std::string generated = mk_str_lit();
-        this->m_data << "    " << generated << " db \"" << string_lit << "\"" << std::endl;
+        this->m_data << "    " << generated << " db \"" << string_lit << "\",0" << std::endl;
 #ifdef __linux__        
         this->m_data << "    " << generated << "_len equ $ - " << generated << std::endl;
 #endif        
@@ -185,7 +189,7 @@ std::string Generator::gen_term_struct(iterator struct_it, struct_ident struct_i
     std::stringstream offset;
     if(std::holds_alternative<Var>(*it)){
         Var var = std::get<Var>(*it);
-        offset << var.type << " ptr [ebp - " << (var.base_pointer_offset) << "]";
+        offset << var.type << PTR_KEYWORD << " [ebp - " << (var.base_pointer_offset) << "]";
         return offset.str();
     }
     else if(std::holds_alternative<string_buffer>(*it)){
@@ -203,13 +207,13 @@ std::string Generator::gen_term_struct(iterator struct_it, struct_ident struct_i
         //repetitive code is okay here because another template is not worth it
         std::string val = this->gen_expr(struct_ident_->index_expr).value();
         if (is_numeric(val)) {
-            offset << arr.type <<" ptr[ebp - " << arr.head_base_pointer_offset - std::stoi(val) * this->asm_type_to_bytes(arr.type) << "] " ;
+            offset << arr.type << PTR_KEYWORD << "[ebp - " << arr.head_base_pointer_offset - std::stoi(val) * this->asm_type_to_bytes(arr.type) << "] " ;
         }
         else {
             if (val != "eax") {
                 this->m_code << "    " << this->get_mov_instruc("eax", val.substr(0, val.find_first_of(" "))) << " eax, " << val << std::endl;
             }
-            offset << arr.type << " ptr [ebp - " << arr.head_base_pointer_offset << " + eax * " << this->asm_type_to_bytes(arr.type) << "]";
+            offset << arr.type <<  PTR_KEYWORD << " [ebp - " << arr.head_base_pointer_offset << " + eax * " << this->asm_type_to_bytes(arr.type) << "]";
         }
         return offset.str();
     }
@@ -243,24 +247,20 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                     offset << "\"" << (*str_it).generated;
                 }
                 else {
-#ifdef _WIN32
                     const auto str_buf_it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), 
                         [&](const string_buffer& var) { return var.name == term_ident->ident.value.value(); });
 
                     if (str_buf_it != gen->m_str_bufs.cend()) {
                         offset << "\"" << str_buf_it->generated;
                     } else {
-#endif
                         std::stringstream ss;
                         ss << "Identifier '" << term_ident->ident.value.value() << "' was not declared in this scope!" << std::endl;
                         gen->line_err(ss.str());
-#ifdef _WIN32
                     }
-#endif
                 }
             }
             else {
-                offset << (*it).type << " ptr [ebp - " << ((*it).base_pointer_offset) << "]";
+                offset << (*it).type <<  PTR_KEYWORD << " [ebp - " << ((*it).base_pointer_offset) << "]";
             }
             ret_val = offset.str();
         }
@@ -284,7 +284,7 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
             }
             std::stringstream ss;
             
-            ss << (*it).type << " ptr [ebp - " << (*it).base_pointer_offset << "]";
+            ss << (*it).type <<  PTR_KEYWORD << " [ebp - " << (*it).base_pointer_offset << "]";
             gen->m_code << "    "<< gen->get_mov_instruc("eax",(*it).type) << " eax," << ss.str() << std::endl;
             //check if it is a ptr, if so increment by the ptr_type
             if ((*it).ptr) {
@@ -362,8 +362,8 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                 gen->line_err(ss.str());
             }
 
-            gen->m_code << "    mov eax, dword ptr [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
-            gen->m_code << "    " << gen->get_mov_instruc("eax", (*it).ptr_type) << " eax, " << (*it).ptr_type << " ptr [eax]" << std::endl;
+            gen->m_code << "    mov eax, dword " << PTR_KEYWORD << " [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
+            gen->m_code << "    " << gen->get_mov_instruc("eax", (*it).ptr_type) << " eax, " << (*it).ptr_type <<  PTR_KEYWORD << " [eax]" << std::endl;
             ret_val = "eax";
         }
         void operator()(const node::_term_array_index* term_array_idx) {
@@ -390,11 +390,11 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                 if(!numeric) {
                     gen->m_code << "    " << gen->get_mov_instruc("ebx", val.substr(0, val.find_first_of(' '))) << " ebx, " << val << std::endl;
                 }
-                gen->m_code << "    mov eax, dword ptr [ebp - " << (*var_it).base_pointer_offset << "]" << std::endl;
+                gen->m_code << "    mov eax, dword " << PTR_KEYWORD << " [ebp - " << (*var_it).base_pointer_offset << "]" << std::endl;
                 if(numeric) {
-                    ss << (*var_it).ptr_type << " ptr [eax + " << std::stoi(val) *  gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
+                    ss << (*var_it).ptr_type <<  PTR_KEYWORD << " [eax + " << std::stoi(val) *  gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
                 }else{
-                    ss << (*var_it).ptr_type << " ptr [eax + ebx * " << gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
+                    ss << (*var_it).ptr_type <<  PTR_KEYWORD << " [eax + ebx * " << gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
                 }
                 ret_val = ss.str();
                 
@@ -406,13 +406,13 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                     gen->line_err("Cannot use string as an array index");
                 }
                 if (is_numeric(val)) {
-                    ss << (*it).type <<" ptr [ebp - " << (*it).head_base_pointer_offset - std::stoi(val) * gen->asm_type_to_bytes((*it).type) << "] " ;
+                    ss << (*it).type << PTR_KEYWORD << " [ebp - " << (*it).head_base_pointer_offset - std::stoi(val) * gen->asm_type_to_bytes((*it).type) << "] " ;
                 }
                 else {
                     if (val != "eax") {
                         gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(" "))) << " eax, " << val << std::endl;
                     }
-                    ss << (*it).type << " ptr [ebp - " << (*it).head_base_pointer_offset << " + eax * " << gen->asm_type_to_bytes((*it).type) << "]";
+                    ss << (*it).type <<  PTR_KEYWORD << " [ebp - " << (*it).head_base_pointer_offset << " + eax * " << gen->asm_type_to_bytes((*it).type) << "]";
                 }
                 ret_val = ss.str();
             }
@@ -792,14 +792,14 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                     var.type = "dword"; //pointers need to be dwords
                 }
                 gen->m_base_ptr_off += gen->asm_type_to_bytes(var.type);
-                gen->m_code << "    mov " << var.type << " ptr [ebp - " << gen->m_base_ptr_off << "]" << "," << num << std::endl;
+                gen->m_code << "    mov " << var.type <<  PTR_KEYWORD << " [ebp - " << gen->m_base_ptr_off << "]" << "," << num << std::endl;
             }
             else {
                 if (var_num->type == Token_type::_bool) {
                     var.bool_limit = true;
                     gen->m_code << "    cmp " << val << ", 0" << std::endl;
                     gen->m_code << "    setne dl" << std::endl;
-                    gen->m_code << "    mov " << var.type << " ptr [ebp - " << gen->m_base_ptr_off << "]" << ", dl" << std::endl;
+                    gen->m_code << "    mov " << var.type <<  PTR_KEYWORD << " [ebp - " << gen->m_base_ptr_off << "]" << ", dl" << std::endl;
                 }
                 else {
                     if (var_num->_ptr) {
@@ -820,7 +820,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                         gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " eax, " << val << std::endl;
                     }
                     gen->m_base_ptr_off += gen->asm_type_to_bytes(var.type);
-                    gen->m_code << "    mov " << var.type << " ptr [ebp - " << gen->m_base_ptr_off << "]" << ", " << gen->get_correct_part_of_register(var.type) << std::endl;
+                    gen->m_code << "    mov " << var.type <<  PTR_KEYWORD << " [ebp - " << gen->m_base_ptr_off << "]" << ", " << gen->get_correct_part_of_register(var.type) << std::endl;
                 }
             }
             var.name = var_num->ident.value.value();
@@ -843,9 +843,6 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             
         }
         void operator()(const node::_var_dec_str_buf* var_str_buf) {
-#ifdef __linux__
-            assert(false && "Not implemented / not compatible");
-#endif
             const auto it  = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& str_buf) {return str_buf.name == var_str_buf->ident.value.value(); });
             if (it != gen->m_str_bufs.cend()) {
                 if (!(*it).free) {
@@ -864,7 +861,11 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                         str_buf.size = stoi(var_str_buf->_int_lit.value.value()); //safe because it is guaranteed to be an integer literal
                         str_buf.name = var_str_buf->ident.value.value();
                         str_buf.generated = gen->mk_str_buf();
+#ifdef _WIN32                        
                         gen->m_data << "    " << str_buf.generated << " db " << str_buf.size + 1 << " dup(0)" << std::endl; // the + 1 to prevent buffer overflows
+#elif __linux__
+                        gen->m_bss << "    " << str_buf.generated << " resb " << str_buf.size + 1 << std::endl;
+#endif
                     }
                     gen->m_str_bufs.push_back(str_buf);
                 }
@@ -884,7 +885,11 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                     str_buf.size = stoi(var_str_buf->_int_lit.value.value()); //safe because it is guaranteed to be an integer literal
                     str_buf.name = var_str_buf->ident.value.value();
                     str_buf.generated = gen->mk_str_buf();
+#ifdef _WIN32                        
                     gen->m_data << "    " << str_buf.generated << " db " << str_buf.size + 1 << " dup(0)" << std::endl; // the + 1 to prevent buffer overflows
+#elif __linux__
+                    gen->m_bss << "    " << str_buf.generated << " resb " << str_buf.size + 1 << std::endl;
+#endif
                 }
                 gen->m_str_bufs.push_back(str_buf);
 
@@ -958,10 +963,18 @@ void Generator::var_set_str_buf(iterator it,var_set var_num){
     if (val.rfind("\"", 0) != 0) { 
         this->line_err("Stringbuffers can only be assigned strings");               
     }
+#ifdef _WIN32    
     this->m_code << "    mov esi, offset " << val.substr(1) << std::endl;
     this->m_code << "    mov edi, offset " << (*it).generated << std::endl;
     this->m_code << "    mov ecx," << (*it).size << std::endl;
     this->m_code << "    rep movsb" << std::endl;
+#elif __linux__
+    flags.needs_str_cpy_func = true;
+    this->m_code << "    mov esi, " << val.substr(1) << std::endl;
+    this->m_code << "    mov edi, " << (*it).generated << std::endl;
+    this->m_code << "    call sys~internal_strcpy" << std::endl;
+
+#endif
 }
 
 template<typename iterator,typename var_set>
@@ -985,21 +998,21 @@ void Generator::var_set_number(iterator it,var_set var_num){
         }
         if ((*it).ptr) {
             if (var_num->deref) { //manual dereference
-                this->m_code << "    mov eax, dword ptr [ebp -  " << (*it).base_pointer_offset << "]" << std::endl;
-                this->m_code << "    mov " << (*it).ptr_type << " ptr [eax], " << num << std::endl;
+                this->m_code << "    mov eax, dword " << PTR_KEYWORD << " [ebp -  " << (*it).base_pointer_offset << "]" << std::endl;
+                this->m_code << "    mov " << (*it).ptr_type <<  PTR_KEYWORD << " [eax], " << num << std::endl;
                 return;
             }
             else if (num != 0) {
                 this->line_err("Integer value for pointer may only be null (0)");
             }
         }
-        this->m_code << "    mov " << (*it).type << " ptr [ebp - " << (*it).base_pointer_offset << "]" << "," << num << std::endl;
+        this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << " [ebp - " << (*it).base_pointer_offset << "]" << "," << num << std::endl;
     }
     else {
         if ((*it).bool_limit && !var_num->deref) {
             this->m_code << "    cmp " << val << ", 0" << std::endl;
             this->m_code << "    setne dl" << std::endl;
-            this->m_code << "    mov " << (*it).type << " ptr [ebp - " << (*it).base_pointer_offset << "]" << ", dl" << std::endl;
+            this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << " [ebp - " << (*it).base_pointer_offset << "]" << ", dl" << std::endl;
         }
         else {
             if ((*it).ptr) {
@@ -1013,15 +1026,15 @@ void Generator::var_set_number(iterator it,var_set var_num){
                     else {
                         this->m_code << "    " << this->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " edx, " << val << std::endl;
                     }
-                    this->m_code << "    mov eax, dword ptr [ebp -  " << (*it).base_pointer_offset << "]" << std::endl;
-                    this->m_code << "    mov " << (*it).ptr_type << " ptr [eax], " << this->get_correct_part_of_register((*it).ptr_type, true) << std::endl;
+                    this->m_code << "    mov eax, dword " << PTR_KEYWORD << " [ebp -  " << (*it).base_pointer_offset << "]" << std::endl;
+                    this->m_code << "    mov " << (*it).ptr_type <<  PTR_KEYWORD << " [eax], " << this->get_correct_part_of_register((*it).ptr_type, true) << std::endl;
                 }
                 
             }
             if (val != "eax") {
                 this->m_code << "    " << this->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " eax, " << val << std::endl;
             }
-            this->m_code << "    mov " << (*it).type << " ptr [ebp - " << (*it).base_pointer_offset << "]" << "," << this->get_correct_part_of_register((*it).type) << std::endl;
+            this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << " [ebp - " << (*it).base_pointer_offset << "]" << "," << this->get_correct_part_of_register((*it).type) << std::endl;
         }
     }
 }
@@ -1038,14 +1051,14 @@ void Generator::var_set_ptr_array(iterator it,var_set array_set){
         if ((*it).bool_limit) {
             num = (num != 0) ? 1 : 0;
         }
-        this->m_code << "    mov ebx, dword ptr [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
+        this->m_code << "    mov ebx, dword " << PTR_KEYWORD << " [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
         if(is_numeric(index_val)){
-            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,"ebx") << " " << (*it).ptr_type << " ptr [ebx + " << std::stoi(index_val) * this->asm_type_to_bytes((*it).ptr_type) << "], "  << num << std::endl;
+            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,"ebx") << " " << (*it).ptr_type <<  PTR_KEYWORD << " [ebx + " << std::stoi(index_val) * this->asm_type_to_bytes((*it).ptr_type) << "], "  << num << std::endl;
         }else{
             if(index_val != "eax"){
                 this->m_code << "    " << this->get_mov_instruc("eax", index_val.substr(0, index_val.find_first_of(" "))) << " eax, " << index_val << std::endl;
             }
-            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,"eax") <<" " << (*it).ptr_type << " ptr [ebx + eax * " << this->asm_type_to_bytes((*it).ptr_type) << "], "  << num << std::endl;
+            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,"eax") <<" " << (*it).ptr_type <<  PTR_KEYWORD << " [ebx + eax * " << this->asm_type_to_bytes((*it).ptr_type) << "], "  << num << std::endl;
         }
         
     }else{
@@ -1061,13 +1074,13 @@ void Generator::var_set_ptr_array(iterator it,var_set array_set){
             this->m_code << "    cmp " << val << ", 0" << std::endl;
             this->m_code << "    setne bl" << std::endl;
         }
-        this->m_code << "    mov ecx, dword ptr [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
+        this->m_code << "    mov ecx, dword " << PTR_KEYWORD << " [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
         if (is_numeric(index_val)) {
             std::string mov_reg = "edx";
             if((*it).bool_limit){
                 mov_reg = "bl";
             }
-            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,mov_reg) << " " << (*it).ptr_type << " ptr [ecx + " << std::stoi(index_val) * this->asm_type_to_bytes((*it).ptr_type) << "], "  << mov_reg << std::endl;
+            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,mov_reg) << " " << (*it).ptr_type <<  PTR_KEYWORD << " [ecx + " << std::stoi(index_val) * this->asm_type_to_bytes((*it).ptr_type) << "], "  << mov_reg << std::endl;
         }
         else {
             std::string mov_reg =  "edx";
@@ -1078,7 +1091,7 @@ void Generator::var_set_ptr_array(iterator it,var_set array_set){
             if (index_val != "eax") {
                 this->m_code << "    " << this->get_mov_instruc("eax", index_val.substr(0, index_val.find_first_of(" "))) << " eax, " << index_val << std::endl;
             } // now: index value in eax and expression value in edx or bl
-            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,mov_reg) << " " << (*it).ptr_type << " ptr [ecx + eax * " << this->asm_type_to_bytes((*it).ptr_type) << "], "  << mov_reg << std::endl;
+            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,mov_reg) << " " << (*it).ptr_type <<  PTR_KEYWORD << " [ecx + eax * " << this->asm_type_to_bytes((*it).ptr_type) << "], "  << mov_reg << std::endl;
         }
     }
 }    
@@ -1096,13 +1109,13 @@ void Generator::var_set_array(iterator it,var_set array_set){
             num = (num != 0) ? 1 : 0;
         }
         if (is_numeric(index_val)) {
-            this->m_code << "    mov " << (*it).type << " ptr [ebp - " << (*it).head_base_pointer_offset - std::stoi(index_val) * this->asm_type_to_bytes((*it).type) << "], " << num << std::endl;
+            this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << " [ebp - " << (*it).head_base_pointer_offset - std::stoi(index_val) * this->asm_type_to_bytes((*it).type) << "], " << num << std::endl;
         }
         else {
             if (index_val != "eax") {
                 this->m_code << "    " << this->get_mov_instruc("eax", index_val.substr(0, index_val.find_first_of(" "))) << " eax, " << index_val << std::endl;
             }
-            this->m_code << "    mov " << (*it).type << " ptr [ebp - " << (*it).head_base_pointer_offset << " + eax * " << this->asm_type_to_bytes((*it).type) << "], " << num << std::endl;
+            this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << " [ebp - " << (*it).head_base_pointer_offset << " + eax * " << this->asm_type_to_bytes((*it).type) << "], " << num << std::endl;
         }
     }
     else {
@@ -1125,7 +1138,7 @@ void Generator::var_set_array(iterator it,var_set array_set){
                 mov_reg = "bl";
             }
             
-            this->m_code << "    " << this->get_mov_instruc((*it).type,mov_reg) << " " << (*it).type << " ptr [ebp - " << (*it).head_base_pointer_offset - std::stoi(index_val) * this->asm_type_to_bytes((*it).type) << "], " << mov_reg << std::endl;
+            this->m_code << "    " << this->get_mov_instruc((*it).type,mov_reg) << " " << (*it).type <<  PTR_KEYWORD << " [ebp - " << (*it).head_base_pointer_offset - std::stoi(index_val) * this->asm_type_to_bytes((*it).type) << "], " << mov_reg << std::endl;
             
         }
         else {
@@ -1138,7 +1151,7 @@ void Generator::var_set_array(iterator it,var_set array_set){
                 this->m_code << "    " << this->get_mov_instruc("eax", index_val.substr(0, index_val.find_first_of(" "))) << " eax, " << index_val << std::endl;
             } // now: index value in eax and expression value in edx or bl
             
-            this->m_code << "    mov " << (*it).type << " ptr [ebp - " << (*it).head_base_pointer_offset << " + eax * " << this->asm_type_to_bytes((*it).type) << "], " << mov_reg << std::endl;
+            this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << " [ebp - " << (*it).head_base_pointer_offset << " + eax * " << this->asm_type_to_bytes((*it).type) << "], " << mov_reg << std::endl;
         }
         
     }
@@ -1295,9 +1308,9 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
             else{
                 mov_val = "movzx";
             }
-            gen->m_code << "    "<< mov_val <<" rdi " << expr_val << std::endl;
-            gen->m_code << "    mov rax, 60 ; sys_exit" << std::endl;
-            gen->m_code << "    syscall" << std::endl;
+            gen->m_code << "    "<< mov_val <<" ebx, " << expr_val << std::endl;
+            gen->m_code << "    mov eax, 1 ; sys_exit" << std::endl;
+            gen->m_code << "    int 0x80" << std::endl;
 #endif
         }
         void operator()(const node::_null_stmt* null_stmt) {
@@ -1378,7 +1391,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                         var.name = stmt_func->arguments[i]->ident.value.value();
                         gen->m_base_ptr_off += gen->asm_type_to_bytes(stmt_func->arguments[i]->type);
                         gen->m_code << "    mov eax," << gen->m_func_registers[i] << std::endl;
-                        gen->m_code << "    mov" << " " << var.type << " ptr [ebp - " << gen->m_base_ptr_off << "]" << ", " << gen->get_correct_part_of_register(var.type) << std::endl;
+                        gen->m_code << "    mov" << " " << var.type <<  PTR_KEYWORD << " [ebp - " << gen->m_base_ptr_off << "]" << ", " << gen->get_correct_part_of_register(var.type) << std::endl;
                         var.base_pointer_offset = gen->m_base_ptr_off;
                         gen->m_vars.push_back(var);
                         func.arguments.push_back(*stmt_func->arguments[i]);
@@ -1428,7 +1441,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                 gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(" "))) << " eax, " << val << std::endl;
             }
             std::stringstream ss;
-            ss << (*it).type << " ptr [ebp - " <<  (*it).base_pointer_offset << "]";
+            ss << (*it).type <<  PTR_KEYWORD << " [ebp - " <<  (*it).base_pointer_offset << "]";
             if ((*it).ptr) {
                 gen->m_code << "    imul eax, " << gen->asm_type_to_bytes((*it).ptr_type) << std::endl;
             }
@@ -1464,11 +1477,19 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
 #ifdef _WIN32                
                     gen->m_code << "    invoke StdOut, offset " << val.substr(1) << std::endl;
 #elif __linux__
-                    gen->m_code << "    mov rax, 1" << std::endl;
-                    gen->m_code << "    mov rdi, 1" << std::endl;
-                    gen->m_code << "    mov rsi, " << val.substr(1) << std::endl;
-                    gen->m_code << "    mov rdx, " << val.substr(1) + "_len" << std::endl; //length was declared in gen_str_lit
-                    gen->m_code << "    syscall" << std::endl;
+                    std::string len = val.substr(1) + "_len";
+                    if(val.find("string_buffer_") != std::string::npos) // it is a stringbuffer
+                    {
+                        flags.needs_str_cout_func = true;
+                        gen->m_code << "    mov edi, " << val.substr(1) << std::endl;
+                        gen->m_code << "    call sys~internal~str_buf_len" << std::endl; //calculate lenght of strbuf and store in ecx
+                        len = "ecx";
+                    }
+                    gen->m_code << "    mov eax, 4 ;sys-write" << std::endl;
+                    gen->m_code << "    mov ebx, 1" << std::endl;
+                    gen->m_code << "    mov ecx, " << val.substr(1) << std::endl;
+                    gen->m_code << "    mov edx, " << len<< std::endl; //length was declared in gen_str_lit
+                    gen->m_code << "    int 0x80" << std::endl;
 #endif
                 }
                 else {
@@ -1490,11 +1511,11 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
 #ifdef _WIN32                
                 gen->m_code << "    invoke StdOut, offset backn" << std::endl;
 #elif __linux__
-                gen->m_code << "    mov rax, 1" << std::endl;
-                gen->m_code << "    mov rdi, 1" << std::endl;
-                gen->m_code << "    mov rsi, newline" << std::endl;
-                gen->m_code << "    mov rdx, 1" << std::endl;
-                gen->m_code << "    syscall" << std::endl;
+                gen->m_code << "    mov eax, 4 ; sys-write" << std::endl;
+                gen->m_code << "    mov ebx, 1" << std::endl;
+                gen->m_code << "    mov ecx, newline" << std::endl;
+                gen->m_code << "    mov edx, 1" << std::endl;
+                gen->m_code << "    int 0x80" << std::endl;
 #endif
             }
         }
@@ -1507,8 +1528,12 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
             }
             else {
                 //TODO: enable writing to buffers (arrays) for linux
+#ifdef _WIN32                
                 gen->m_code << "    invoke StdIn, offset " << (*it).generated << ", " << (*it).size << std::endl;
                 gen->m_code << "    invoke StdIn, offset buffer, 255 ;clear the rest of the input buffer " << std::endl;
+#elif __linux__
+
+#endif
             }
         }
         void operator()(const node::_statement_ret* stmt_ret) {
@@ -1574,6 +1599,12 @@ std::string Generator::gen_program() {
     }
     m_output << m_data.str();
 
+#ifdef __linux__
+    m_output << "section .bss\n";
+    m_output << m_bss.str();
+
+#endif
+
 #ifdef _WIN32    
     m_output << "\n.code\n";
 #elif __linux__
@@ -1585,6 +1616,32 @@ std::string Generator::gen_program() {
     m_output << "_main endp\n";
 #endif    
     m_output << m_func_space.str();
+
+#ifdef __linux__
+if(flags.needs_str_cpy_func){
+    m_output << "sys~internal_strcpy:    " << std::endl;
+    m_output << "    mov al, [esi]       " << std::endl;
+    m_output << "    mov [edi], al       " << std::endl;
+    m_output << "    inc esi             " << std::endl;
+    m_output << "    inc edi             " << std::endl;
+    m_output << "    cmp al, 0           " << std::endl;
+    m_output << "    jne sys~internal_strcpy   \n" << std::endl;
+    m_output << "    ret" << std::endl;
+}
+
+if(flags.needs_str_cout_func){
+    m_output << "sys~internal~str_buf_len: " << std::endl;
+    m_output << "    xor ecx, ecx          " << std::endl;
+    m_output << ".loop:                    " << std::endl; 
+    m_output << "    cmp byte [edi + ecx],0" << std::endl;
+    m_output << "    je .done              " << std::endl; 
+    m_output << "    inc ecx               " << std::endl;
+    m_output << "    jmp .loop             " << std::endl;
+    m_output << ".done:                    " << std::endl;
+    m_output << "    ret                   " << std::endl;
+}
+#endif
+
 #ifdef _WIN32
     m_output << "end _main\n";
 #endif    
