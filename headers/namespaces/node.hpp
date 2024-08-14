@@ -115,6 +115,7 @@ namespace node {
         Token ident;
         size_t _array_size;
         bool _const = false;
+        std::optional<std::string> init_str;
     };
     struct _var_dec_str {
         Token ident;
