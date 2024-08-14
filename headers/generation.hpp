@@ -126,6 +126,10 @@ private:
     inline std::string mk_str_lit();
     inline std::string mk_str_buf();
     inline void reset_labels();
+#ifdef __linux__
+    
+    inline void sys_read(size_t size,std::string ecx_and_edi,bool lea_or_mov);
+#endif
     inline std::string get_mov_instruc(const std::string& dest, const std::string& source);
     inline size_t asm_type_to_bytes(std::string str);
     inline std::string get_correct_part_of_register(const std::string& source,bool edx = false);
