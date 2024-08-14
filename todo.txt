@@ -15,6 +15,8 @@ LOGS:
 11.03.24: about 3200 lines (now with includes)
 26.03.24: about 3400 lines (added logical statements)
 08.05.24: about 3769 lines and around 370 lines of brick code (added structs + some refactoring)
+13.08.24: about 4000 lines and around 570 lines of brick code (ported to linux)
+
 Needs to be refactored
     
 checklist:
@@ -30,9 +32,10 @@ checklist:
 [X] allow setting of indexed ptr 
 [X] dynamic memory (view examples/memory.brick)
 [X] port generation to Linux / split win && Linux
+[X] reading/writing from and to files
 [ ] floating points
-[ ] reading/writing from and to files
 [ ] struct pointers
 [ ] write own malloc / free for Linux
+[ ] OR, XOR etc operators
 [ ] unit tests
 
