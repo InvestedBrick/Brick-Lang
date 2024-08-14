@@ -38,7 +38,7 @@ inline char Tokenizer::consume() {
 }
 void Tokenizer::line_err(const std::string& err_msg) {
     std::cerr << "Code failed in line " << this->line_counter << "(" << this->filestack.back() << "): " << err_msg << std::endl;
-    exit(1);
+    exit(EXIT_FAILURE);
 }
 
 std::vector<Token> Tokenizer::tokenize()
@@ -244,43 +244,43 @@ std::vector<Token> Tokenizer::tokenize()
 
     switch (peek().value()) {
     case '(':
-        consume();
+        {consume();
         token_arr.push_back(mk_tok(Token_type::_open_paren));
-        break;
+        break;}
     case '{':
-        consume();
+        {consume();
         token_arr.push_back(mk_tok(Token_type::_open_cur_brac));
-        break;
+        break;}
     case '}':
-        consume();
+        {consume();
         token_arr.push_back(mk_tok(Token_type::_close_cur_brac));
-        break;
+        break;}
     case '[':
-        consume();
+        {consume();
         token_arr.push_back(mk_tok(Token_type::_open_sq_brac));
-        break;
+        break;}
     case ']':
-        consume();
+        {consume();
         token_arr.push_back(mk_tok(Token_type::_close_sq_brac));
-        break;
+        break;}
     case ')':
-        consume();
+        {consume();
         token_arr.push_back(mk_tok(Token_type::_close_paren));
-        break;
+        break;}
     case ';':
-        consume();
+        {consume();
         token_arr.push_back(mk_tok(Token_type::_semicolon));
-        break;
+        break;}
     case ':':
-        consume();
+        {consume();
         token_arr.push_back(mk_tok(Token_type::_colon));
-        break;
+        break;}
     case '.':
-        consume();
+        {consume();
         token_arr.push_back(mk_tok(Token_type::_dot));
-        break;
+        break;}
     case '+':
-        consume();
+        {consume();
         if (peek().value() == '+') {
             consume();
             token_arr.push_back(mk_tok(Token_type::_d_add));
@@ -290,9 +290,9 @@ std::vector<Token> Tokenizer::tokenize()
         } else {
             token_arr.push_back(mk_tok(Token_type::_add));
         }
-        break;
+        break;}
     case '-':
-        consume();
+        {consume();
         if (peek().value() == '-') {
             consume();
             token_arr.push_back(mk_tok(Token_type::_d_sub));
@@ -305,18 +305,18 @@ std::vector<Token> Tokenizer::tokenize()
         } else {
             token_arr.push_back(mk_tok(Token_type::_sub));
         }
-        break;
+        break;}
     case '*':
-        consume();
+        {consume();
         if (peek().value() == '=') {
             consume();
             token_arr.push_back(mk_tok(Token_type::_mul_eq));
         } else {
             token_arr.push_back(mk_tok(Token_type::_mul));
         }
-        break;
+        break;}
     case '/':
-        if (peek(1).has_value() && peek(1).value() == '*') {
+        {if (peek(1).has_value() && peek(1).value() == '*') {
             consume();
             consume();
             while (true) {
@@ -346,25 +346,25 @@ std::vector<Token> Tokenizer::tokenize()
             consume();
             token_arr.push_back(mk_tok(Token_type::_div));
         }
-        break;
+        break;}
     case '%':
-        consume();
+        {consume();
         token_arr.push_back(mk_tok(Token_type::_mod));
-        break;
+        break;}
     case '&':
-        consume();
+        {consume();
         token_arr.push_back(mk_tok(Token_type::_ampersand));
-        break;
+        break;}
     case ',':
-        consume();
+        {consume();
         token_arr.push_back(mk_tok(Token_type::_comma, ","));
-        break;
+        break;}
     case '$':
-        consume();
+        {consume();
         token_arr.push_back(mk_tok(Token_type::_deref));
-        break;
+        break;}
     case '!':
-        if (peek(1).value() == '=') {
+        {if (peek(1).value() == '=') {
             consume();
             consume();
             token_arr.push_back(mk_tok(Token_type::_not_same_as));
@@ -372,9 +372,9 @@ std::vector<Token> Tokenizer::tokenize()
             line_err("Invalid Syntax!");
             exit(1);
         }
-        break;
+        break;}
     case '=':
-        consume();
+        {consume();
         if (peek().value() == '=') {
             consume();
             token_arr.push_back(mk_tok(Token_type::_same_as));
@@ -384,27 +384,27 @@ std::vector<Token> Tokenizer::tokenize()
         } else {
             token_arr.push_back(mk_tok(Token_type::_equal));
         }
-        break;
+        break;}
     case '>':
-        consume();
+        {consume();
         if (peek().value() == '=') {
             consume();
             token_arr.push_back(mk_tok(Token_type::_greater_eq_as));
         } else {
             token_arr.push_back(mk_tok(Token_type::_greater_as));
         }
-        break;
+        break;}
     case '<':
-        consume();
+        {consume();
         if (peek().value() == '=') {
             consume();
             token_arr.push_back(mk_tok(Token_type::_less_eq_as));
         } else {
             token_arr.push_back(mk_tok(Token_type::_less_as));
         }
-        break;
+        break;}
     case '"':
-        consume();
+        {consume();
         buf.push_back(consume());
         while (peek().has_value() && peek().value() != '"') {
             buf.push_back(consume());
@@ -412,22 +412,29 @@ std::vector<Token> Tokenizer::tokenize()
         consume();
         token_arr.push_back(mk_tok(Token_type::_str_lit, buf));
         buf.clear();
-        continue;
-        break;
-    case '\n':
+        break;}
+    case '\'':
+        {consume();
+        const char c = consume();
+        if(peek().value() != '\''){line_err("Can only have single character between ' ' ");}
+        token_arr.push_back(mk_tok(Token_type::_int_lit,std::to_string(static_cast<int>(c))));
         consume();
+        buf.clear();
+        break; }
+    case '\n':
+        {consume();
         token_arr.push_back(mk_tok(Token_type::_back_n));
         this->line_counter++;
-        break;
+        break;}
     default:
-        if (std::isspace(peek().value())) {
+        {if (std::isspace(peek().value())) {
             consume();
         } else {
             line_err("Invalid Syntax!");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
-        break;
-}
+        break;}
+    }
 
     }
     this->m_idx = 0;
