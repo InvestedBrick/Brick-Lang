@@ -7,25 +7,7 @@ brick main{
     set x to y;
     output y;
 
-    dec str as array byte -> 32;
-    set str[0] = 'H';
-    set str[1] = 'e';
-    set str[2] = 'y';
-    set str[3] = ',';
-    set str[4] = ' ';
-    set str[5] = 'w';
-    set str[6] = 'h';
-    set str[7] = 'a';
-    set str[8] = 't';
-    set str[9] = ''';
-    set str[10] = 's';
-    set str[11] = ' ';
-    set str[12] = 'u';
-    set str[13] = 'p';
-    set str[14] = '?';
-    set str[15] = ':';
-    set str[15] = ' ';
-    set str[16] = null;
+    dec str as array byte -> 32 {"Hey, what's up?: "};
 
     dec i as int -> 0;
     while str[i] != null {
