@@ -948,7 +948,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             arr.size = var_array->_array_size;
             arr.head_base_pointer_offset = gen->m_base_ptr_off + arr.size * gen->asm_type_to_bytes(arr.type);
             gen->m_base_ptr_off = arr.head_base_pointer_offset;
-
+#ifdef __linux__
             if(var_array->init_str.has_value()){
                 const int str_len = var_array->init_str.value().length();
                 if(str_len+ 1 > arr.size){
@@ -961,7 +961,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                 gen->m_code << "    mov byte [ebp - "  << arr.head_base_pointer_offset - str_len   << "], 0" << std::endl;//manuallly null terminate the string
 
             }
-
+#endif
             //it currently makes no sense to init an array as const, because there is no initialization rn.
             arr.immutable = var_array->_const;
             gen->m_arrays.push_back(arr);

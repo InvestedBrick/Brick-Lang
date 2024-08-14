@@ -505,6 +505,7 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
         if (var_array->_array_size < 1) {
             line_err("Array size 0 or negative");
         }
+#ifdef __linux__        
         //initialization of byte array with a string
         if(var_array->type == Token_type::_byte && try_consume(Token_type::_open_cur_brac)){
             if(!peek_type(Token_type::_str_lit)){
@@ -514,7 +515,7 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
             var_array->init_str = consume().value.value();
             try_consume(Token_type::_close_cur_brac,"Expected '}'");
         }
-
+#endif
         if (try_consume(Token_type::_const))
         {
             var_array->_const = true;
