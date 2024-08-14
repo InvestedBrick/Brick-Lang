@@ -1359,7 +1359,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
             gen->gen_var_set(stmt_var_set);
         }
         void operator()(const node::_asm_* _asm_) {
-            gen->m_code << _asm_->str_lit.value.value() << " ; Inline assembly here"<< std::endl;
+            gen->m_code << _asm_->str_lit.value.value() << std::endl;
         }
         void operator()(const node::_statement_scope* statement_scope) {
             gen->gen_scope(statement_scope);
