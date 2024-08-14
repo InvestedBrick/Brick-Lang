@@ -948,6 +948,20 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             arr.size = var_array->_array_size;
             arr.head_base_pointer_offset = gen->m_base_ptr_off + arr.size * gen->asm_type_to_bytes(arr.type);
             gen->m_base_ptr_off = arr.head_base_pointer_offset;
+
+            if(var_array->init_str.has_value()){
+                const int str_len = var_array->init_str.value().length();
+                if(str_len+ 1 > arr.size){
+                    gen->line_err("Length of string larger than size of array");
+                }
+                
+                for(size_t i = 0;i < var_array->init_str.value().length(); i++){
+                    gen->m_code << "    mov byte [ebp - " << arr.head_base_pointer_offset - i << "], " <<   static_cast<int> (var_array->init_str.value().at(i)) << std::endl;
+                }
+                gen->m_code << "    mov byte [ebp - "  << arr.head_base_pointer_offset - str_len   << "], 0" << std::endl;//manuallly null terminate the string
+
+            }
+
             //it currently makes no sense to init an array as const, because there is no initialization rn.
             arr.immutable = var_array->_const;
             gen->m_arrays.push_back(arr);
@@ -1358,7 +1372,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
         void operator()(const node::_statement_var_set* stmt_var_set) {
             gen->gen_var_set(stmt_var_set);
         }
-        void operator()(const node::_asm_* _asm_) {
+        void operator()(const node::_asm_* _asm_) { 
             gen->m_code << _asm_->str_lit.value.value() << std::endl;
         }
         void operator()(const node::_statement_scope* statement_scope) {
