@@ -30,3 +30,29 @@ brick fread : int -> fd, byte ptr -> buffer, int -> n_bytes{
     __asm__{"    mov edx, dword [ebp - 12]"};
     __asm__{"    int 0x80"};
 }=>int
+
+//writes to the file provided by the file descriptor and returns number of bytes written
+brick fwrite : int -> fd, byte ptr -> _val, int -> n_bytes{
+    if n_bytes <= 0{
+        return null;
+    }
+
+    __asm__{"    mov eax, 4"};
+    __asm__{"    mov ebx, dword [ebp - 4]"};
+    __asm__{"    mov ecx, dword [ebp - 8]"};
+    __asm__{"    mov edx, dword [ebp - 12]"};
+    __asm__{"    int 0x80"};
+}=>int
+
+//tries to close a file provided by the file descriptor and returns the success
+brick fclose : int -> fd{
+    if fd <= 2{
+        output "[fclose] [error] : Cannot close standard file streams";
+        return false;
+    }
+
+    __asm__{"    mov eax, 6"};
+    __asm__{"    mov ebx, dword [ebp - 4]"};
+    __asm__{"    int 0x80"};
+    __asm__{"    inc eax"}; //close syscall returns 0 upon success
+}=>bool
