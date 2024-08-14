@@ -1,0 +1,32 @@
+//The standard wrappers for file system calls
+//readonly = 0
+//writeonly = 1
+//read_write = 2
+
+//opens file with flags and returns a file descriptor
+brick fopen : byte ptr -> filename, int -> flags{
+    //invalid flags
+    if flags > 2 or flags < 0{
+        output "[fopen] [error] : Invalid Flags";
+        return null;
+    }
+
+    __asm__{"    mov eax, 5"};
+    __asm__{"    mov ebx, dword [ebp - 4]"};
+    __asm__{"    mov ecx, dword [ebp - 8]"};
+    __asm__{"    int 0x80"};
+
+}=>int
+
+//reads the file with provided file descriptor and returns the number of bytes read
+brick fread : int -> fd, byte ptr -> buffer, int -> n_bytes{
+    if n_bytes <= 0{
+        return null;
+    }
+
+    __asm__{"    mov eax, 3"};
+    __asm__{"    mov ebx, dword [ebp - 4]"};
+    __asm__{"    mov ecx, dword [ebp - 8]"};
+    __asm__{"    mov edx, dword [ebp - 12]"};
+    __asm__{"    int 0x80"};
+}=>int
