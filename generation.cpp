@@ -45,6 +45,23 @@ inline std::string Generator::mk_str_buf() {
 inline size_t Generator::asm_type_to_bytes(std::string str) {
     return str_bit_sizes.find(str)->second >> 3; // fast div by 8
 }
+#ifdef __linux__
+inline void Generator::sys_read(size_t size,std::string ecx_and_edi,bool lea_or_mov){
+    this->m_code << "    mov eax, 3 ;sys-read" << std::endl;
+    this->m_code << "    xor ebx, ebx" << std::endl;
+    this->m_code << "    " << (lea_or_mov ? "lea " : "mov ") << " ecx, " << ecx_and_edi << std::endl;
+    this->m_code << "    mov edx, " << size  << std::endl;
+    this->m_code << "    int 0x80" << std::endl;
+    this->m_code << "    cmp eax, " << size << std::endl;
+    std::string no_need_to_replace_null = this->mk_label();
+    this->m_code << "    jg " << no_need_to_replace_null << std::endl; 
+    flags.needs_nl_replace_func = true;
+    this->m_code << "    " << (lea_or_mov ? "lea " : "mov ") << " edi, " << ecx_and_edi << std::endl;
+    this->m_code << "    call sys~internal_replace_nl_null" << std::endl;
+    this->m_code << no_need_to_replace_null << ": " << std::endl;
+
+}
+#endif
 inline std::string Generator::get_mov_instruc(const std::string& dest, const std::string& source) {
     const auto source_it = str_bit_sizes.find(source);
     const auto dest_it = str_bit_sizes.find(dest);
@@ -1561,24 +1578,32 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
         void operator()(const node::_statement_input* stmt_input) {
             const auto it  = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& var) {return var.name == stmt_input->ident.value.value(); });
             if (it == gen->m_str_bufs.cend()) {
+#ifdef __linux__                
+                const auto arr_it = std::find_if(gen->m_arrays.cbegin(),gen->m_arrays.cend(), [&](const Var_array& arr){return arr.name == stmt_input->ident.value.value();});
+                if(arr_it != gen->m_arrays.cend()){
+                    if((*arr_it).bool_limit || (*arr_it).type != "byte"){
+                        gen->line_err("Can only input into byte arrays");
+                    }
+                    // I know that when wring to arrays, they are not memory safe, but I dont want to manually write a null byte at the end when the buffer overflows
+                    // get used to it :)
+                    std::string ecx_and_edi = "byte [ebp - " + std::to_string((*arr_it).head_base_pointer_offset) + "] ";
+                    gen->sys_read((*arr_it).size,ecx_and_edi,true);
+                }else{       
+#endif
                 std::stringstream ss;
                 ss << "String buffer '" << stmt_input->ident.value.value() << "' was not declared in this scope" << std::endl;
                 gen->line_err(ss.str());
+#ifdef __linux
+                }
+#endif
             }
             else {
-                //TODO: enable writing to arrays for linux
 #ifdef _WIN32                
                 gen->m_code << "    invoke StdIn, offset " << (*it).generated << ", " << (*it).size << std::endl;
                 gen->m_code << "    invoke StdIn, offset buffer, 255 ;clear the rest of the input buffer " << std::endl;
 #elif __linux__
-                gen->m_code << "    mov eax, 3 ;sys-read" << std::endl;
-                gen->m_code << "    xor ebx, ebx" << std::endl;
-                gen->m_code << "    mov ecx, " << (*it).generated << std::endl;
-                gen->m_code << "    mov edx, " << (*it).size << std::endl;
-                gen->m_code << "    int 0x80" << std::endl;
-                flags.needs_nl_replace_func = true;
-                gen->m_code << "    mov edi, " << (*it).generated << std::endl;
-                gen->m_code << "    call sys~internal_replace_nl_null" << std::endl;
+                std::string ecx_and_edi = (*it).generated;
+                gen->sys_read((*it).size,ecx_and_edi,false);
 #endif
             }
         }
@@ -1669,13 +1694,13 @@ std::string Generator::gen_program() {
 
 #ifdef __linux__
 if(flags.needs_str_cpy_func){
-    m_output << "sys~internal_strcpy:    " << std::endl;
-    m_output << "    mov al, [esi]       " << std::endl;
-    m_output << "    mov [edi], al       " << std::endl;
-    m_output << "    inc esi             " << std::endl;
-    m_output << "    inc edi             " << std::endl;
-    m_output << "    cmp al, 0           " << std::endl;
-    m_output << "    jne sys~internal_strcpy   \n" << std::endl;
+    m_output << "sys~internal_strcpy:          " << std::endl;
+    m_output << "    mov al, [esi]             " << std::endl;
+    m_output << "    mov [edi], al             " << std::endl;
+    m_output << "    inc esi                   " << std::endl;
+    m_output << "    inc edi                   " << std::endl;
+    m_output << "    cmp al, 0                 " << std::endl;
+    m_output << "    jne sys~internal_strcpy\n " << std::endl;
     m_output << "    ret" << std::endl;
 }
 
