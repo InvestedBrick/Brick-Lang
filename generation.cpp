@@ -948,6 +948,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             arr.size = var_array->_array_size;
             arr.head_base_pointer_offset = gen->m_base_ptr_off + arr.size * gen->asm_type_to_bytes(arr.type);
             gen->m_base_ptr_off = arr.head_base_pointer_offset;
+            //it currently makes no sense to init an array as const, because there is no initialization rn.
             arr.immutable = var_array->_const;
             gen->m_arrays.push_back(arr);
         
@@ -1583,6 +1584,9 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                 if(arr_it != gen->m_arrays.cend()){
                     if((*arr_it).bool_limit || (*arr_it).type != "byte"){
                         gen->line_err("Can only input into byte arrays");
+                    }
+                    if((*arr_it).immutable){
+                        gen->line_err("Cannot write to constant array");
                     }
                     // I know that when wring to arrays, they are not memory safe, but I dont want to manually write a null byte at the end when the buffer overflows
                     // get used to it :)
