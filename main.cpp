@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
     {
         std::cerr << "Invalid amount of inputs, Correct Usage:" << std::endl;
         std::cerr << "brick <input.brick>" << std::endl;
-        return 1;
+        exit(EXIT_FAILURE);
     }
     int x = 2;
     std::string filename = argv[1];
@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
         std::ifstream f(argv[1]);
         if (!f.good()) {
             std::cerr << "Input file was not found!" << std::endl;
-            return 1;
+            exit(EXIT_FAILURE);
         }
     }
     if(argc > 2){
@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Finished Parsing..." << std::endl;
     if (!prog.has_value()) {
         std::cerr << "Invalid program" << std::endl;
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     Generator generator(prog.value());
 
@@ -106,9 +106,9 @@ int main(int argc, char* argv[]) {
     assemble_command =  "nasm -f elf32 -o " + filename.substr(0,filename.find_last_of(".") ) + ".o"+ " " + output_filename.str();
     link_command = "ld -m elf_i386 -o " + filename.substr(0,filename.find_last_of(".")) + " " + filename.substr(0,filename.find_last_of(".") ) + ".o";
     
-    
-    system(assemble_command.c_str());
-    system(link_command.c_str());
+    //ret_val to stop O2 optimizer from complaining
+    int ret_val = system(assemble_command.c_str());
+    ret_val = system(link_command.c_str());
 #endif
     return 0;
 }
