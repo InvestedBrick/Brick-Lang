@@ -1,6 +1,6 @@
 # Variables
 CXX = g++
-CXXFLAGS = --std=c++17
+CXXFLAGS = --std=c++17 -O2
 
 # Directories
 INCLUDE_DIR = headers
