@@ -368,4 +368,5 @@ I advise you to not use it outside of adding to the stdlib
 
 If you have any questions left, you can look at the example code provided in examples/ 
 
+If you feel, that there is any functionality missing in the standard function, open a pull request and write it yourself
 
