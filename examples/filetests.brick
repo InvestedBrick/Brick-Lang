@@ -1,15 +1,7 @@
 #include stdlib/fileops.brick
 
 brick main{
-    dec name as array byte -> 8;
-    set name[0] to 't';
-    set name[1] to 'e';
-    set name[2] to 's';
-    set name[3] to 't';
-    set name[4] to '.';
-    set name[5] to 't';
-    set name[6] to 'x';
-    set name[7] to 't';
+    dec name as array byte -> 9 {"test.txt"};
     
     dec buffer as array byte -> 128;
     dec fd as int -> fopen(&name[0],2); //2 == RD_WR
@@ -19,25 +11,9 @@ brick main{
     for dec i as int -> 0; i < bytes_read; i++;{
         output buffer[i] noend;
     }     
-    dec str as array byte -> 17;
-    set str[0] to 'H';
-    set str[1] to 'e';
-    set str[2] to 'l';
-    set str[3] to 'l';
-    set str[4] to 'o';
-    set str[5] to ' ';
-    set str[6] to 'f';
-    set str[7] to 'r';
-    set str[8] to 'o';
-    set str[9] to 'm';
-    set str[10] to ' ';
-    set str[11] to 'c';
-    set str[12] to 'o';
-    set str[13] to 'd';
-    set str[14] to 'e';
-    set str[15] to '!';
+    dec str as array byte -> 18 {"Hello from code!"};
     set str[16] to 10;
-    dec bytes_written as int -> fwrite(fd,&str[0],17);
+    dec bytes_written as int -> fwrite(fd,&str[0],17); //dont need the null terminator
 
     fclose(fd);
     exit 0;
