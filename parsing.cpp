@@ -57,7 +57,7 @@ std::string var_type_to_str(Token_type type) {
     }
 }
 void print_token(Token token) {
-    const auto it = tokenTypeToString.find(token.type);
+    auto it = tokenTypeToString.find(token.type);
     if (it != tokenTypeToString.end()) {
         std::cout << it->second << '\n';
     }
@@ -97,7 +97,7 @@ bool Parser::is_logical_operator(Token_type type) {
 }
 node::_statement* Parser::mk_stmt(std::variant<node::_statement_exit*, node::_statement_var_dec*, node::_statement_var_set*, node::_asm_*, node::_statement_scope*, node::_ctrl_statement*, node::_main_scope*, node::_null_stmt*, node::_statement_output*, node::_statement_input*, node::_statement_function*, node::_statement_ret*, node::_statement_pure_expr*, node::_op_equal*,node::_statement_struct*> var)
 {
-    const auto stmt = m_Allocator.alloc<node::_statement>();
+    auto stmt = m_Allocator.alloc<node::_statement>();
     stmt->var = var;
     return stmt;
 }
@@ -135,7 +135,7 @@ inline Token Parser::consume() {
 }
 inline std::optional<node::_argument*> Parser::try_parse_argument() {
     if (peek().has_value() && is_data_type(peek().value().type)) {
-        const auto arg = m_Allocator.alloc<node::_argument>();
+        auto arg = m_Allocator.alloc<node::_argument>();
 
         std::string waste = var_type_to_str(consume().type); //doesnt work when I do direct assignment idk why
         arg->type = waste;
@@ -157,21 +157,21 @@ inline bool Parser::peek_type(Token_type type, size_t offset) {
     return false;
 }
 inline std::optional<node::_term*> Parser::parse_term() {
-    const auto term = m_Allocator.alloc< node::_term>();
-    if (const auto int_lit = try_consume(Token_type::_int_lit)) {
-        const auto il = m_Allocator.alloc<node::_term_int_lit>();
+    auto term = m_Allocator.alloc< node::_term>();
+    if (auto int_lit = try_consume(Token_type::_int_lit)) {
+        auto il = m_Allocator.alloc<node::_term_int_lit>();
         il->_int_lit = int_lit.value();
         term->var = il;
         return term;
     }
-    else if (const auto str_lit = try_consume(Token_type::_str_lit)) {
-        const auto strl = m_Allocator.alloc<node::_term_str_lit>();
+    else if (auto str_lit = try_consume(Token_type::_str_lit)) {
+        auto strl = m_Allocator.alloc<node::_term_str_lit>();
         strl->_str_lit = str_lit.value();
         term->var = strl;
         return term;
     }
     else if (peek_type(Token_type::_ident) && peek_type(Token_type::_open_sq_brac, 1)) { // check for arrays first
-        const auto arr_idx = m_Allocator.alloc<node::_term_array_index>();
+        auto arr_idx = m_Allocator.alloc<node::_term_array_index>();
         arr_idx->ident = consume();
         consume();
         if (const auto expr = parse_expr()) {
@@ -185,7 +185,7 @@ inline std::optional<node::_term*> Parser::parse_term() {
         return term;
     }
     else if (peek_type(Token_type::_ident) && (peek_type(Token_type::_d_add, 1) || peek_type(Token_type::_d_sub, 1))) {
-        const auto _d_op = parse_d_op();
+        auto _d_op = parse_d_op();
         if (!_d_op.has_value()) {
             line_err("Unable to parse double operation");
         }
@@ -194,12 +194,12 @@ inline std::optional<node::_term*> Parser::parse_term() {
     }
     else if (peek_type(Token_type::_ident) && peek_type(Token_type::_dot,1))//it's a struct
     {
-        const auto term_struct = m_Allocator.alloc<node::_term_struct_ident>();
+        auto term_struct = m_Allocator.alloc<node::_term_struct_ident>();
         term_struct->ident = consume();
         node::_term_struct_ident* current = term_struct;
 
         while(try_consume(Token_type::_dot)){ //traverse the struct(s)
-            const auto next_struct = m_Allocator.alloc<node::_term_struct_ident>();
+            auto next_struct = m_Allocator.alloc<node::_term_struct_ident>();
             next_struct->ident = try_consume(Token_type::_ident,"Expected Identifier");
             current->item = next_struct;
             current = next_struct;
@@ -219,14 +219,14 @@ inline std::optional<node::_term*> Parser::parse_term() {
         return term;
     }
     else if (peek_type(Token_type::_ident) && !peek_type(Token_type::_open_paren, 1)) { // check to ensure, that it's not a function
-        const auto ident = consume();
-        const auto id = m_Allocator.alloc<node::_term_ident>();
+        auto ident = consume();
+        auto id = m_Allocator.alloc<node::_term_ident>();
         id->ident = ident;
         term->var = id;
         return term;
     }
     else if (try_consume(Token_type::_open_paren)) {
-        const auto term_paren = m_Allocator.alloc<node::_term_paren>();
+        auto term_paren = m_Allocator.alloc<node::_term_paren>();
         const auto expr = parse_expr();
         if (!expr.has_value()) {
             line_err("Invalid Expression");
@@ -238,7 +238,7 @@ inline std::optional<node::_term*> Parser::parse_term() {
     }
     else if (peek_type(Token_type::_sub)) {
         consume();
-        const auto neg = m_Allocator.alloc<node::_term_negate>();
+        auto neg = m_Allocator.alloc<node::_term_negate>();
         if (const auto expr = parse_expr()) {
             neg->expr = expr.value();
         }
@@ -250,13 +250,13 @@ inline std::optional<node::_term*> Parser::parse_term() {
     }
     else if (peek_type(Token_type::_deref)) {
         consume();
-        const auto deref = m_Allocator.alloc<node::_term_deref>();
+        auto deref = m_Allocator.alloc<node::_term_deref>();
         deref->ident = try_consume(Token_type::_ident, "Expected variable name after '$'");
         term->var = deref;
         return term;
     }
     else if (peek_type(Token_type::_ident) && peek_type(Token_type::_open_paren, 1)) {
-        const auto call = m_Allocator.alloc<node::_function_call>();
+        auto call = m_Allocator.alloc<node::_function_call>();
         call->ident = try_consume(Token_type::_ident, "Expected function name");
         try_consume(Token_type::_open_paren, "Expected '('");
         while (const auto expr = parse_expr()) {
@@ -288,7 +288,7 @@ inline std::optional<node::_expr*> Parser::parse_expr(int min_prec) {
     const auto expr_left = m_Allocator.alloc<node::_expr>();
     if (!term_left.has_value()) { // try for ampersand
         if (try_consume(Token_type::_ampersand)) {
-            const auto ref = m_Allocator.alloc<node::_expr_ref>();
+            auto ref = m_Allocator.alloc<node::_expr_ref>();
             if (const auto expr = parse_expr()) {
                 ref->expr = expr.value();
             }
@@ -324,32 +324,32 @@ inline std::optional<node::_expr*> Parser::parse_expr(int min_prec) {
         if (!expr_right.has_value()) {
             line_err("Unable to parse expression");
         }
-        const auto bin_expr = m_Allocator.alloc<node::_bin_expr>();
+        auto bin_expr = m_Allocator.alloc<node::_bin_expr>();
 
         const auto expr_left_2 = m_Allocator.alloc<node::_expr>();//sorry for the naming
         if (op.type == Token_type::_add) {
-            const auto add = m_Allocator.alloc<node::_bin_expr_add>();
+            auto add = m_Allocator.alloc<node::_bin_expr_add>();
             expr_left_2->var = expr_left->var;
             add->left = expr_left_2;
             add->right = expr_right.value();
             bin_expr->var = add;
         }
         else if (op.type == Token_type::_sub) {
-            const auto sub = m_Allocator.alloc<node::_bin_expr_sub>();
+            auto sub = m_Allocator.alloc<node::_bin_expr_sub>();
             expr_left_2->var = expr_left->var;
             sub->left = expr_left_2;
             sub->right = expr_right.value();
             bin_expr->var = sub;
         }
         else if (op.type == Token_type::_mul) {
-            const auto mul = m_Allocator.alloc<node::_bin_expr_mul>();
+            auto mul = m_Allocator.alloc<node::_bin_expr_mul>();
             expr_left_2->var = expr_left->var;
             mul->left = expr_left_2;
             mul->right = expr_right.value();
             bin_expr->var = mul;
         }
         else if (op.type == Token_type::_div || op.type == Token_type::_mod) {
-            const auto div = m_Allocator.alloc<node::_bin_expr_div>();
+            auto div = m_Allocator.alloc<node::_bin_expr_div>();
             expr_left_2->var = expr_left->var;
             div->left = expr_left_2;
             div->right = expr_right.value();
@@ -367,7 +367,7 @@ inline std::optional<node::_expr*> Parser::parse_expr(int min_prec) {
     return expr_left;
 }
 inline std::optional<node::_boolean_expr*> Parser::parse_boolean_expr() {
-    const auto bool_expr = m_Allocator.alloc<node::_boolean_expr>();
+    auto bool_expr = m_Allocator.alloc<node::_boolean_expr>();
     if(const auto expr = parse_expr()){
         bool_expr->left = expr.value();
     }else{
@@ -389,7 +389,8 @@ inline std::optional<node::_boolean_expr*> Parser::parse_boolean_expr() {
 }
 template<typename Node>
 inline void Parser::parse_expr_and_set(Node& node, bool isArray) {
-    if constexpr (std::is_same<Node, node::_var_set_struct*>::value || std::is_same<Node, node::_var_set_array*>::value) {
+    
+    if constexpr (std::is_same<std::remove_pointer_t<Node>,node::_var_set_struct>::value || std::is_same<std::remove_pointer_t<Node>, node::_var_set_array>::value) {
         if (isArray) {
             if (const auto expr = parse_expr()) {
                 node->index_expr = expr.value();
@@ -412,7 +413,7 @@ inline void Parser::parse_expr_and_set(Node& node, bool isArray) {
 inline std::optional<node::_logical_stmt*> Parser::parse_logical_stmt() {
     //If you are confused about the variable naming, then you feel how I felt writing this code
     std::optional<node::_boolean_expr*> bool_expr = parse_boolean_expr();
-    const auto logical_left = m_Allocator.alloc<node::_logical_stmt>();
+    auto logical_left = m_Allocator.alloc<node::_logical_stmt>();
     if (!bool_expr.has_value()) {
         return {};
     }else{
@@ -425,22 +426,22 @@ inline std::optional<node::_logical_stmt*> Parser::parse_logical_stmt() {
         }else{
             logic_op = consume().type;
         }
-        const auto logical_right = parse_logical_stmt();
+        auto logical_right = parse_logical_stmt();
         if (!logical_right.has_value()) {
             line_err("Unable to parse expression");
         }
-        const auto logic_expr = m_Allocator.alloc<node::_logical_expr>();
+        auto logic_expr = m_Allocator.alloc<node::_logical_expr>();
 
-        const auto logical_left_2 = m_Allocator.alloc<node::_logical_stmt>();
+        auto logical_left_2 = m_Allocator.alloc<node::_logical_stmt>();
         if(logic_op == Token_type::_logical_and){
-            const auto logic_and = m_Allocator.alloc<node::_logical_expr_and>();
+            auto logic_and = m_Allocator.alloc<node::_logical_expr_and>();
             logical_left_2->var = logical_left->var;
             logic_and->left = logical_left_2;
             logic_and->right = logical_right.value();
             logic_expr->var = logic_and;
         }
         else if(logic_op == Token_type::_logical_or){
-            const auto logic_or = m_Allocator.alloc<node::_logical_expr_or>();
+            auto logic_or = m_Allocator.alloc<node::_logical_expr_or>();
             logical_left_2->var = logical_left->var;
             logic_or->left = logical_left_2;
             logic_or->right = logical_right.value();
@@ -452,14 +453,14 @@ inline std::optional<node::_logical_stmt*> Parser::parse_logical_stmt() {
 }
 inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
     consume();
-    const auto it = this->struct_name_alloc_map.find(peek().value().value.value());//ah yes peak programming
+    auto it = this->struct_name_alloc_map.find(peek().value().value.value());//ah yes peak programming
         if(it != this->struct_name_alloc_map.end()){
             line_err("Cannot use struct name as identifier");
         }
-    const auto stmt_dec = m_Allocator.alloc<node::_statement_var_dec>();
+    auto stmt_dec = m_Allocator.alloc<node::_statement_var_dec>();
     Token t = peek(2).value(); // peek token and check if its a variable type
     if (t.type == Token_type::_int || t.type == Token_type::_short || t.type == Token_type::_byte || t.type == Token_type::_bool) {
-        const auto var_num = m_Allocator.alloc<node::_var_dec_num>();
+        auto var_num = m_Allocator.alloc<node::_var_dec_num>();
         if (in_func) {
             alloc_size += var_type_to_bytes(t.type);
         }
@@ -490,7 +491,7 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
         stmt_dec->var = var_num;
     }
     else if (t.type == Token_type::_array) {
-        const auto var_array = m_Allocator.alloc<node::_var_dec_array>();
+        auto var_array = m_Allocator.alloc<node::_var_dec_array>();
         var_array->ident = consume();
         consume();
         consume();
@@ -526,7 +527,7 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
         stmt_dec->var = var_array;
     }
     else if (t.type == Token_type::_string) {
-        const auto var_str = m_Allocator.alloc<node::_var_dec_str>();
+        auto var_str = m_Allocator.alloc<node::_var_dec_str>();
         var_str->ident = consume();
         consume();
         consume();
@@ -540,7 +541,7 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
         stmt_dec->var = var_str;
     }
     else if (t.type == Token_type::_str_buffer) {
-        const auto str_buf = m_Allocator.alloc<node::_var_dec_str_buf>();
+        auto str_buf = m_Allocator.alloc<node::_var_dec_str_buf>();
         str_buf->ident = consume();
         consume();
         consume();//consume the peeked token
@@ -549,7 +550,7 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
         stmt_dec->var = str_buf;
     }
     else if (t.type == Token_type::_ident){
-        const auto it = this->struct_name_alloc_map.find(t.value.value());
+        auto it = this->struct_name_alloc_map.find(t.value.value());
         if(it == this->struct_name_alloc_map.end()){
             line_err("Invalid bundle name");
         }
@@ -557,7 +558,7 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
             alloc_size += (*it).second;
         }
         
-        const auto var_struct = m_Allocator.alloc<node::_var_dec_struct>();
+        auto var_struct = m_Allocator.alloc<node::_var_dec_struct>();
         var_struct->ident = consume();
         var_struct->struct_name = (*it).first;
         consume();
@@ -575,48 +576,48 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
 inline std::optional<node::_statement_scope*> Parser::parse_scope() {
     if (!try_consume(Token_type::_open_cur_brac).has_value()) { return {}; }
 
-    const auto scope = m_Allocator.alloc<node::_statement_scope>();
-    while (const auto stmt = parse_statement()) {
+    auto scope = m_Allocator.alloc<node::_statement_scope>();
+    while (auto stmt = parse_statement()) {
         scope->statements.push_back(stmt.value());
     }
     try_consume(Token_type::_close_cur_brac, "Expected '}'");
     return scope;
 }
 inline std::optional<node::_double_op*> Parser::parse_d_op() {
-    const auto _d_op = m_Allocator.alloc<node::_double_op>();
+    auto _d_op = m_Allocator.alloc<node::_double_op>();
     _d_op->ident = consume();
     _d_op->op = consume().type;
     return _d_op;
 }
 inline node::_null_stmt* Parser::mk_null_stmt(std::variant<node::_newline*, node::_newfile*, node::_eof*> var) {
-    const auto stmt = m_Allocator.alloc<node::_null_stmt>();
+    auto stmt = m_Allocator.alloc<node::_null_stmt>();
     stmt->var = var;
     return stmt;
 }
 
 inline std::optional<node::_statement*> Parser::parse_statement() {
     if (m_debug) {
-        for (const auto& token : m_tokens) {
+        for (auto& token : m_tokens) {
             print_token(token);
         }
         m_debug = false;
     }
 
     if (peek_type(Token_type::_back_n)) {
-        const auto newline = m_Allocator.alloc<node::_newline>();
+        auto newline = m_Allocator.alloc<node::_newline>();
         consume();
         this->line_counter++;
         return mk_stmt(mk_null_stmt(newline));
     }
     else if (peek_type(Token_type::_eof)) {
-        const auto EOF_ = m_Allocator.alloc<node::_eof>();
+        auto EOF_ = m_Allocator.alloc<node::_eof>();
         consume();
         this->filestack.pop_back();
         this->line_counter = 1;
         return mk_stmt(mk_null_stmt(EOF_));
     }
     else if (peek_type(Token_type::_new_file)) {
-        const auto newfile = m_Allocator.alloc<node::_newfile>();
+        auto newfile = m_Allocator.alloc<node::_newfile>();
         std::string file = consume().value.value();
         this->filestack.push_back(file);
         newfile->filename = file;
@@ -624,8 +625,8 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
     }
     else if (peek_type(Token_type::_exit)) {
         consume();
-        const auto stmt_exit = m_Allocator.alloc<node::_statement_exit>();
-        if (const auto node_expr = parse_expr()) {
+        auto stmt_exit = m_Allocator.alloc<node::_statement_exit>();
+        if (auto node_expr = parse_expr()) {
             stmt_exit->expr = node_expr.value();
         }
         else {
@@ -639,7 +640,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
     */
     else if (peek_type(Token_type::_asm_tok)) {
         consume();
-        const auto stmt_asm = m_Allocator.alloc< node::_asm_>();
+        auto stmt_asm = m_Allocator.alloc< node::_asm_>();
         try_consume(Token_type::_open_cur_brac, "Expected '{'");
         stmt_asm->str_lit = try_consume(Token_type::_str_lit, "Expected string literal");
         try_consume(Token_type::_close_cur_brac, "Expected '}'");
@@ -647,7 +648,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         return mk_stmt(stmt_asm);
     }
     else if (peek_type(Token_type::_ident) && (peek_type(Token_type::_add_eq, 1) || peek_type(Token_type::_sub_eq, 1) || peek_type(Token_type::_mul_eq, 1) || peek_type(Token_type::_div_eq, 1))) {
-        const auto _op_eq = m_Allocator.alloc<node::_op_equal>();
+        auto _op_eq = m_Allocator.alloc<node::_op_equal>();
         _op_eq->ident = consume();
         _op_eq->op = consume().type;
         if (const auto expr = parse_expr()) {
@@ -669,7 +670,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
     }
     else if (peek_type(Token_type::_set)) {
         consume();
-        const auto stmt_set = m_Allocator.alloc<node::_statement_var_set>();
+        auto stmt_set = m_Allocator.alloc<node::_statement_var_set>();
         bool deref = false;
         if (try_consume(Token_type::_deref)) {
             deref = true;
@@ -677,12 +678,12 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         Token t;
     
         if(peek_type(Token_type::_ident) && peek_type(Token_type::_dot,1)){
-            const auto set_struct = m_Allocator.alloc<node::_var_set_struct>();
+            auto set_struct = m_Allocator.alloc<node::_var_set_struct>();
             set_struct->ident = consume();
             node::_var_set_struct* current = set_struct;
     
             while(try_consume(Token_type::_dot)){
-                const auto next_struct = m_Allocator.alloc<node::_var_set_struct>();
+                auto next_struct = m_Allocator.alloc<node::_var_set_struct>();
                 next_struct->ident = try_consume(Token_type::_ident,"Expected Identifier");
                 current->item = next_struct;
                 current = next_struct;
@@ -704,13 +705,13 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         t = try_consume(Token_type::_ident,"Expected Indentifier");
     
         if (try_consume(Token_type::_open_sq_brac)) {
-            const auto set_array = m_Allocator.alloc<node::_var_set_array>();
+            auto set_array = m_Allocator.alloc<node::_var_set_array>();
             set_array->ident = t;
             parse_expr_and_set(set_array, true);
             stmt_set->var = set_array;
         }
         else {
-            const auto set_num = m_Allocator.alloc<node::_var_set_num>();
+            auto set_num = m_Allocator.alloc<node::_var_set_num>();
             set_num->ident = t;
             set_num->deref = deref;
             parse_expr_and_set(set_num,false);
@@ -724,8 +725,8 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         consume();
         consume();
         in_func = true;
-        const auto main_scope = m_Allocator.alloc<node::_main_scope>();
-        if (const auto scope = parse_scope()) {
+        auto main_scope = m_Allocator.alloc<node::_main_scope>();
+        if (auto scope = parse_scope()) {
 
             main_scope->scope = scope.value();
         }
@@ -741,12 +742,12 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
     else if (peek_type(Token_type::_func) && peek_type(Token_type::_ident, 1) && !peek_type(Token_type::_main_scope, 1)) {
         consume();
         in_func = true;
-        const auto func = m_Allocator.alloc<node::_statement_function>();
+        auto func = m_Allocator.alloc<node::_statement_function>();
         func->ident = consume();
 
         if (try_consume(Token_type::_colon)) { //there are arguments following
 
-            while (const auto arg = try_parse_argument()) {
+            while (auto arg = try_parse_argument()) {
                 func->arguments.push_back(arg.value());
                 if (try_consume(Token_type::_comma)) {
                     continue;
@@ -762,7 +763,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
             }
         }
 
-        if (const auto scope = parse_scope()) {
+        if (auto scope = parse_scope()) {
             func->scope = scope.value();
         }
         else {
@@ -789,7 +790,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
     
     else if (peek_type(Token_type::_return)) {
         consume();
-        const auto stmt_ret = m_Allocator.alloc<node::_statement_ret>();
+        auto stmt_ret = m_Allocator.alloc<node::_statement_ret>();
         if (const auto expr = parse_expr()) {
             stmt_ret->expr = expr.value();
             try_consume(Token_type::_semicolon, "Expected ';'");
@@ -801,8 +802,8 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
 
     }
     else if (peek_type(Token_type::_open_cur_brac)) {
-        if (const auto scope = parse_scope()) {
-            const auto stmt = m_Allocator.alloc<node::_statement>();
+        if (auto scope = parse_scope()) {
+            auto stmt = m_Allocator.alloc<node::_statement>();
             stmt->var = scope.value();
             return stmt;
         }
@@ -812,22 +813,22 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
     }
     else if (peek_type(Token_type::_if) || peek_type(Token_type::_while) || peek_type(Token_type::_for)) {
         consume();
-        const auto stmt_crtl = m_Allocator.alloc<node::_ctrl_statement>();
+        auto stmt_crtl = m_Allocator.alloc<node::_ctrl_statement>();
         if (peek(-1).value().type == Token_type::_if) {
-            const auto _if = m_Allocator.alloc<node::_statement_if>();
+            auto _if = m_Allocator.alloc<node::_statement_if>();
             stmt_crtl->type = Token_type::_if;
             stmt_crtl->var = _if;
         }
         else if (peek(-1).value().type == Token_type::_while) {
-            const auto _while = m_Allocator.alloc<node::_statement_while>();
+            auto _while = m_Allocator.alloc<node::_statement_while>();
             stmt_crtl->type = Token_type::_while;
             stmt_crtl->var = _while;
         }
         else if (peek(-1).value().type == Token_type::_for) {
-            const auto _for = m_Allocator.alloc<node::_statement_for>();
+            auto _for = m_Allocator.alloc<node::_statement_for>();
             stmt_crtl->type = Token_type::_for;
             if (peek().has_value() && peek().value().type == Token_type::_dec) {
-                if (const auto stmt_dec = parse_var_dec()) {
+                if (auto stmt_dec = parse_var_dec()) {
                     _for->_stmt_var_dec = stmt_dec.value();
                 }
                 else {
@@ -839,15 +840,15 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
             }
             stmt_crtl->var = _for;
         }
-        if(const auto logic = parse_logical_stmt()){
+        if(auto logic = parse_logical_stmt()){
             stmt_crtl->logic = logic.value();
         }else{
             line_err("Unable to parse logical statement");
         }
         if (stmt_crtl->type == Token_type::_for) {
-            const auto _for = std::get<node::_statement_for*>(stmt_crtl->var);
+            auto _for = std::get<node::_statement_for*>(stmt_crtl->var);
             try_consume(Token_type::_semicolon, "Expected ';' after comparison in for statement");
-            if (const auto var_expr = parse_expr())
+            if (auto var_expr = parse_expr())
             {
                 _for->var_op = var_expr.value();
             }
@@ -857,7 +858,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
             try_consume(Token_type::_semicolon, "Expected ';' after variable operation in for statement");
         }
 
-        if (const auto scope = parse_scope()) {
+        if (auto scope = parse_scope()) {
             stmt_crtl->scope = scope.value();
         }
         else {
@@ -865,9 +866,9 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         }
         if (stmt_crtl->type == Token_type::_if && peek_type(Token_type::_else)) {
             consume();
-            const auto _if = std::get<node::_statement_if*>(stmt_crtl->var);
-            const auto _else = m_Allocator.alloc<node::_if_else>();
-            if (const auto scope = parse_scope()) {
+            auto _if = std::get<node::_statement_if*>(stmt_crtl->var);
+            auto _else = m_Allocator.alloc<node::_if_else>();
+            if (auto scope = parse_scope()) {
                 _else->scope = scope.value();
             }
             else {
@@ -879,7 +880,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
     }
     else if (peek_type(Token_type::_output)) {
         consume();
-        const auto stmt_out = m_Allocator.alloc<node::_statement_output>();
+        auto stmt_out = m_Allocator.alloc<node::_statement_output>();
         flags.needs_buffer = true;
         while (const auto expr = parse_expr())
         {
@@ -900,7 +901,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
     else if (peek_type(Token_type::_input)) {
         consume();
         flags.needs_buffer = true;
-        const auto stmt_input = m_Allocator.alloc<node::_statement_input>();
+        auto stmt_input = m_Allocator.alloc<node::_statement_input>();
         stmt_input->ident = try_consume(Token_type::_ident, "Expected string buffer");
         try_consume(Token_type::_semicolon, "Expected ';'");
         return mk_stmt(stmt_input);
@@ -911,7 +912,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
             line_err("Cannot create bundle inside of function or other struct");
         }
         in_func = true;
-        const auto struct_ = m_Allocator.alloc<node::_statement_struct>();
+        auto struct_ = m_Allocator.alloc<node::_statement_struct>();
         struct_->ident = consume();
         if(this->struct_name_alloc_map.find(struct_->ident.value.value()) != this->struct_name_alloc_map.end()){
             line_err("Bundle with that name already exists");
@@ -934,7 +935,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         return mk_stmt(struct_);
     }
     else if (const auto expr = parse_expr()) {//try to parse an expression freely
-        const auto pure_expr = m_Allocator.alloc<node::_statement_pure_expr>();
+        auto pure_expr = m_Allocator.alloc<node::_statement_pure_expr>();
         pure_expr->expr = expr.value();
         try_consume(Token_type::_semicolon, "Expected ';'");
         return mk_stmt(pure_expr);
@@ -943,7 +944,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
 }
 std::optional<node::_program> Parser::parse_program() {
     while (peek().has_value()) {
-        if (const auto stmt = parse_statement()) {
+        if (auto stmt = parse_statement()) {
             prog.statements.push_back(stmt.value());
         }
         else {
