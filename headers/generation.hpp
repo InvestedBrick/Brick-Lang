@@ -92,7 +92,9 @@ private:
     std::vector<Var_array> m_arrays{};
     std::vector<size_t> m_scope_arrays{};
     std::vector<std::string> filestack{};
-    std::string m_func_registers[4] = {"edi","esi","edx","ecx"};
+    const std::string m_func_registers[4] = {"edi","esi","edx","ecx"};
+    const std::string m_bin_expr_registers[4] {"ecx","edx","edi","esi"};
+    uint m_bin_expr_idx = 0;
     std::unordered_map<std::string, size_t> str_bit_sizes = {
     {"eax",32},
     {"ebx",32},
