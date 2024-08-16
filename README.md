@@ -364,6 +364,16 @@ Inline assembly is considered bad practise, but needed to write wrappers for sys
 
 I advise you to not use it outside of adding to the stdlib
 
+**Bitwise Operations**
+
+You can use the bitwise operations `and`, `xor` and `or`, which are denoted with `&` , `^` and `|` respectively:
+
+```
+dec my_var as int -> 3 | 4; // 0b011 | 0b100 = 0b111 = 7
+set my_var to my_var & 5;   // 0b111 & 0b101 = 0b101 = 5
+set my_var to myvar ^ 1;    // 0b101 ^ 0b001 = 0b100 = 4
+```
+
 ##
 
 If you have any questions left, you can look at the example code provided in examples/ 
