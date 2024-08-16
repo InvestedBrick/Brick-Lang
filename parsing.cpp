@@ -361,6 +361,27 @@ inline std::optional<node::_expr*> Parser::parse_expr(int min_prec) {
             }
             bin_expr->var = div;
         }
+        else if(op.type == Token_type::_xor){
+            auto xor_ = m_Allocator.alloc<node::_bin_expr_xor>();
+            expr_left_2->var = expr_left->var;
+            xor_->left = expr_left_2;
+            xor_->right = expr_right.value();
+            bin_expr->var = xor_;
+        }
+        else if(op.type == Token_type::_or){
+            auto or_ = m_Allocator.alloc<node::_bin_expr_or>();
+            expr_left_2->var = expr_left->var;
+            or_->left = expr_left_2;
+            or_->right = expr_right.value();
+            bin_expr->var = or_;
+        }
+        else if(op.type == Token_type::_ampersand){
+            auto and_ = m_Allocator.alloc<node::_bin_expr_and>();
+            expr_left_2->var = expr_left->var;
+            and_->left = expr_left_2;
+            and_->right = expr_right.value();
+            bin_expr->var = and_;
+        }
 
         expr_left->var = bin_expr;
     }
