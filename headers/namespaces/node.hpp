@@ -16,7 +16,18 @@ namespace node {
     struct _term_ident {
         Token ident;
     };
-
+    struct _bin_expr_xor{
+        _expr* left;
+        _expr* right;
+    };
+    struct _bin_expr_or{
+        _expr* left;
+        _expr* right;
+    };
+    struct _bin_expr_and{
+        _expr* left;
+        _expr* right;
+    };
     struct _bin_expr_add
     {
         _expr* left;
@@ -40,7 +51,7 @@ namespace node {
     };
     struct _bin_expr
     {
-        std::variant<_bin_expr_add*, _bin_expr_mul*, _bin_expr_sub*, _bin_expr_div*> var;
+        std::variant<_bin_expr_add*, _bin_expr_mul*, _bin_expr_sub*, _bin_expr_div*,_bin_expr_xor*,_bin_expr_or*,_bin_expr_and*> var;
     };
     struct _term_deref {
         Token ident;
