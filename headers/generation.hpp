@@ -93,7 +93,7 @@ private:
     std::vector<size_t> m_scope_arrays{};
     std::vector<std::string> filestack{};
     const std::string m_func_registers[4] = {"edi","esi","edx","ecx"};
-    const std::string m_bin_expr_registers[4] {"ecx","edx","edi","esi"};
+    const std::string m_bin_expr_registers[4] {"ecx","edx","esi","edi"};
     uint m_bin_expr_idx = 0;
     std::unordered_map<std::string, size_t> str_bit_sizes = {
     {"eax",32},
@@ -132,6 +132,9 @@ private:
     
     inline void sys_read(size_t size,std::string ecx_and_edi,bool lea_or_mov);
 #endif
+    template <typename bin_expr_type>
+    inline std::string generic_bin_expr(bin_expr_type* bin_expr,std::string operation);
+
     inline std::string get_mov_instruc(const std::string& dest, const std::string& source);
     inline size_t asm_type_to_bytes(std::string str);
     inline std::string get_correct_part_of_register(const std::string& source,bool edx = false);
