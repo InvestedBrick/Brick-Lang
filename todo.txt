@@ -33,9 +33,10 @@ checklist:
 [X] dynamic memory (view examples/memory.brick)
 [X] port generation to Linux / split win && Linux
 [X] reading/writing from and to files
+[X] OR, XOR, AND operators
 [ ] floating points
 [ ] struct pointers
 [ ] write own malloc / free for Linux
-[ ] OR, XOR etc operators
 [ ] unit tests
+[ ] small optimzer to optimize the garbage that this compiler outputs
 
