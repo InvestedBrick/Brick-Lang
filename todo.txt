@@ -16,7 +16,7 @@ LOGS:
 26.03.24: about 3400 lines (added logical statements)
 08.05.24: about 3769 lines and around 370 lines of brick code (added structs + some refactoring)
 13.08.24: about 4000 lines and around 570 lines of brick code (ported to linux)
-
+16.08.24: about 4100 lines and around 551 lines of brick code (added bitwise operations + some refactoring)
 Needs to be refactored
     
 checklist:
