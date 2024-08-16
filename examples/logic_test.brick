@@ -1,10 +1,10 @@
 #include stdlib/int_to_ascii.brick
 
-brick return_five{
+brick return_five {
     return 5;
 }=>int
 
-brick return_three{
+brick return_three : int -> x, int -> y{
     return 3;
 }=>int
 
@@ -20,7 +20,8 @@ brick main{
     //output itoa(x++);
     //output itoa(x--);
     dec y as int -> 4;
-    dec var as int -> (return_five() + return_three() * 5) / y;
+    dec var as int -> (return_five() + return_three(0,0) * 5) / y;
+    output itoa(var);
     set var to var | 2; // 0b101 | 0b010 == 111 = 7
     set var to var ^ 3; // 0b111 ^ 0b011 == 100 = 4
     output itoa(var);
