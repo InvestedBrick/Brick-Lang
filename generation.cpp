@@ -446,79 +446,129 @@ inline std::optional<std::string> Generator::gen_bin_expr(const node::_bin_expr*
         {
             Generator* gen;
             std::optional<std::string> ret_val;
+            //TODO: move val of str_1 into m_bin_expr_register and free it after end of expr
             void operator()(const node::_bin_expr_add* bin_expr_add) {
-                const std::string str_1 = gen->gen_expr(bin_expr_add->left).value();
+                std::string str_1 = gen->gen_expr(bin_expr_add->left).value();
+                if (str_1 == "eax" || str_1 == "&eax"){
+                    gen->m_code << "    mov "<< gen->m_bin_expr_registers[gen->m_bin_expr_idx] <<", eax" << std::endl;
+                    str_1 = gen->m_bin_expr_registers[gen->m_bin_expr_idx++];
+                    if(gen->m_bin_expr_idx > 4){
+                        gen->line_err("Too many expressions, Sorry, need to fix this");
+                    }
+                }
+
                 const std::string str_2 = gen->gen_expr(bin_expr_add->right).value();
-                if (is_numeric(str_1) && is_numeric(str_2))
+                
+                const bool str_1_numeric = is_numeric(str_1);
+                const bool str_2_numeric = is_numeric(str_2);
+
+                if (str_1_numeric && str_2_numeric)
                 {
                     int num = std::stoi(str_1) + std::stoi(str_2);
                     ret_val = std::to_string(num);
                 }
                 else
                 {
-                    std::string mov_inst_1, mov_inst_2;
+                    std::string mov_inst_1, mov_inst_2,str_2_type {};
+                    str_2_type = str_2.substr(0, str_2.find_first_of(' '));
+                    const bool str_2_is_dword = str_2_type == "dword";
+                    mov_inst_1 = str_1_numeric || str_1 == (gen->m_bin_expr_idx == 0 ? "ecx" : gen->m_bin_expr_registers[--gen->m_bin_expr_idx]) ? "mov" : gen->get_mov_instruc("eax", str_1.substr(0, str_1.find_first_of(' ')));
+                    mov_inst_2 = str_2_numeric || str_2 == "eax" ? "mov" : gen->get_mov_instruc("eax", str_2_type);
 
-                    mov_inst_2 = is_numeric(str_2) ? "mov" : gen->get_mov_instruc("eax", str_2.substr(0, str_2.find_first_of(' ')));
-                    mov_inst_1 = is_numeric(str_1) ? "mov" : gen->get_mov_instruc("eax", str_1.substr(0, str_1.find_first_of(' ')));
-
-                    gen->m_code << "    " << mov_inst_2 << " ebx, " << str_2 << std::endl;
-                    if (str_1 != "eax") {
-                        gen->m_code << "    " << mov_inst_1 << " eax, " << str_1 << std::endl;
+                    if(!str_2_is_dword){
+                        gen->m_code << "    " << mov_inst_2 << " ebx, " << str_2 << std::endl;
                     }
-                    gen->m_code << "    add eax,ebx" << std::endl;
+                    gen->m_code << "    " << mov_inst_1 << " eax, " << str_1 << std::endl;
+                    gen->m_code << "    add eax, " << (str_2_is_dword ? str_2 : "ebx") << std::endl;
                     ret_val = "eax";
                 }
             }
             void operator()(const node::_bin_expr_sub* bin_expr_sub) {
-                const std::string str_1 = gen->gen_expr(bin_expr_sub->left).value();
+                std::string str_1 = gen->gen_expr(bin_expr_sub->left).value();
+                if (str_1 == "eax" || str_1 == "&eax"){
+                    gen->m_code << "    mov "<< gen->m_bin_expr_registers[gen->m_bin_expr_idx] <<", eax" << std::endl;
+                    str_1 = gen->m_bin_expr_registers[gen->m_bin_expr_idx++];
+                    if(gen->m_bin_expr_idx > 4){
+                        gen->line_err("Too many expressions, Sorry, need to fix this");
+                    }
+                }
+
                 const std::string str_2 = gen->gen_expr(bin_expr_sub->right).value();
-                if (is_numeric(str_1) && is_numeric(str_2))
+
+                const bool str_1_numeric = is_numeric(str_1);
+                const bool str_2_numeric = is_numeric(str_2);
+                if (str_1_numeric && str_2_numeric)
                 {
                     int num = std::stoi(str_1) - std::stoi(str_2);
                     ret_val = std::to_string(num);
                 }
                 else
                 {
-                    std::string mov_inst_1, mov_inst_2;
+                    std::string mov_inst_1, mov_inst_2,str_2_type {};
+                    str_2_type = str_2.substr(0, str_2.find_first_of(' '));
+                    const bool str_2_is_dword = str_2_type == "dword";
+                    mov_inst_1 = str_1_numeric || str_1 == (gen->m_bin_expr_idx == 0 ? "ecx" : gen->m_bin_expr_registers[--gen->m_bin_expr_idx]) ? "mov" : gen->get_mov_instruc("eax", str_1.substr(0, str_1.find_first_of(' ')));
+                    mov_inst_2 = str_2_numeric || str_2 == "eax" ? "mov" : gen->get_mov_instruc("eax", str_2_type);
 
-                    mov_inst_1 = is_numeric(str_1) ? "mov" : gen->get_mov_instruc("eax", str_1.substr(0, str_1.find_first_of(' ')));
-                    mov_inst_2 = is_numeric(str_2) ? "mov" : gen->get_mov_instruc("eax", str_2.substr(0, str_2.find_first_of(' ')));
-
-                    gen->m_code << "    " << mov_inst_2 << " ebx, " << str_2 << std::endl;
-                    if (str_1 != "eax") {
-                        gen->m_code << "    " << mov_inst_1 << " eax, " << str_1 << std::endl;
+                    if(!str_2_is_dword){
+                        gen->m_code << "    " << mov_inst_2 << " ebx, " << str_2 << std::endl;
                     }
-                    gen->m_code << "    sub eax,ebx" << std::endl;
+                    gen->m_code << "    " << mov_inst_1 << " eax, " << str_1 << std::endl;
+                    gen->m_code << "    sub eax, " << (str_2_is_dword ? str_2 : "ebx") << std::endl;
                     ret_val = "eax";
                 }
 
             }
             void operator()(const node::_bin_expr_mul* bin_expr_mul) {
-                const std::string str_1 = gen->gen_expr(bin_expr_mul->left).value();
+                std::string str_1 = gen->gen_expr(bin_expr_mul->left).value();
+                if (str_1 == "eax" || str_1 == "&eax"){
+                    gen->m_code << "    mov "<< gen->m_bin_expr_registers[gen->m_bin_expr_idx] <<", eax" << std::endl;
+                    str_1 = gen->m_bin_expr_registers[gen->m_bin_expr_idx++];
+                    if(gen->m_bin_expr_idx > 4){
+                        gen->line_err("Too many expressions, Sorry, need to fix this");
+                    }
+                }
+
                 const std::string str_2 = gen->gen_expr(bin_expr_mul->right).value();
-                if (is_numeric(str_1) && is_numeric(str_2))
+                
+                const bool str_1_numeric = is_numeric(str_1);
+                const bool str_2_numeric = is_numeric(str_2);
+                if (str_1_numeric && str_2_numeric)
                 {
                     int num = std::stoi(str_1) * std::stoi(str_2);
                     ret_val = std::to_string(num);
                 }
                 else
                 {
-                    std::string mov_inst_1, mov_inst_2;
+                    std::string mov_inst_1, mov_inst_2,str_2_type {};
+                    str_2_type = str_2.substr(0, str_2.find_first_of(' '));
+                    const bool str_2_is_dword = str_2_type == "dword";
 
-                    mov_inst_1 = is_numeric(str_1) ? "mov" : gen->get_mov_instruc("eax", str_1.substr(0, str_1.find_first_of(' ')));
-                    mov_inst_2 = is_numeric(str_2) ? "mov" : gen->get_mov_instruc("eax", str_2.substr(0, str_2.find_first_of(' ')));
+                    mov_inst_1 = str_1_numeric || str_1 == (gen->m_bin_expr_idx == 0 ? "ecx" : gen->m_bin_expr_registers[--gen->m_bin_expr_idx]) ? "mov" : gen->get_mov_instruc("eax", str_1.substr(0, str_1.find_first_of(' ')));
+                    mov_inst_2 = str_2_numeric || str_2 == "eax" ? "mov" : gen->get_mov_instruc("eax", str_2_type);
 
-                    gen->m_code << "    " << mov_inst_2 << " ebx, " << str_2 << std::endl;
-                    if (str_1 != "eax") {
-                        gen->m_code << "    " << mov_inst_1 << " eax, " << str_1 << std::endl;
+                    if(!str_2_is_dword){
+                        gen->m_code << "    " << mov_inst_2 << " ebx, " << str_2 << std::endl;
                     }
-                    gen->m_code << "    imul eax, ebx" << std::endl;
+                    gen->m_code << "    " << mov_inst_1 << " eax, " << str_1 << std::endl;
+                    gen->m_code << "    mul " << (str_2_is_dword ? str_2 : "ebx") << std::endl;
                     ret_val = "eax";
                 }
             }
             void operator()(const node::_bin_expr_div* bin_expr_div) {
-                const std::string str_1 = gen->gen_expr(bin_expr_div->left).value();
+                std::string str_1 = gen->gen_expr(bin_expr_div->left).value();
+                if (str_1 == "eax" || str_1 == "&eax"){
+                    gen->m_code << "    mov "<< gen->m_bin_expr_registers[gen->m_bin_expr_idx] <<", eax" << std::endl;
+                    str_1 = gen->m_bin_expr_registers[gen->m_bin_expr_idx++];
+                    if(gen->m_bin_expr_idx > 4){
+                        gen->line_err("Too many expressions, Sorry, need to fix this");
+                    }
+                }
+
                 const std::string str_2 = gen->gen_expr(bin_expr_div->right).value();
+                
+                const bool str_1_numeric = is_numeric(str_1);
+                const bool str_2_numeric = is_numeric(str_2);
                 if (is_numeric(str_1) && is_numeric(str_2))
                 {
                     int num;
@@ -532,23 +582,132 @@ inline std::optional<std::string> Generator::gen_bin_expr(const node::_bin_expr*
                 }
                 else
                 {
-                    std::string mov_inst_1, mov_inst_2;
+                    std::string mov_inst_1, mov_inst_2,str_2_type {};
+                    str_2_type = str_2.substr(0, str_2.find_first_of(' '));
+                    const bool str_2_is_dword = str_2_type == "dword";
 
-                    mov_inst_1 = is_numeric(str_1) ? "mov" : gen->get_mov_instruc("eax", str_1.substr(0, str_1.find_first_of(' ')));
-                    mov_inst_2 = is_numeric(str_2) ? "mov" : gen->get_mov_instruc("eax", str_2.substr(0, str_2.find_first_of(' ')));
+                    mov_inst_1 = str_1_numeric || str_1 == (gen->m_bin_expr_idx == 0 ? "ecx" : gen->m_bin_expr_registers[--gen->m_bin_expr_idx]) ? "mov" : gen->get_mov_instruc("eax", str_1.substr(0, str_1.find_first_of(' ')));
+                    mov_inst_2 = str_2_numeric || str_2 == "eax" ? "mov" : gen->get_mov_instruc("eax", str_2_type);
 
-                    gen->m_code << "    " << mov_inst_2 << " ebx, " << str_2 << std::endl;
-                    if (str_1 != "eax") {
-                        gen->m_code << "    " << mov_inst_1 << " eax, " << str_1 << std::endl;
+                    if(!str_2_is_dword){
+                        gen->m_code << "    " << mov_inst_2 << " ebx, " << str_2 << std::endl;
                     }
-                    gen->m_code << "    xor edx,edx" << std::endl;
-                    gen->m_code << "    idiv ebx" << std::endl;
+                    gen->m_code << "    " << mov_inst_1 << " eax, " << str_1 << std::endl;
+                    gen->m_code << "    xor edx, edx" << std::endl;
+                    gen->m_code << "    div " << (str_2_is_dword ? str_2 : "ebx") << std::endl;
                     if (bin_expr_div->_modulo) {
                         gen->m_code << "    mov eax,edx" << std::endl;
-                        
                     }
                     ret_val = "eax";
                     
+                }
+            }
+            void operator()(const node::_bin_expr_xor* bin_expr_xor){
+                std::string str_1 = gen->gen_expr(bin_expr_xor->left).value();
+                if (str_1 == "eax" || str_1 == "&eax"){
+                    gen->m_code << "    mov "<< gen->m_bin_expr_registers[gen->m_bin_expr_idx] <<", eax" << std::endl;
+                    str_1 = gen->m_bin_expr_registers[gen->m_bin_expr_idx++];
+                    if(gen->m_bin_expr_idx > 4){
+                        gen->line_err("Too many expressions, Sorry, need to fix this");
+                    }
+                }
+
+                const std::string str_2 = gen->gen_expr(bin_expr_xor->right).value();
+                
+                const bool str_1_numeric = is_numeric(str_1);
+                const bool str_2_numeric = is_numeric(str_2);
+
+                if (str_1_numeric && str_2_numeric)
+                {
+                    int num = std::stoi(str_1) ^ std::stoi(str_2);
+                    ret_val = std::to_string(num);
+                }
+                else
+                {
+                    std::string mov_inst_1, mov_inst_2,str_2_type {};
+                    str_2_type = str_2.substr(0, str_2.find_first_of(' '));
+                    const bool str_2_is_dword = str_2_type == "dword";
+                    mov_inst_1 = str_1_numeric || str_1 == (gen->m_bin_expr_idx == 0 ? "ecx" : gen->m_bin_expr_registers[--gen->m_bin_expr_idx]) ? "mov" : gen->get_mov_instruc("eax", str_1.substr(0, str_1.find_first_of(' ')));
+                    mov_inst_2 = str_2_numeric || str_2 == "eax" ? "mov" : gen->get_mov_instruc("eax", str_2_type);
+
+                    if(!str_2_is_dword){
+                        gen->m_code << "    " << mov_inst_2 << " ebx, " << str_2 << std::endl;
+                    }
+                    gen->m_code << "    " << mov_inst_1 << " eax, " << str_1 << std::endl;
+                    gen->m_code << "    xor eax, " << (str_2_is_dword ? str_2 : "ebx") << std::endl;
+                    ret_val = "eax";
+                }
+            }
+            void operator()(const node::_bin_expr_or* bin_expr_or){
+                std::string str_1 = gen->gen_expr(bin_expr_or->left).value();
+                if (str_1 == "eax" || str_1 == "&eax"){
+                    gen->m_code << "    mov "<< gen->m_bin_expr_registers[gen->m_bin_expr_idx] <<", eax" << std::endl;
+                    str_1 = gen->m_bin_expr_registers[gen->m_bin_expr_idx++];
+                    if(gen->m_bin_expr_idx > 4){
+                        gen->line_err("Too many expressions, Sorry, need to fix this");
+                    }
+                }
+
+                const std::string str_2 = gen->gen_expr(bin_expr_or->right).value();
+                
+                const bool str_1_numeric = is_numeric(str_1);
+                const bool str_2_numeric = is_numeric(str_2);
+
+                if (str_1_numeric && str_2_numeric)
+                {
+                    int num = std::stoi(str_1) | std::stoi(str_2);
+                    ret_val = std::to_string(num);
+                }
+                else
+                {
+                    std::string mov_inst_1, mov_inst_2,str_2_type {};
+                    str_2_type = str_2.substr(0, str_2.find_first_of(' '));
+                    const bool str_2_is_dword = str_2_type == "dword";
+                    mov_inst_1 = str_1_numeric || str_1 == (gen->m_bin_expr_idx == 0 ? "ecx" : gen->m_bin_expr_registers[--gen->m_bin_expr_idx]) ? "mov" : gen->get_mov_instruc("eax", str_1.substr(0, str_1.find_first_of(' ')));
+                    mov_inst_2 = str_2_numeric || str_2 == "eax" ? "mov" : gen->get_mov_instruc("eax", str_2_type);
+
+                    if(!str_2_is_dword){
+                        gen->m_code << "    " << mov_inst_2 << " ebx, " << str_2 << std::endl;
+                    }
+                    gen->m_code << "    " << mov_inst_1 << " eax, " << str_1 << std::endl;
+                    gen->m_code << "    or eax, " << (str_2_is_dword ? str_2 : "ebx") << std::endl;
+                    ret_val = "eax";
+                }
+            }
+            void operator()(const node::_bin_expr_and* bin_expr_and){
+                std::string str_1 = gen->gen_expr(bin_expr_and->left).value();
+                if (str_1 == "eax" || str_1 == "&eax"){
+                    gen->m_code << "    mov "<< gen->m_bin_expr_registers[gen->m_bin_expr_idx] <<", eax" << std::endl;
+                    str_1 = gen->m_bin_expr_registers[gen->m_bin_expr_idx++];
+                    if(gen->m_bin_expr_idx > 4){
+                        gen->line_err("Too many expressions, Sorry, need to fix this");
+                    }
+                }
+
+                const std::string str_2 = gen->gen_expr(bin_expr_and->right).value();
+                
+                const bool str_1_numeric = is_numeric(str_1);
+                const bool str_2_numeric = is_numeric(str_2);
+
+                if (str_1_numeric && str_2_numeric)
+                {
+                    int num = std::stoi(str_1) & std::stoi(str_2);
+                    ret_val = std::to_string(num);
+                }
+                else
+                {
+                    std::string mov_inst_1, mov_inst_2,str_2_type {};
+                    str_2_type = str_2.substr(0, str_2.find_first_of(' '));
+                    const bool str_2_is_dword = str_2_type == "dword";
+                    mov_inst_1 = str_1_numeric || str_1 == (gen->m_bin_expr_idx == 0 ? "ecx" : gen->m_bin_expr_registers[--gen->m_bin_expr_idx]) ? "mov" : gen->get_mov_instruc("eax", str_1.substr(0, str_1.find_first_of(' ')));
+                    mov_inst_2 = str_2_numeric || str_2 == "eax" ? "mov" : gen->get_mov_instruc("eax", str_2_type);
+
+                    if(!str_2_is_dword){
+                        gen->m_code << "    " << mov_inst_2 << " ebx, " << str_2 << std::endl;
+                    }
+                    gen->m_code << "    " << mov_inst_1 << " eax, " << str_1 << std::endl;
+                    gen->m_code << "    and eax, " << (str_2_is_dword ? str_2 : "ebx") << std::endl;
+                    ret_val = "eax";
                 }
             }
         };
