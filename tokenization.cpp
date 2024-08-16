@@ -3,15 +3,16 @@ std::optional<int> bin_prec(Token_type type) {
     switch (type)
     {
     case Token_type::_add:
-        return 1;
     case Token_type::_sub:
         return 1;
     case Token_type::_mul:
-        return 2;
     case Token_type::_div:
-        return 2;
     case Token_type::_mod:
         return 2;
+    case Token_type::_or:
+    case Token_type::_xor:
+    case Token_type::_ampersand:
+        return 3;
     default:
         return {};
     }
@@ -370,9 +371,19 @@ std::vector<Token> Tokenizer::tokenize()
             token_arr.push_back(mk_tok(Token_type::_not_same_as));
         } else {
             line_err("Invalid Syntax!");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         break;}
+    case '|':{
+        consume();
+        token_arr.push_back(mk_tok(Token_type::_or));
+        break;
+    }
+    case '^':{
+        consume();
+        token_arr.push_back(mk_tok(Token_type::_xor));
+        break;
+    }
     case '=':
         {consume();
         if (peek().value() == '=') {
