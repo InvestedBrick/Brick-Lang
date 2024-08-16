@@ -68,7 +68,9 @@ enum class Token_type {
     _logical_and,
     _logical_or,
     _struct,
-    _dot
+    _dot,
+    _or,
+    _xor
 };
 inline std::unordered_map<Token_type, std::string> tokenTypeToString = {
     {Token_type::_exit, "_exit"},
@@ -117,7 +119,7 @@ inline std::unordered_map<Token_type, std::string> tokenTypeToString = {
     {Token_type::_noend, "_noend"},
     {Token_type::_str_buffer, "_str_buffer"},
     {Token_type::_input, "_input"},
-    {Token_type::_func, "FUNCTION---------------------------------------         _func"},
+    {Token_type::_func, " _func"},
     {Token_type::_colon, "_colon"},
     {Token_type::_eq_right_arrow, "_eq_right_arrow"},
     {Token_type::_return, "_return"},
@@ -135,6 +137,8 @@ inline std::unordered_map<Token_type, std::string> tokenTypeToString = {
     {Token_type::_logical_or, "_logical_or"},
     {Token_type::_struct, "_struct"},
     {Token_type::_dot, "_dot"},
+    {Token_type::_or, "_or"},
+    {Token_type::_xor, "_xor"},
 
 };
 std::optional<int> bin_prec(Token_type type);
