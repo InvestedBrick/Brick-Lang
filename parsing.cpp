@@ -482,11 +482,14 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
     Token t = peek(2).value(); // peek token and check if its a variable type
     if (t.type == Token_type::_int || t.type == Token_type::_short || t.type == Token_type::_byte || t.type == Token_type::_bool) {
         auto var_num = m_Allocator.alloc<node::_var_dec_num>();
+        var_num->ident = consume();
+        if (add_struct_info){
+            (*generic_name_to_offsets).push_back(std::make_pair(var_num->ident.value.value(),alloc_size));
+        }
         if (in_func) {
             alloc_size += var_type_to_bytes(t.type);
         }
         var_num->type = t.type;
-        var_num->ident = consume();
         consume();
         consume();//consume the peeked token
         if (try_consume(Token_type::_ptr)) {
@@ -509,11 +512,25 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
         {
             var_num->_const = true;
         }
+
+        if(add_struct_info){
+            node::_var_metadata item;
+            item.name = var_num->ident.value.value();
+            item._ptr = var_num->_ptr;
+            item._const = var_num->_const;
+            item.type = var_num->type;
+            item.variable_kind = "number";
+            generic_var_metadata->push_back(item);
+        }
+        
         stmt_dec->var = var_num;
     }
     else if (t.type == Token_type::_array) {
         auto var_array = m_Allocator.alloc<node::_var_dec_array>();
         var_array->ident = consume();
+        if (add_struct_info){
+            generic_name_to_offsets->push_back(std::make_pair(var_array->ident.value.value(),alloc_size));
+        }
         consume();
         consume();
         if (is_data_type(peek().value().type)) {
@@ -545,6 +562,21 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
         if (in_func) {
             alloc_size += var_array->_array_size * var_type_to_bytes(var_array->type);
         }
+
+        if(add_struct_info){
+            node::_var_metadata item;
+#ifdef __linux__            
+            item.init_str = var_array->init_str;
+#endif            
+            item._const = var_array->_const;
+            item.name = var_array->ident.value.value();
+            item.type = var_array->type;
+            item._array_size = var_array->_array_size;
+            item.variable_kind = "array";
+            generic_var_metadata->push_back(item);
+        }
+        
+
         stmt_dec->var = var_array;
     }
     else if (t.type == Token_type::_string) {
@@ -571,20 +603,77 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
         stmt_dec->var = str_buf;
     }
     else if (t.type == Token_type::_ident){
-        auto it = this->struct_name_alloc_map.find(t.value.value());
-        if(it == this->struct_name_alloc_map.end()){
+        const auto it = this->struct_name_alloc_map.find(t.value.value());
+        if (it == this->struct_name_alloc_map.end()){
             line_err("Invalid bundle name");
         }
-        if(in_func){
-            alloc_size += (*it).second;
+
+        if (peek(3).has_value() && peek(3).value().type == Token_type::_ptr){
+            auto var_struct_ptr = m_Allocator.alloc<node::_var_dec_struct_ptr>();
+
+            var_struct_ptr->ident = consume();
+            if (add_struct_info){
+                generic_name_to_offsets->push_back(std::make_pair(var_struct_ptr->ident.value.value(),alloc_size));
+            }
+
+            if(in_func){
+                alloc_size += 4;
+            }
+            
+            var_struct_ptr->struct_name = (*it).first;
+            consume(); // =
+            consume(); // struct name
+            consume(); // ptr
+
+            try_consume(Token_type::_right_arrow, "Expected '->'");
+
+            if (const auto expr = parse_expr()) {
+                var_struct_ptr->expr = expr.value();
+            }
+            else {
+                line_err("Invalid expression");
+            }
+
+            if (try_consume(Token_type::_const))
+            {
+                var_struct_ptr->_const = true;
+            }
+            if(add_struct_info){
+                node::_var_metadata item;
+                item.name = var_struct_ptr->ident.value.value();
+                item._ptr = true;
+                item._const = var_struct_ptr->_const;
+                item.type = Token_type::_int;
+                item.struct_name = var_struct_ptr->struct_name;
+                item.variable_kind = "struct ptr";
+                generic_var_metadata->push_back(item);
+            }
+            stmt_dec->var = var_struct_ptr;
+
+        }else{
+            
+            auto var_struct = m_Allocator.alloc<node::_var_dec_struct>();
+            var_struct->ident = consume();
+            if (add_struct_info){
+                generic_name_to_offsets->push_back(std::make_pair(var_struct->ident.value.value(),alloc_size));
+            }
+
+            if (in_func){
+                alloc_size += (*it).second;
+            }
+
+            var_struct->struct_name = (*it).first;
+            consume();
+            consume();
+            if(add_struct_info){
+                node::_var_metadata item;
+                item.name = var_struct->ident.value.value();
+                item.struct_name = var_struct->struct_name;
+                item.variable_kind = "struct";
+                generic_var_metadata->push_back(item);
+            }
+            stmt_dec->var = var_struct;
         }
-        
-        auto var_struct = m_Allocator.alloc<node::_var_dec_struct>();
-        var_struct->ident = consume();
-        var_struct->struct_name = (*it).first;
-        consume();
-        consume();
-        stmt_dec->var = var_struct;
     }
     else
     {
@@ -698,16 +787,24 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         }
         Token t;
     
-        if(peek_type(Token_type::_ident) && peek_type(Token_type::_dot,1)){
+        if(peek_type(Token_type::_ident) && (peek_type(Token_type::_dot,1) || peek_type(Token_type::_right_arrow,1))){
             auto set_struct = m_Allocator.alloc<node::_var_set_struct>();
             set_struct->ident = consume();
             node::_var_set_struct* current = set_struct;
-    
-            while(try_consume(Token_type::_dot)){
-                auto next_struct = m_Allocator.alloc<node::_var_set_struct>();
-                next_struct->ident = try_consume(Token_type::_ident,"Expected Identifier");
-                current->item = next_struct;
-                current = next_struct;
+            if(peek_type(Token_type::_right_arrow)){
+                while(try_consume(Token_type::_right_arrow)){
+                    auto next_struct = m_Allocator.alloc<node::_var_set_struct>();
+                    next_struct->ident = try_consume(Token_type::_ident,"Expected Identifier");
+                    current->item = next_struct;
+                    current = next_struct;
+                }
+            }else{
+                while(try_consume(Token_type::_dot)){
+                    auto next_struct = m_Allocator.alloc<node::_var_set_struct>();
+                    next_struct->ident = try_consume(Token_type::_ident,"Expected Identifier");
+                    current->item = next_struct;
+                    current = next_struct;
+                }
             }
     
             set_struct->deref = deref;
@@ -932,8 +1029,11 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         if(in_func){
             line_err("Cannot create bundle inside of function or other struct");
         }
-        in_func = true;
         auto struct_ = m_Allocator.alloc<node::_statement_struct>();
+        in_func = true;
+        add_struct_info = true;
+        generic_name_to_offsets = &struct_->name_to_offsets;
+        generic_var_metadata = &struct_->vars_metadata;
         struct_->ident = consume();
         if(this->struct_name_alloc_map.find(struct_->ident.value.value()) != this->struct_name_alloc_map.end()){
             line_err("Bundle with that name already exists");
@@ -953,6 +1053,10 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         this->struct_name_alloc_map.insert(std::make_pair(struct_->ident.value.value(),alloc_size));
         in_func = false;
         alloc_size = 0;
+        add_struct_info = false;
+        generic_name_to_offsets = nullptr;
+        generic_var_metadata = nullptr;
+
         return mk_stmt(struct_);
     }
     else if (const auto expr = parse_expr()) {//try to parse an expression freely
