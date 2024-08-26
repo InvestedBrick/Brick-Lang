@@ -140,9 +140,15 @@ namespace node {
         Token ident;
         std::string struct_name;
     };
+    struct _var_dec_struct_ptr{
+        bool _const;
+        Token ident;
+        std::string struct_name;
+        _expr* expr;
+    };
     struct _statement_var_dec
     {
-        std::variant<_var_dec_num*, _var_dec_str*, _var_dec_str_buf*, _var_dec_array*,_var_dec_struct*> var;
+        std::variant<_var_dec_num*, _var_dec_str*, _var_dec_str_buf*, _var_dec_array*,_var_dec_struct*,_var_dec_struct_ptr*> var;
     };
     struct _var_set_num {
         Token ident;
@@ -247,10 +253,22 @@ namespace node {
     struct _statement_ret {
         _expr* expr;
     };
+    struct _var_metadata{
+        bool _ptr;
+        bool _const;
+        Token_type type;
+        size_t _array_size;
+        std::string struct_name;
+        std::string name;
+        std::optional<std::string> init_str;
+        std::string variable_kind;
+    };
     struct _statement_struct{
         Token ident;
-        std::vector<_statement_var_dec*>  vars;
+        std::vector<_statement_var_dec*>  vars{};
         int n_lines;
+        std::vector<std::pair<std::string,size_t>> name_to_offsets;
+        std::vector<_var_metadata> vars_metadata;
     };
     struct _statement
     {
