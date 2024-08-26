@@ -27,9 +27,12 @@ private:
     std::unordered_map<std::string,size_t> struct_name_alloc_map;
     std::vector<std::string> filestack;
     size_t m_idx = 0;
+    size_t alloc_size = 0;
     size_t line_counter = 1;
     bool in_func = false;
-    size_t alloc_size = 0;
+    bool add_struct_info = false;
+    std::vector<std::pair<std::string,size_t>>* generic_name_to_offsets = nullptr;
+    std::vector<node::_var_metadata>* generic_var_metadata = nullptr;
     Arena_allocator m_Allocator;
 
     bool is_logical_operator(Token_type type);
