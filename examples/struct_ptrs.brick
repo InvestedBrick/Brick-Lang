@@ -1,12 +1,25 @@
+#include stdlib/int_to_ascii.brick
+
+bundle struct_1{
+    dec z as int -> 42;
+}
 
 bundle my_bndl{
     dec x as int -> 1;
     dec y as int -> 0;
+
+    dec arr as array byte -> 32;
+
+    dec p as struct_1 ptr -> null;
 }
 
 brick main{
     dec b as my_bndl;
     dec my_bundle_ptr as my_bndl ptr -> &b;
+
+    set my_bundle_ptr->p->z to 3;
+
+    output itoa(b.y);
 
     exit 0;
 }
