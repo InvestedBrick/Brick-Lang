@@ -7,13 +7,14 @@ class Generator {
 private:
     struct Var
     {
-        std::string name;
-        size_t base_pointer_offset;
-        std::string type;
         bool bool_limit = false; //ah yes creative naming I know
         bool immutable = false;
         bool ptr = false;
+        bool struct_ptr = false;
+        size_t base_pointer_offset;
+        std::string name;
         std::string ptr_type;
+        std::string type;
     };
     struct logic_data_packet{
         std::string end_lbl;
@@ -50,6 +51,8 @@ private:
     struct Struct_info {
         std::string name;
         std::vector<node::_statement_var_dec*> var_decs; 
+        std::vector<std::pair<std::string,size_t>> var_name_to_offset;
+        std::vector<node::_var_metadata> var_metadatas;
     };
     struct Struct{
         std::string name;
@@ -58,6 +61,9 @@ private:
     bool main_proc = false;
     bool valid_space = false;
     bool ignore_var_already_exists = false;
+    bool generating_struct_vars = false;
+
+    std::vector<std::variant<Var,string_buffer,String,Var_array,Struct>>* generic_struct_vars = nullptr;
     std::optional<std::string> initial_label_or;
     std::optional<std::string> initial_label_and;
     std::optional<std::string> ending_label;
@@ -114,15 +120,17 @@ private:
     void transferElements(std::vector<T>&& source, std::vector<std::variant<Var, string_buffer, String, Var_array, Struct>>& destination, int count);
     void var_set_str();
     template<typename iterator,typename var_set>
-    void var_set_str_buf(iterator it,var_set var_num);
+    void var_set_str_buf(iterator it,var_set var_str_buf,std::string base_string);
     template<typename iterator,typename var_set>
-    void var_set_number(iterator it,var_set var_num);
+    void var_set_number(iterator it,var_set var_num,std::string base_string);
     template<typename iterator,typename var_set>
-    void var_set_array(iterator it,var_set array_set);
+    void var_set_array(iterator it,var_set array_set,std::string base_string,bool switch_op = false);
     template<typename iterator,typename var_set>
-    void var_set_struct(iterator it,var_set struct_set);
+    void var_set_struct(iterator it,var_set struct_set,std::string base_string);
     template<typename iterator,typename var_set>
-    void var_set_ptr_array(iterator it,var_set array_set);
+    void var_set_ptr_array(iterator it,var_set array_set,std::string base_string);
+    template<typename iterator,typename var_set>
+    void var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::string base_string);
     inline void line_err(const std::string& err_msg);
     inline std::string mk_label();
     inline std::string mk_str_lit();
