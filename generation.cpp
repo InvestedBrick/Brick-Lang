@@ -5,7 +5,9 @@
 #elif __linux__
 #define PTR_KEYWORD ""
 #endif
+#define EBP_OFF " [ebp - "
 
+#define EBX_OFF " [ebx - "
 
 bool is_numeric(const std::string& str) {
     for (char c : str) {
@@ -1086,8 +1088,8 @@ void Generator::var_set_str(){
 }
 
 template<typename iterator,typename var_set>
-void Generator::var_set_str_buf(iterator it,var_set var_num){
-    std::string val = this->gen_expr(var_num->expr).value();
+void Generator::var_set_str_buf(iterator it,var_set var_str_buf,std::string base_string){
+    std::string val = this->gen_expr(var_str_buf->expr).value();
     if (val.rfind("\"", 0) != 0) { 
         this->line_err("Stringbuffers can only be assigned strings");               
     }
@@ -1106,7 +1108,7 @@ void Generator::var_set_str_buf(iterator it,var_set var_num){
 }
 
 template<typename iterator,typename var_set>
-void Generator::var_set_number(iterator it,var_set var_num){
+void Generator::var_set_number(iterator it,var_set var_num,std::string base_string){
     if ((*it).immutable) {
         this->line_err("Variable not mutable!");
     }
@@ -1120,13 +1122,11 @@ void Generator::var_set_number(iterator it,var_set var_num){
     if (is_numeric(val)) {
         int num = std::stoi(val);
         if ((*it).bool_limit) {
-            if (num != 0) {
-                num = 1;
-            }
+            num = (num != 0);
         }
         if ((*it).ptr) {
             if (var_num->deref) { //manual dereference
-                this->m_code << "    mov eax, dword " << PTR_KEYWORD << " [ebp -  " << (*it).base_pointer_offset << "]" << std::endl;
+                this->m_code << "    mov eax, dword " << PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]" << std::endl;
                 this->m_code << "    mov " << (*it).ptr_type <<  PTR_KEYWORD << " [eax], " << num << std::endl;
                 return;
             }
@@ -1134,13 +1134,13 @@ void Generator::var_set_number(iterator it,var_set var_num){
                 this->line_err("Integer value for pointer may only be null (0)");
             }
         }
-        this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << " [ebp - " << (*it).base_pointer_offset << "]" << "," << num << std::endl;
+        this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]" << "," << num << std::endl;
     }
     else {
         if ((*it).bool_limit && !var_num->deref) {
             this->m_code << "    cmp " << val << ", 0" << std::endl;
             this->m_code << "    setne dl" << std::endl;
-            this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << " [ebp - " << (*it).base_pointer_offset << "]" << ", dl" << std::endl;
+            this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]" << ", dl" << std::endl;
         }
         else {
             if ((*it).ptr) {
@@ -1154,7 +1154,7 @@ void Generator::var_set_number(iterator it,var_set var_num){
                     else {
                         this->m_code << "    " << this->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " edx, " << val << std::endl;
                     }
-                    this->m_code << "    mov eax, dword " << PTR_KEYWORD << " [ebp -  " << (*it).base_pointer_offset << "]" << std::endl;
+                    this->m_code << "    mov eax, dword " << PTR_KEYWORD <<  base_string << (*it).base_pointer_offset << "]" << std::endl;
                     this->m_code << "    mov " << (*it).ptr_type <<  PTR_KEYWORD << " [eax], " << this->get_correct_part_of_register((*it).ptr_type, true) << std::endl;
                 }
                 
@@ -1162,12 +1162,12 @@ void Generator::var_set_number(iterator it,var_set var_num){
             if (val != "eax") {
                 this->m_code << "    " << this->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " eax, " << val << std::endl;
             }
-            this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << " [ebp - " << (*it).base_pointer_offset << "]" << "," << this->get_correct_part_of_register((*it).type) << std::endl;
+            this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]" << "," << this->get_correct_part_of_register((*it).type) << std::endl;
         }
     }
 }
 template<typename iterator,typename var_set>
-void Generator::var_set_ptr_array(iterator it,var_set array_set){
+void Generator::var_set_ptr_array(iterator it,var_set array_set,std::string base_string){
     if ((*it).immutable) {
         this->line_err("Array not mutable!");
     }
@@ -1179,7 +1179,7 @@ void Generator::var_set_ptr_array(iterator it,var_set array_set){
         if ((*it).bool_limit) {
             num = (num != 0);
         }
-        this->m_code << "    mov ebx, dword " << PTR_KEYWORD << " [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
+        this->m_code << "    mov ebx, dword " << PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]" << std::endl;
         if(is_numeric(index_val)){
             this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,"ebx") << " " << (*it).ptr_type <<  PTR_KEYWORD << " [ebx + " << std::stoi(index_val) * this->asm_type_to_bytes((*it).ptr_type) << "], "  << num << std::endl;
         }else{
@@ -1202,7 +1202,7 @@ void Generator::var_set_ptr_array(iterator it,var_set array_set){
             this->m_code << "    cmp " << val << ", 0" << std::endl;
             this->m_code << "    setne bl" << std::endl;
         }
-        this->m_code << "    mov ecx, dword " << PTR_KEYWORD << " [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
+        this->m_code << "    mov ecx, dword " << PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]" << std::endl;
         if (is_numeric(index_val)) {
             std::string mov_reg = "edx";
             if((*it).bool_limit){
@@ -1224,7 +1224,7 @@ void Generator::var_set_ptr_array(iterator it,var_set array_set){
     }
 }    
 template<typename iterator,typename var_set>
-void Generator::var_set_array(iterator it,var_set array_set){
+void Generator::var_set_array(iterator it,var_set array_set,std::string base_string,bool switch_op){
     if ((*it).immutable) {
         this->line_err("Array not mutable!");
     }
@@ -1234,16 +1234,17 @@ void Generator::var_set_array(iterator it,var_set array_set){
         std::string index_val = this->gen_expr(array_set->index_expr).value();
         int num = std::stoi(val);
         if ((*it).bool_limit) {
-            num = (num != 0) ? 1 : 0;
+            num = (num != 0);
         }
         if (is_numeric(index_val)) {
-            this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << " [ebp - " << (*it).head_base_pointer_offset - std::stoi(index_val) * this->asm_type_to_bytes((*it).type) << "], " << num << std::endl;
+            int idx = switch_op ? (*it).head_base_pointer_offset + std::stoi(index_val) * this->asm_type_to_bytes((*it).type) : (*it).head_base_pointer_offset - std::stoi(index_val) * this->asm_type_to_bytes((*it).type);
+            this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << base_string << idx << "], " << num << std::endl;
         }
         else {
             if (index_val != "eax") {
                 this->m_code << "    " << this->get_mov_instruc("eax", index_val.substr(0, index_val.find_first_of(" "))) << " eax, " << index_val << std::endl;
             }
-            this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << " [ebp - " << (*it).head_base_pointer_offset << " + eax * " << this->asm_type_to_bytes((*it).type) << "], " << num << std::endl;
+            this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << base_string << (*it).head_base_pointer_offset << " + eax * " << this->asm_type_to_bytes((*it).type) << "], " << num << std::endl;
         }
     }
     else {
@@ -1265,8 +1266,8 @@ void Generator::var_set_array(iterator it,var_set array_set){
             if((*it).bool_limit){
                 mov_reg = "bl";
             }
-            
-            this->m_code << "    " << this->get_mov_instruc((*it).type,mov_reg) << " " << (*it).type <<  PTR_KEYWORD << " [ebp - " << (*it).head_base_pointer_offset - std::stoi(index_val) * this->asm_type_to_bytes((*it).type) << "], " << mov_reg << std::endl;
+            int idx = switch_op ? (*it).head_base_pointer_offset + std::stoi(index_val) * this->asm_type_to_bytes((*it).type) : (*it).head_base_pointer_offset - std::stoi(index_val) * this->asm_type_to_bytes((*it).type);
+            this->m_code << "    " << this->get_mov_instruc((*it).type,mov_reg) << " " << (*it).type <<  PTR_KEYWORD << base_string << idx << "], " << mov_reg << std::endl;
             
         }
         else {
@@ -1279,13 +1280,15 @@ void Generator::var_set_array(iterator it,var_set array_set){
                 this->m_code << "    " << this->get_mov_instruc("eax", index_val.substr(0, index_val.find_first_of(" "))) << " eax, " << index_val << std::endl;
             } // now: index value in eax and expression value in edx or bl
             
-            this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << " [ebp - " << (*it).head_base_pointer_offset << " + eax * " << this->asm_type_to_bytes((*it).type) << "], " << mov_reg << std::endl;
+            this->m_code << "    mov " << (*it).type <<  PTR_KEYWORD << base_string << (*it).head_base_pointer_offset << " + eax * " << this->asm_type_to_bytes((*it).type) << "], " << mov_reg << std::endl;
         }
         
     }
 }
+
+
 template<typename iterator,typename var_set>
-void Generator::var_set_struct(iterator struct_it,var_set struct_set){
+void Generator::var_set_struct(iterator struct_it,var_set struct_set,std::string base_string){
     std::string expected = struct_set->item->ident.value.value();
     if(struct_set->item->item != nullptr){
         struct_set->item = struct_set->item->item;
@@ -1304,26 +1307,86 @@ void Generator::var_set_struct(iterator struct_it,var_set struct_set){
     if(std::holds_alternative<Var>(*it)){
         Var var = std::get<Var>(*it);
         if constexpr (std::is_same<var_set, node::_var_set_array*>::value){
-            this->var_set_ptr_array(&var,struct_set);
+            this->var_set_ptr_array(&var,struct_set,base_string);
         }else{
-            this->var_set_number(&var,struct_set);
+            this->var_set_number(&var,struct_set,base_string);
         }
     }
     else if(std::holds_alternative<string_buffer>(*it)){
         string_buffer buf = std::get<string_buffer>(*it);
-        this->var_set_str_buf(&buf,struct_set);
+        this->var_set_str_buf(&buf,struct_set,base_string);
     }
     else if(std::holds_alternative<String>(*it)){
         this->var_set_str(); //doesn't matter
     }
     else if(std::holds_alternative<Var_array>(*it)){
         Var_array arr = std::get<Var_array>(*it);
-        this->var_set_array(&arr,struct_set);
+        this->var_set_array(&arr,struct_set,base_string);
     }
     else if(std::holds_alternative<Struct>(*it)){
         Struct struct_ = std::get<Struct>(*it);
-        this->var_set_struct(&struct_,struct_set);
+        this->var_set_struct(&struct_,struct_set,base_string);
     }
+}
+
+size_t find_offset(const std::vector<std::pair<std::string, size_t>>& vec,std::string input_string){
+    const auto it = std::find_if(vec.cbegin(),vec.cend(), [&input_string] (const std::pair<std::string,size_t>& pair){return pair.first == input_string;});
+
+    return it->second;
+}
+
+template<typename iterator,typename var_set>
+void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::string base_string){
+    this->m_code << "    mov ebx, dword " << PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]"<<std::endl;
+    //get struct info for the struct type which the pointer is pointing to
+    const auto struct_info = std::find_if(this->m_struct_infos.cbegin(),this->m_struct_infos.cend(), [&](const Struct_info& info){return info.name == (*it).ptr_type;});
+    std::string item_name = struct_ptr_set->item->ident.value.value();
+
+    if (struct_ptr_set->item->item != nullptr){
+        struct_ptr_set->item = struct_ptr_set->item->item;
+    }
+
+    const auto meta = std::find_if(struct_info->var_metadatas.cbegin(), struct_info->var_metadatas.cend(),
+        [&item_name](const node::_var_metadata& metadata) {
+            return metadata.name == item_name;
+        });
+
+    //instantiate fake variables that use the same memory space as real variables
+    if ((*meta).variable_kind == "number"){
+        Var var;
+        var.base_pointer_offset = find_offset(struct_info->var_name_to_offset,(*meta).name);
+        var.bool_limit = (*meta).type == Token_type::_bool;
+        var.immutable = (*meta)._const;
+        var.ptr = (*meta)._ptr;
+        var.type = var_type_to_str((*meta).type);
+
+        if(var.ptr){
+            var.ptr_type = var.type;
+            var.type = "dword";
+        }
+
+        this->var_set_number(&var,struct_ptr_set,EBX_OFF);
+    }else if((*meta).variable_kind == "array"){
+        Var_array array;
+        array.bool_limit = (*meta).type == Token_type::_bool;
+        array.head_base_pointer_offset = find_offset(struct_info->var_name_to_offset,(*meta).name);
+        array.immutable = (*meta)._const;
+        array.size = (*meta)._array_size;
+
+        array.type = var_type_to_str((*meta).type);
+
+        this->var_set_array(&array,struct_ptr_set,EBX_OFF,true);
+
+    }else if((*meta).variable_kind == "struct ptr"){
+        Var var;
+        var.base_pointer_offset = find_offset(struct_info->var_name_to_offset,(*meta).name);
+        var.ptr_type = (*meta).struct_name;
+        this->var_set_struct_ptr(&var,struct_ptr_set,EBX_OFF);
+
+    }else if((*meta).variable_kind == "struct"){
+        assert(false && "Too tired to implement");
+    }
+
 }
 
 inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set) {
@@ -1336,7 +1399,7 @@ inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set)
             
             const auto str_buf_it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& var) {return var.name == var_num->ident.value.value(); });
             if(str_buf_it != gen->m_str_bufs.cend()){
-                gen->var_set_str_buf(str_buf_it,var_num);
+                gen->var_set_str_buf(str_buf_it,var_num," ");
                 return;
             }
             const auto it  = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == var_num->ident.value.value(); });
@@ -1347,33 +1410,46 @@ inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set)
                 
             }
             else {
-                gen->var_set_number(it,var_num);
+                gen->var_set_number(it,var_num,EBP_OFF);
             }
         }
         void operator()(const node::_var_set_array* array_set) {
-            const auto it  = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array var) {return var.name == array_set->ident.value.value(); });
+            const auto it  = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array& var) {return var.name == array_set->ident.value.value(); });
             if (it == gen->m_arrays.cend()) {
-                const auto  ptr_it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var var) {return var.name == array_set->ident.value.value(); });
+                const auto  ptr_it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == array_set->ident.value.value(); });
                 if (ptr_it == gen->m_vars.cend()) {
                     std::stringstream ss;
                     ss << "Array with the name '" << array_set->ident.value.value() << "' was not declared in this scope";
                     gen->line_err(ss.str());
                 }
-                gen->var_set_ptr_array(ptr_it,array_set);
+                gen->var_set_ptr_array(ptr_it,array_set,EBP_OFF);
             }
             else {
-                gen->var_set_array(it,array_set);
+                gen->var_set_array(it,array_set,EBP_OFF);
             }
         }
         void operator()(node::_var_set_struct* struct_set){
-            const auto  struct_it = std::find_if(gen->m_structs.cbegin(),gen->m_structs.cend(), [&](Struct _struct){return _struct.name == struct_set->ident.value.value();});
+            const auto  struct_it = std::find_if(gen->m_structs.cbegin(),gen->m_structs.cend(), [&](const Struct& _struct){return _struct.name == struct_set->ident.value.value();});
             if(struct_it == gen->m_structs.cend()){
-                std::stringstream ss;
-                ss << "Bundle with the name '" << struct_set->ident.value.value() << "' was not declared in this scope";
-                gen->line_err(ss.str());
+                const auto struct_ptr_it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var){return var.name == struct_set->ident.value.value();});
+
+                if (struct_ptr_it == gen->m_vars.cend()){
+
+                    std::stringstream ss;
+                    ss << "Bundle with the name '" << struct_set->ident.value.value() << "' was not declared in this scope";
+                    gen->line_err(ss.str());
+                }else{
+                    if (!(*struct_ptr_it).struct_ptr){
+                        gen->line_err("Cannot use non-struct-pointer to set a struct");
+                    }
+
+                    gen->var_set_struct_ptr(struct_ptr_it,struct_set,EBP_OFF);
+
+                }
             }
-            
-            gen->var_set_struct(struct_it,struct_set);
+            else{
+                gen->var_set_struct(struct_it,struct_set,EBP_OFF);
+            }
             
         }
 
@@ -1730,6 +1806,8 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
             Struct_info struct_;
             struct_.name = stmt_struct->ident.value.value();
             struct_.var_decs = stmt_struct->vars;
+            struct_.var_name_to_offset = stmt_struct->name_to_offsets;
+            struct_.var_metadatas = stmt_struct->vars_metadata;
             gen->line_counter+=stmt_struct->n_lines;//I really dont know of a better way rn and I dont want to
             gen->m_struct_infos.push_back(struct_);
         }
