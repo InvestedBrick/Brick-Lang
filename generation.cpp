@@ -156,7 +156,7 @@ inline std::string Generator::gen_str_lit(const std::string string_lit) {
 #endif        
         str.generated = generated;
         str.str_val = string_lit;
-        this->m_strs.push_back(str);
+        this->generating_struct_vars ? (*this->generic_struct_vars).push_back(str) : this->m_strs.push_back(str);
         return generated;
     }
     else {
@@ -255,32 +255,87 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
             ret_val = ss.str();
         }
         void operator()(const node::_term_ident* term_ident) {
-            //try to find in the variables
-            const auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == term_ident->ident.value.value(); });
-            std::stringstream offset;
-            if (it == gen->m_vars.cend()) {
-                const auto str_it = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(), [&](const String& var) {return var.name == term_ident->ident.value.value(); });
-                if (str_it != gen->m_strs.cend()) {
-                    offset << "\"" << (*str_it).generated;
-                }
-                else {
-                    const auto str_buf_it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), 
-                        [&](const string_buffer& var) { return var.name == term_ident->ident.value.value(); });
+            auto generate_var_offset = [&](const Var& var) {
+                std::stringstream offset;
+                offset << var.type << PTR_KEYWORD << " [ebp - " << (var.base_pointer_offset) << "]";
+                return offset.str();
+            };
 
-                    if (str_buf_it != gen->m_str_bufs.cend()) {
-                        offset << "\"" << str_buf_it->generated;
+            auto handle_struct_var = [&](const std::variant<Var, string_buffer, String, Var_array, Struct>& var, auto& struct_it) -> std::optional<std::string> {
+                std::stringstream offset;
+                if (std::holds_alternative<Var>(var)) {
+                    return generate_var_offset(std::get<Var>(var));
+                } else if (std::holds_alternative<string_buffer>(var)) {
+                    offset << "\"" << std::get<string_buffer>(var).generated;
+                    return offset.str();
+                } else if (std::holds_alternative<String>(var)) {
+                    offset << "\"" << std::get<String>(var).generated;
+                    return offset.str();
+                } else if (std::holds_alternative<Var_array>(var)) {
+                    Var_array v_a = std::get<Var_array>(var);
+                    offset << v_a.type << PTR_KEYWORD << " [ebp - " << (v_a.head_base_pointer_offset) << "]";
+                    return offset.str();
+                } else if (std::holds_alternative<Struct>(var)) {
+                    struct_it = std::find_if(gen->m_structs.begin(), gen->m_structs.end(),
+                                             [&](const Struct& struct_) { return struct_.name == std::get<Struct>(var).name; });
+                    return std::nullopt;  // Continue looping
+                }
+                return std::nullopt;
+            };
+
+            const auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(),
+                                         [&](const Var& var) { return var.name == term_ident->ident.value.value(); });
+
+            std::stringstream offset;
+
+            if (it != gen->m_vars.cend()) {
+                offset << generate_var_offset(*it);
+            } else {
+                auto arr_it = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(),
+                                              [&](const Var_array& arr) { return arr.name == term_ident->ident.value.value(); });
+
+                if (arr_it != gen->m_arrays.cend()){
+                    offset << (*arr_it).type << PTR_KEYWORD << " [ebp - " << ((*arr_it).head_base_pointer_offset) << "]";
+
+                }else{                           
+                    auto struct_it = std::find_if(gen->m_structs.begin(), gen->m_structs.end(),
+                                                  [&](const Struct& struct_) { return struct_.name == term_ident->ident.value.value(); });
+
+                    if (struct_it != gen->m_structs.end()) {
+                        while (true) {
+                            auto var = (*struct_it).vars[0];
+                            auto result = handle_struct_var(var, struct_it);
+                            if (result.has_value()) {
+                                offset << result.value();
+                                break;
+                            }
+                        }
                     } else {
-                        std::stringstream ss;
-                        ss << "Identifier '" << term_ident->ident.value.value() << "' was not declared in this scope!" << std::endl;
-                        gen->line_err(ss.str());
+                        const auto str_it = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(),
+                                                         [&](const String& var) { return var.name == term_ident->ident.value.value(); });
+
+                        if (str_it != gen->m_strs.cend()) {
+                            offset << "\"" << (*str_it).generated;
+                        } else {
+                            const auto str_buf_it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(),
+                                                                 [&](const string_buffer& var) { return var.name == term_ident->ident.value.value(); });
+
+                            if (str_buf_it != gen->m_str_bufs.cend()) {
+                                offset << "\"" << (*str_buf_it).generated;
+                            } else {
+                                std::stringstream ss;
+                                ss << "Identifier '" << term_ident->ident.value.value() << "' was not declared in this scope!" << std::endl;
+                                gen->line_err(ss.str());
+                                return;
+                            }
+                        }
                     }
                 }
             }
-            else {
-                offset << (*it).type <<  PTR_KEYWORD << " [ebp - " << ((*it).base_pointer_offset) << "]";
-            }
+
             ret_val = offset.str();
         }
+
         void operator()(node::_term_struct_ident* struct_ident){
             const auto struct_it = std::find_if(gen->m_structs.cbegin(),gen->m_structs.cend(), [&](Struct _struct){return _struct.name == struct_ident->ident.value.value();});
             if(struct_it == gen->m_structs.cend()){
@@ -790,8 +845,8 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
     struct var_visitor {
         Generator* gen;
         void operator()(const node::_var_dec_num* var_num) {
-            const auto it  = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == var_num->ident.value.value(); });
             if(!gen->ignore_var_already_exists){
+                const auto it  = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == var_num->ident.value.value(); });
                 if (it != gen->m_vars.cend()) {
                     std::stringstream ss;
                     ss << "Identifier '" << var_num->ident.value.value() << "' was already declared in this scope!" << std::endl;
@@ -807,7 +862,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                 int num = std::stoi(val);
                 if (var_num->type == Token_type::_bool) {
                     var.bool_limit = true;
-                    num = (num != 0) ? 1 : 0;
+                    num = (num != 0);
                 }
                 if (var_num->_ptr) {
                     if (num != 0) {
@@ -851,12 +906,12 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             }
             var.name = var_num->ident.value.value();
             var.base_pointer_offset = gen->m_base_ptr_off;
-            gen->m_vars.push_back(var);
+            gen->generating_struct_vars ? (*gen->generic_struct_vars).push_back(var) : gen->m_vars.push_back(var);
             
         }
         void operator()(const node::_var_dec_str* var_str) {
-            const auto it  = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(), [&](const String& str) {return str.name == var_str->ident.value.value(); });
             if(!gen->ignore_var_already_exists){
+                const auto it  = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(), [&](const String& str) {return str.name == var_str->ident.value.value(); });
                 if (it != gen->m_strs.cend()) {
                     std::stringstream ss;
                     ss << "String with name '" << var_str->ident.value.value() << "' was already declared!" << std::endl;
@@ -864,8 +919,8 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                 }
             }
             
-            gen->gen_expr(var_str->expr).value(); //rest is handled by the gen_str_lit function
-            gen->m_strs.back().name = var_str->ident.value.value();//manually add the name here 
+            gen->gen_expr(var_str->expr); //rest is handled by the gen_str_lit function
+            gen->generating_struct_vars ? std::get<String>((*gen->generic_struct_vars).back()).name = var_str->ident.value.value() : gen->m_strs.back().name = var_str->ident.value.value();//manually add the name here 
             
         }
         void operator()(const node::_var_dec_str_buf* var_str_buf) {
@@ -893,7 +948,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                         gen->m_bss << "    " << str_buf.generated << " resb " << str_buf.size + 1 << std::endl;
 #endif
                     }
-                    gen->m_str_bufs.push_back(str_buf);
+                    gen->generating_struct_vars ? (*gen->generic_struct_vars).push_back(str_buf) : gen->m_str_bufs.push_back(str_buf);
                 }
             }
             else {
@@ -922,8 +977,8 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             }
         }
         void operator()(const node::_var_dec_array* var_array) {
-            const auto it  = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array& arr) {return arr.name == var_array->ident.value.value(); });
             if(!gen->ignore_var_already_exists){
+                const auto it  = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array& arr) {return arr.name == var_array->ident.value.value(); });
                 if (it != gen->m_arrays.cend()) {
                     std::stringstream ss;
                     ss << "Identifier '" << var_array->ident.value.value() << "' was already declared in this scope!" << std::endl;
@@ -955,7 +1010,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
 #endif
             //it currently makes no sense to init an array as const, because there is no initialization rn.
             arr.immutable = var_array->_const;
-            gen->m_arrays.push_back(arr);
+            gen->generating_struct_vars ? (*gen->generic_struct_vars).push_back(arr) : gen->m_arrays.push_back(arr);
         
         }
         void operator()(const node::_var_dec_struct* var_struct){
@@ -963,26 +1018,58 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             if(it == gen->m_struct_infos.cend()){
                 gen->line_err("How did this happen??");
             }
-            const int var_len = gen->m_vars.size(); //if this is a problem to you then you should reconsider using more than 2147483647 variables
-            const int str_len = gen->m_strs.size();
-            const int str_buf_len = gen->m_str_bufs.size();
-            const int arr_len = gen->m_arrays.size();
-            const int struct_len = gen->m_structs.size();
+            Struct struct_;
+            
             gen->ignore_var_already_exists = true;
+            gen->generating_struct_vars = true;
+            gen->generic_struct_vars = &struct_.vars;
             for (node::_statement_var_dec* var_dec : (*it).var_decs){
                 gen->gen_var_stmt(var_dec);
             }
             gen->ignore_var_already_exists = false;
-            Struct struct_;
-            //scrape off generated variables
-            gen->transferElements(std::move(gen->m_vars), struct_.vars, gen->m_vars.size() - var_len);
-            gen->transferElements(std::move(gen->m_strs), struct_.vars, gen->m_strs.size() - str_len);
-            gen->transferElements(std::move(gen->m_str_bufs), struct_.vars, gen->m_str_bufs.size() - str_buf_len);
-            gen->transferElements(std::move(gen->m_arrays), struct_.vars, gen->m_arrays.size() - arr_len);
-            gen->transferElements(std::move(gen->m_structs),struct_.vars,gen->m_structs.size() - struct_len);
+            gen->generating_struct_vars = false;
+            gen->generic_struct_vars = nullptr;
             struct_.name = var_struct->ident.value.value();
-            gen->m_structs.push_back(struct_);
-            //std::cout << "Name: "<< struct_.name << " size: " << struct_.vars.size() << std::endl;
+            gen->generating_struct_vars ? (*gen->generic_struct_vars).push_back(struct_) : gen->m_structs.push_back(struct_);
+        }
+        void operator()(const node::_var_dec_struct_ptr* var_dec_struct_ptr){
+            if (!gen->ignore_var_already_exists){
+                const auto it = std::find_if(gen->m_vars.cbegin(),gen->m_vars.cend(), [&] (const Var& var) {return var.name == var_dec_struct_ptr->ident.value.value();});
+                if(it != gen->m_vars.cend()){
+                    std::stringstream ss;
+                    ss << "Identifier '" << var_dec_struct_ptr->ident.value.value() << "' was already declared in this scope!" << std::endl;
+                    gen->line_err(ss.str());
+                }
+            }
+
+            Var var;
+            var.type = "dword";
+            var.immutable = var_dec_struct_ptr->_const;
+            var.ptr = true;
+            var.struct_ptr = true;
+            var.name = var_dec_struct_ptr->ident.value.value();
+            var.ptr_type = var_dec_struct_ptr->struct_name;
+            std::string val = gen->gen_expr(var_dec_struct_ptr->expr).value();
+
+            gen->m_base_ptr_off += 4; //size for a dword
+            if(is_numeric(val)){
+
+                if(std::stoi(val) != 0){
+                    gen->line_err("Integer value for pointer may only be null (0)");
+                }
+                
+                gen->m_code << "    mov " << var.type <<  PTR_KEYWORD << " [ebp - " << gen->m_base_ptr_off << "], 0"<< std::endl;
+
+            }else{
+                if(val != "&eax"){
+                    gen->line_err("Pointer cannot be assigned the value of a non-reference");
+                }
+
+                gen->m_code << "    mov dword " << PTR_KEYWORD << " [ebp - " << gen->m_base_ptr_off << "], eax"<< std::endl;
+            }
+
+            var.base_pointer_offset = gen->m_base_ptr_off;
+            gen->generating_struct_vars ? (*gen->generic_struct_vars).push_back(var) : gen->m_vars.push_back(var);
         }
     };
     if (this->valid_space) {
@@ -1090,7 +1177,7 @@ void Generator::var_set_ptr_array(iterator it,var_set array_set){
         std::string index_val = this->gen_expr(array_set->index_expr).value();
         int num = std::stoi(val);
         if ((*it).bool_limit) {
-            num = (num != 0) ? 1 : 0;
+            num = (num != 0);
         }
         this->m_code << "    mov ebx, dword " << PTR_KEYWORD << " [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
         if(is_numeric(index_val)){
@@ -1199,9 +1286,6 @@ void Generator::var_set_array(iterator it,var_set array_set){
 }
 template<typename iterator,typename var_set>
 void Generator::var_set_struct(iterator struct_it,var_set struct_set){
-    if constexpr (std::is_same<var_set, node::_var_set_array*>::value) {
-        std::cout << "Array" << std::endl;
-    }
     std::string expected = struct_set->item->ident.value.value();
     if(struct_set->item->item != nullptr){
         struct_set->item = struct_set->item->item;
