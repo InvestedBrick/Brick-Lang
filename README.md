@@ -374,6 +374,10 @@ set my_var to my_var & 5;   // 0b111 & 0b101 = 0b101 = 5
 set my_var to myvar ^ 1;    // 0b101 ^ 0b001 = 0b100 = 4
 ```
 
+**Struct Pointers**
+
+Struct Pointers are currently being worked on, current commits can be buggy
+
 ##
 
 If you have any questions left, you can look at the example code provided in examples/ 
