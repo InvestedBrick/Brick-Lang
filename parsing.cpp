@@ -564,10 +564,7 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
         }
 
         if(add_struct_info){
-            node::_var_metadata item;
-#ifdef __linux__            
-            item.init_str = var_array->init_str;
-#endif            
+            node::_var_metadata item;        
             item._const = var_array->_const;
             item.name = var_array->ident.value.value();
             item.type = var_array->type;
@@ -787,24 +784,15 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         }
         Token t;
     
-        if(peek_type(Token_type::_ident) && (peek_type(Token_type::_dot,1) || peek_type(Token_type::_right_arrow,1))){
+        if(peek_type(Token_type::_ident) && (peek_type(Token_type::_dot,1) )){
             auto set_struct = m_Allocator.alloc<node::_var_set_struct>();
             set_struct->ident = consume();
             node::_var_set_struct* current = set_struct;
-            if(peek_type(Token_type::_right_arrow)){
-                while(try_consume(Token_type::_right_arrow)){
-                    auto next_struct = m_Allocator.alloc<node::_var_set_struct>();
-                    next_struct->ident = try_consume(Token_type::_ident,"Expected Identifier");
-                    current->item = next_struct;
-                    current = next_struct;
-                }
-            }else{
-                while(try_consume(Token_type::_dot)){
-                    auto next_struct = m_Allocator.alloc<node::_var_set_struct>();
-                    next_struct->ident = try_consume(Token_type::_ident,"Expected Identifier");
-                    current->item = next_struct;
-                    current = next_struct;
-                }
+            while(try_consume(Token_type::_dot)){
+                auto next_struct = m_Allocator.alloc<node::_var_set_struct>();
+                next_struct->ident = try_consume(Token_type::_ident,"Expected Identifier");
+                current->item = next_struct;
+                current = next_struct;
             }
     
             set_struct->deref = deref;
