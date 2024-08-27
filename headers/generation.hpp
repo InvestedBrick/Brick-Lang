@@ -48,21 +48,24 @@ private:
         bool immutable = false;
         bool bool_limit = false;
     };
+    struct Struct{
+        std::string name;
+        std::vector<std::variant<Var,string_buffer,String,Var_array,Struct>> vars; 
+    };
     struct Struct_info {
         std::string name;
         std::vector<node::_statement_var_dec*> var_decs; 
         std::vector<std::pair<std::string,size_t>> var_name_to_offset;
         std::vector<node::_var_metadata> var_metadatas;
+        std::vector<std::variant<Var,string_buffer,String,Var_array,Struct>> pre_gen_vars;
+    
     };
-    struct Struct{
-        std::string name;
-        std::vector<std::variant<Var,string_buffer,String,Var_array,Struct>> vars; 
-    };
+    
     bool main_proc = false;
     bool valid_space = false;
     bool ignore_var_already_exists = false;
     bool generating_struct_vars = false;
-
+    bool emit_var_gen_asm = true;
     std::vector<std::variant<Var,string_buffer,String,Var_array,Struct>>* generic_struct_vars = nullptr;
     std::optional<std::string> initial_label_or;
     std::optional<std::string> initial_label_and;
@@ -124,7 +127,7 @@ private:
     template<typename iterator,typename var_set>
     void var_set_number(iterator it,var_set var_num,std::string base_string);
     template<typename iterator,typename var_set>
-    void var_set_array(iterator it,var_set array_set,std::string base_string,bool switch_op = false);
+    void var_set_array(iterator it,var_set array_set,std::string base_string);
     template<typename iterator,typename var_set>
     void var_set_struct(iterator it,var_set struct_set,std::string base_string);
     template<typename iterator,typename var_set>
