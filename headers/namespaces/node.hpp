@@ -164,7 +164,7 @@ namespace node {
         Token ident;
         _var_set_struct* item = nullptr;
         _expr* expr;
-        _expr* index_expr;
+        _expr* index_expr = nullptr;
         bool deref = false;
 
     };
@@ -260,7 +260,6 @@ namespace node {
         size_t _array_size;
         std::string struct_name;
         std::string name;
-        std::optional<std::string> init_str;
         std::string variable_kind;
     };
     struct _statement_struct{
