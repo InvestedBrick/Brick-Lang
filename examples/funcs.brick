@@ -8,6 +8,10 @@ brick fac : int -> n{
     }
 } => int
 
+brick ptr_shenanigans : int ptr -> p{
+    return p;
+}=> int ptr
+
 brick pow : int -> b, int -> n{
     if n == 0{
         return 1;
