@@ -212,9 +212,26 @@ std::string Generator::gen_term_struct(iterator struct_it, struct_ident struct_i
     std::stringstream offset;
     if(std::holds_alternative<Var>(*it)){
         Var var = std::get<Var>(*it);
-        std::cout << "Var name: " << var.name << std::endl;
-        offset << var.type << PTR_KEYWORD << " [ebp - " << (var.base_pointer_offset) << "]";
+        if (var.ptr && struct_ident_->index_expr != nullptr){
+            //TODO:
+            std::string val = this->gen_expr(struct_ident_->index_expr).value();
+            this->m_code << "    mov ebx, dword " << PTR_KEYWORD << " [ebp - " << var.base_pointer_offset << "]" << std::endl;
+
+            if(is_numeric(val)){
+                this->m_code << "    " << this->get_mov_instruc("eax",var.ptr_type) << " eax, " << var.ptr_type <<  PTR_KEYWORD << " [ebx + " << std::stoi(val) * this->asm_type_to_bytes(var.ptr_type) << "]" << std::endl;
+            }else{
+                if (val != "eax"){
+                    this->m_code << "    " << this->get_mov_instruc("eax",val.substr(val.find_first_of(" "))) << " eax, " << val << std::endl;
+                }
+                this->m_code << "    " << this->get_mov_instruc("eax",var.ptr_type) << " eax, " << var.ptr_type << PTR_KEYWORD << " [ebx + eax * " << this->asm_type_to_bytes(var.ptr_type) << "]" << std::endl;
+            }
+            offset << "eax";
+        }else{
+            std::cout << "Var name: " << var.name << std::endl;
+            offset << var.type << PTR_KEYWORD << " [ebp - " << (var.base_pointer_offset) << "]";
+        }
         return offset.str();
+
     }
     else if(std::holds_alternative<string_buffer>(*it)){
         string_buffer buf = std::get<string_buffer>(*it);
