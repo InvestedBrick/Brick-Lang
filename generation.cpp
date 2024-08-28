@@ -213,9 +213,8 @@ std::string Generator::gen_term_struct(iterator struct_it, struct_ident struct_i
     if(std::holds_alternative<Var>(*it)){
         Var var = std::get<Var>(*it);
         if (var.ptr && struct_ident_->index_expr != nullptr){
-            //TODO:
             std::string val = this->gen_expr(struct_ident_->index_expr).value();
-            this->m_code << "    mov ebx, dword " << PTR_KEYWORD << " [ebp - " << var.base_pointer_offset << "]" << std::endl;
+            this->m_code << "    mov ebx, dword" << PTR_KEYWORD << " [ebp - " << var.base_pointer_offset << "]" << std::endl;
 
             if(is_numeric(val)){
                 this->m_code << "    " << this->get_mov_instruc("eax",var.ptr_type) << " eax, " << var.ptr_type <<  PTR_KEYWORD << " [ebx + " << std::stoi(val) * this->asm_type_to_bytes(var.ptr_type) << "]" << std::endl;
@@ -227,7 +226,6 @@ std::string Generator::gen_term_struct(iterator struct_it, struct_ident struct_i
             }
             offset << "eax";
         }else{
-            std::cout << "Var name: " << var.name << std::endl;
             offset << var.type << PTR_KEYWORD << " [ebp - " << (var.base_pointer_offset) << "]";
         }
         return offset.str();
@@ -458,7 +456,7 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                 gen->line_err(ss.str());
             }
 
-            gen->m_code << "    mov eax, dword " << PTR_KEYWORD << " [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
+            gen->m_code << "    mov eax, dword" << PTR_KEYWORD << " [ebp - " << (*it).base_pointer_offset << "]" << std::endl;
             gen->m_code << "    " << gen->get_mov_instruc("eax", (*it).ptr_type) << " eax, " << (*it).ptr_type <<  PTR_KEYWORD << " [eax]" << std::endl;
             ret_val = "eax";
         }
@@ -486,7 +484,7 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                 if(!numeric) {
                     gen->m_code << "    " << gen->get_mov_instruc("ebx", val.substr(0, val.find_first_of(' '))) << " ebx, " << val << std::endl;
                 }
-                gen->m_code << "    mov eax, dword " << PTR_KEYWORD << " [ebp - " << (*var_it).base_pointer_offset << "]" << std::endl;
+                gen->m_code << "    mov eax, dword" << PTR_KEYWORD << " [ebp - " << (*var_it).base_pointer_offset << "]" << std::endl;
                 if(numeric) {
                     ss << (*var_it).ptr_type <<  PTR_KEYWORD << " [eax + " << std::stoi(val) *  gen->asm_type_to_bytes((*var_it).ptr_type) << "]";
                 }else{
@@ -1106,7 +1104,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                         gen->line_err("Pointer cannot be assigned the value of a non-reference");
                     }
 
-                    gen->m_code << "    mov dword " << PTR_KEYWORD << " [ebp - " << gen->m_base_ptr_off << "], eax"<< std::endl;
+                    gen->m_code << "    mov dword" << PTR_KEYWORD << " [ebp - " << gen->m_base_ptr_off << "], eax"<< std::endl;
                 }
             }
 
@@ -1166,7 +1164,7 @@ void Generator::var_set_number(iterator it,var_set var_num,std::string base_stri
         }
         if ((*it).ptr) {
             if (var_num->deref) { //manual dereference
-                this->m_code << "    mov eax, dword " << PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]" << std::endl;
+                this->m_code << "    mov eax, dword" << PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]" << std::endl;
                 this->m_code << "    mov " << (*it).ptr_type <<  PTR_KEYWORD << " [eax], " << num << std::endl;
                 return;
             }
@@ -1194,7 +1192,7 @@ void Generator::var_set_number(iterator it,var_set var_num,std::string base_stri
                     else {
                         this->m_code << "    " << this->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " edx, " << val << std::endl;
                     }
-                    this->m_code << "    mov eax, dword " << PTR_KEYWORD <<  base_string << (*it).base_pointer_offset << "]" << std::endl;
+                    this->m_code << "    mov eax, dword" << PTR_KEYWORD <<  base_string << (*it).base_pointer_offset << "]" << std::endl;
                     this->m_code << "    mov " << (*it).ptr_type <<  PTR_KEYWORD << " [eax], " << this->get_correct_part_of_register((*it).ptr_type, true) << std::endl;
                 }
                 
@@ -1219,7 +1217,7 @@ void Generator::var_set_ptr_array(iterator it,var_set array_set,std::string base
         if ((*it).bool_limit) {
             num = (num != 0);
         }
-        this->m_code << "    mov ebx, dword " << PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]" << std::endl;
+        this->m_code << "    mov ebx, dword" << PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]" << std::endl;
         if(is_numeric(index_val)){
             this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,"ebx") << " " << (*it).ptr_type <<  PTR_KEYWORD << " [ebx + " << std::stoi(index_val) * this->asm_type_to_bytes((*it).ptr_type) << "], "  << num << std::endl;
         }else{
@@ -1242,7 +1240,7 @@ void Generator::var_set_ptr_array(iterator it,var_set array_set,std::string base
             this->m_code << "    cmp " << val << ", 0" << std::endl;
             this->m_code << "    setne bl" << std::endl;
         }
-        this->m_code << "    mov ecx, dword " << PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]" << std::endl;
+        this->m_code << "    mov ecx, dword" << PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]" << std::endl;
         if (is_numeric(index_val)) {
             std::string mov_reg = "edx";
             if((*it).bool_limit){
@@ -1373,17 +1371,26 @@ size_t find_offset(const std::vector<std::pair<std::string, size_t>>& vec,std::s
 }
 
 template<typename iterator,typename var_set>
-void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::string base_string){
-    this->m_code << "    mov ebx, dword " << PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]"<<std::endl;
+void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::string base_string,bool lea){
+    std::string op = lea ? "lea" : "mov" ;
+    this->m_code << "    "<<op<<" ebx, dword" << PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]"<<std::endl;
     //get struct info for the struct type which the pointer is pointing to
     const auto struct_info = std::find_if(this->m_struct_infos.cbegin(),this->m_struct_infos.cend(), [&](const Struct_info& info){return info.name == (*it).ptr_type;});
     std::string item_name = struct_ptr_set->item->ident.value.value();
+    std::cout << "Item name: " << item_name << std::endl;
+    bool moved = false;
     if (struct_ptr_set->item->item != nullptr){
         struct_ptr_set->item = struct_ptr_set->item->item;
+        moved = true;
     }
+    //     |          i
+    // my_bdnl_ptr -> p -> null -> null -> ...
+    //itemname = p
+
     //     |               i
     // my_bdnl_ptr -> p -> z -> null -> null -> ...
-    //itemname = p -> z
+    //itemname = p
+
 
     const auto meta = std::find_if(struct_info->var_metadatas.cbegin(), struct_info->var_metadatas.cend(),
         [&item_name](const node::_var_metadata& metadata) {
@@ -1405,7 +1412,6 @@ void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::strin
         }
 
         if(var.ptr && struct_ptr_set->index_expr != nullptr){
-            //var.base_pointer_offset += this->asm_type_to_bytes(var.ptr_type) * 2; 
             this->var_set_ptr_array(&var,struct_ptr_set,EBX_OFF);
         }else{
             this->var_set_number(&var,struct_ptr_set,EBX_OFF);
@@ -1424,8 +1430,25 @@ void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::strin
     }else if((*meta).variable_kind == "struct ptr"){
         Var var;
         var.base_pointer_offset = find_offset(struct_info->var_name_to_offset,(*meta).name);
+        std::cout << var.base_pointer_offset << std::endl;
         var.ptr_type = (*meta).struct_name;
-        this->var_set_struct_ptr(&var,struct_ptr_set,EBX_OFF);
+
+        this->var_set_struct_ptr(&var,struct_ptr_set,EBX_OFF,!moved);
+        std::string val;
+        val = this->gen_expr(struct_ptr_set->expr).value();
+        if (!moved){ //ptr is the last thing in the chain
+            if(is_numeric(val)){
+                if(std::stoi(val) != 0){
+                    this->line_err("Integer value for pointer may only be null (0)");
+                }
+                this->m_code << "    mov " << var.type <<  PTR_KEYWORD << " [ebx], 0"<< std::endl;
+            }else{
+                if(val != "&eax"){
+                    this->line_err("Pointer cannot be assigned the value of a non-reference");
+                }
+                this->m_code << "    mov dword" << PTR_KEYWORD << " [ebx], eax"<< std::endl;
+            }
+        }
 
     }else if((*meta).variable_kind == "struct"){
         Struct struct_;
