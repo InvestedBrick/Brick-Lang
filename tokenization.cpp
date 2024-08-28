@@ -1,3 +1,10 @@
+/*
+    The Tokenizer for the Brick Programming Language
+    Copyright (C) 2024  Julian Brecht
+
+    view main.cpp for more copyright related information
+
+*/
 #include "headers/tokenization.hpp"
 std::optional<int> bin_prec(Token_type type) {
     switch (type)

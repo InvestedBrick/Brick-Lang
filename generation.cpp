@@ -1,3 +1,11 @@
+/*
+    The Generator for the Brick Programming Language
+    Copyright (C) 2024  Julian Brecht
+
+    view main.cpp for more copyright related information
+
+*/
+
 #include "headers/generation.hpp"
 
 #ifdef _WIN32

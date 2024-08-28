@@ -1,3 +1,10 @@
+/*
+    The Preprocessor for the Brick Programming Language
+    Copyright (C) 2024  Julian Brecht
+
+    view main.cpp for more copyright related information
+
+*/
 #include "headers/preprocessor.hpp"
 inline std::optional<char> PreProcessor::peek(int offset) const {
     if (m_idx + offset >= m_str.length()) {

@@ -1,3 +1,25 @@
+/*
+The Compiler for the Brick Programming Language
+    Copyright (C) 2024  Julian Brecht
+
+    reachable at julianbrecht25@gmail.com
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
+*/
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -27,6 +49,7 @@ bool is_arg(std::string arg){
 int main(int argc, char* argv[]) {
 
     auto start_time = std::chrono::high_resolution_clock::now();
+    std::cout << "        The Brick-Lang Compiler    "
     if (argc < 2)
     {
         std::cerr << "Invalid amount of inputs, Correct Usage:" << std::endl;
