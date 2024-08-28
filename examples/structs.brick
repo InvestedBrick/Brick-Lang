@@ -1,11 +1,11 @@
 #include stdlib/int_to_ascii.brick
-bundle my_struct{
+struct my_struct{
     dec x as int -> 5;
     dec pointer as int ptr -> null;
     dec int_arr as array int -> 5;
 }
 
-bundle my_struct_1{
+struct my_struct_1{
     dec a as int -> 0;
     dec test as my_struct;
 }
