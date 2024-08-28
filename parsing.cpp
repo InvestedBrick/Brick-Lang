@@ -602,7 +602,7 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
     else if (t.type == Token_type::_ident){
         const auto it = this->struct_name_alloc_map.find(t.value.value());
         if (it == this->struct_name_alloc_map.end()){
-            line_err("Invalid bundle name");
+            line_err("Invalid Struct name");
         }
 
         if (peek(3).has_value() && peek(3).value().type == Token_type::_ptr){
@@ -1015,7 +1015,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
     else if (peek_type(Token_type::_struct) && peek_type(Token_type::_ident,1)){
         consume();
         if(in_func){
-            line_err("Cannot create bundle inside of function or other struct");
+            line_err("Cannot create Struct inside of function or other struct");
         }
         auto struct_ = m_Allocator.alloc<node::_statement_struct>();
         in_func = true;
@@ -1024,7 +1024,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         generic_var_metadata = &struct_->vars_metadata;
         struct_->ident = consume();
         if(this->struct_name_alloc_map.find(struct_->ident.value.value()) != this->struct_name_alloc_map.end()){
-            line_err("Bundle with that name already exists");
+            line_err("Struct with that name already exists");
         }
         try_consume(Token_type::_open_cur_brac,"Expected '{'");
 
