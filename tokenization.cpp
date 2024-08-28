@@ -186,7 +186,7 @@ std::vector<Token> Tokenizer::tokenize()
                 buf.clear();
                 continue;
             }
-            else if (buf == "bundle") {
+            else if (buf == "struct") {
                 token_arr.push_back(mk_tok(Token_type::_struct));
                 buf.clear();
                 continue;
