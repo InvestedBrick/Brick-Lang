@@ -154,8 +154,13 @@ private:
     inline std::string gen_str_lit(const std::string string_lit);
     inline void gen_scope(const node::_statement_scope* scope);
     inline std::optional<std::string> tok_to_instruc(Token_type type, bool invert = false);
+    
+    size_t find_offset(const std::vector<std::pair<std::string, size_t>>& vec,std::string input_string);
+    
     template<typename iterator, typename struct_ident>
-    std::string gen_term_struct(iterator struct_it, struct_ident struct_ident_);
+    std::string gen_term_struct(iterator struct_it, struct_ident struct_ident_,std::string base_string);
+    template<typename iterator, typename struct_ptr_ident>
+    std::string gen_term_struct_ptr(iterator struct_ptr_it, struct_ptr_ident struct_ptr_ident_,std::string base_string,bool lea = false);
 
 public:
     inline void intern_flags(const node::_null_stmt* null_stmt);
