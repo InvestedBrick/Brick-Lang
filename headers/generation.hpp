@@ -133,7 +133,7 @@ private:
     template<typename iterator,typename var_set>
     void var_set_ptr_array(iterator it,var_set array_set,std::string base_string);
     template<typename iterator,typename var_set>
-    void var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::string base_string);
+    void var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::string base_string,bool lea = false);
     inline void line_err(const std::string& err_msg);
     inline std::string mk_label();
     inline std::string mk_str_lit();
