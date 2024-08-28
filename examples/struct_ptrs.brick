@@ -15,41 +15,27 @@ bundle my_bndl{
 
 
     dec m_ptr as int ptr -> null;
-    //dec arr as array int -> 32;
+    dec arr as array int -> 32;
 
-    dec p as struct_1;
+    dec p as struct_1 ptr -> null;
 }
 
 brick main{
     dec v as int -> 0;
     dec b as my_bndl;
+    dec b_1 as struct_1;
+
     dec my_bundle_ptr as my_bndl ptr -> &b;
 
-    //set my_bundle_ptr.arr[3] to 3;
-
+    set my_bundle_ptr.arr[3] to 3;
+    set my_bundle_ptr.p to &b_1;
+    set my_bundle_ptr.p.z to 32;
 
     set my_bundle_ptr.m_ptr to &v;
     set my_bundle_ptr.m_ptr[0] to 4;
-    //print_array(&b.arr[0],32);
-    //output itoa(b.arr[3]);
-    dec t as int ptr -> ptr_shenanigans(b.m_ptr);
-    output itoa($t);
+    output itoa(b.arr[3]);
+    output itoa(b.m_ptr[0]);
+    output itoa(b_1.z);
 
     exit 0;
 }
-
-
-/*
-        stack base
-    |--->[1] - 4
-    |    [5] - 8
-    |    [0] - 12
-    |    [42] - 16
-    |----[addr ebp - 4] - 20
-        [] - 24
-
-ebx = arr ebp - 4
-
-*/
-
-
