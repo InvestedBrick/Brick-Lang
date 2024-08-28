@@ -1,15 +1,16 @@
-#include funcs.brick
+#include stdlib/int_to_ascii.brick
 
-bundle struct_2{
+struct struct_2{
     dec a as short -> 32;
 }
 
-
-bundle struct_1{
+struct struct_1{
     dec z as int -> 42;
+
+    dec p_1 as struct_2 ptr -> null;
 }
 
-bundle my_bndl{
+struct my_bndl{
     dec x as int -> 9;
     dec y as int -> 5;
 
@@ -24,18 +25,55 @@ brick main{
     dec v as int -> 0;
     dec b as my_bndl;
     dec b_1 as struct_1;
+    dec b_2 as struct_2;
 
     dec my_bundle_ptr as my_bndl ptr -> &b;
 
     set my_bundle_ptr.arr[3] to 3;
+
     set my_bundle_ptr.p to &b_1;
     set my_bundle_ptr.p.z to 32;
 
+    set my_bundle_ptr.p.p_1 to &b_2;
+    set my_bundle_ptr.p.p_1.a to 69;
+
     set my_bundle_ptr.m_ptr to &v;
     set my_bundle_ptr.m_ptr[0] to 4;
+
+    dec c_1 as int -> my_bundle_ptr.arr[3];
+    dec c_2 as struct_1 ptr -> my_bundle_ptr.p;
+    dec c_3 as int -> my_bundle_ptr.p.z;
+
     output itoa(b.arr[3]);
     output itoa(b.m_ptr[0]);
     output itoa(b_1.z);
+    output itoa(b.p.z);
+
+    if c_1 == b.arr[3]{
+        output "Array Test:                                  passed";
+    }else{
+        output "Array Test:                                  failed";
+    }
+    if c_2 == b.p{
+        output "Struct Pointer Test:                         passed";
+    }else{
+        output "Struct Pointer Test:                         failed";
+    }
+    if c_3 == b.p.z {
+        output "Struct pointer to struct pointer value Test: passed";
+    }else{
+        output "Struct pointer to struct pointer value Test: failed";
+    }
+    if my_bundle_ptr.p.p_1.a == b_2.a{
+        output "Extreme Struct Pointer Test:                 passed";
+    }else{
+        output "Extreme Struct Pointer Test:                 failed";
+    }
+    if c_1 == b.arr[3] and c_2 == b.p and c_3 == b.p.z and my_bundle_ptr.p.p_1.a == b_2.a{
+        output "All Tests:                                   PASSED!";
+    }
 
     exit 0;
 }
+
+
