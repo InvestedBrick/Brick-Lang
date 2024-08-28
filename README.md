@@ -289,29 +289,29 @@ dec x as int -> 2;
 dec z as int -> my_func_three(x);
 ```
 
-**Bundles**
+**Structs**
 
-Bundles are simply a collection of variables, that can be accessed with the `.` operator:
+Structs are simply a collection of variables, that can be accessed with the `.` operator:
 
-*Note: Bundles can only be declared outside of a function scope*
+*Note: Structs can only be declared outside of a function scope*
 
 ```
 
-bundle my_bundle_one{
+structs my_struct_one{
     dec z as int -> 0;
 }
 
-bundle my_bundle{
+struct my_struct{
     dec x as int -> 0;
     dec y as int -> 0;
     dec arr as array byte -> 32;
-    dec other_bundle as my_bundle_one;
+    dec other_bundle as my_struct_one;
 }
 
 brick main{
-    dec bndl as my_bundle;
+    dec s as my_struct;
 
-    set bndl.other_bundle.z to 2;
+    set s.my_struct.z to 2;
 
     exit 0;
 }
@@ -376,7 +376,21 @@ set my_var to myvar ^ 1;    // 0b101 ^ 0b001 = 0b100 = 4
 
 **Struct Pointers**
 
-Struct Pointers are currently being worked on, current commits can be buggy
+Pointers to structs can be defined as the following:
+
+```
+dec <struct pointer variable name> as <struct name> ptr -> <value>;
+```
+
+As with all pointers, the value van either be `null(0)` or a reference to a struct with the corresponding type
+
+They can also be declared inside of structs, making it possible to access other structs from a struct by reference.
+
+You can access the elements of the struct that your struct pointer is pointing to, by simply using the `.` operator, as you would if the struct pointer was a regular struct
+
+*Note: this is a feature and definitely not me being too incompetent to parse that*
+
+If you want to see more code about struct pointers with some small unit tests, view `examples/struct_pointers.brick` 
 
 ##
 
