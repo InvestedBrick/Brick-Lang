@@ -49,7 +49,9 @@ bool is_arg(std::string arg){
 int main(int argc, char* argv[]) {
 
     auto start_time = std::chrono::high_resolution_clock::now();
-    std::cout << "        The Brick-Lang Compiler    "
+    std::cout << "        The Brick-Lang Compiler    " << std::endl;
+    std::cout << "    Copyright (C) 2024  Julian Brecht" << std::endl;
+    std::cout << std::endl;
     if (argc < 2)
     {
         std::cerr << "Invalid amount of inputs, Correct Usage:" << std::endl;
