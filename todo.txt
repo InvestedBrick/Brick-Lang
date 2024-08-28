@@ -14,9 +14,10 @@ LOGS:
 27.02.24: about 3030 lines (got qsort sort working!!)
 11.03.24: about 3200 lines (now with includes)
 26.03.24: about 3400 lines (added logical statements)
-08.05.24: about 3769 lines and around 370 lines of brick code (added structs + some refactoring)
-13.08.24: about 4000 lines and around 570 lines of brick code (ported to linux)
-16.08.24: about 4100 lines and around 551 lines of brick code (added bitwise operations + some refactoring)
+08.05.24: about 3769 lines and 370 lines of brick code (added structs + some refactoring)
+13.08.24: about 4000 lines and 570 lines of brick code (ported to linux)
+16.08.24: about 4100 lines and 551 lines of brick code (added bitwise operations + some refactoring)
+28.08.24: about 4630 lines and 634 lines of brick code (added struct pointers)
 Needs to be refactored
     
 checklist:
@@ -34,8 +35,8 @@ checklist:
 [X] port generation to Linux / split win && Linux
 [X] reading/writing from and to files
 [X] OR, XOR, AND operators
+[X] struct pointers
 [ ] floating points
-[ ] struct pointers
 [ ] write own malloc / free for Linux
 [ ] unit tests
 [ ] small optimzer to optimize the garbage that this compiler outputs
