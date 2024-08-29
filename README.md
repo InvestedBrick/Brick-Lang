@@ -390,6 +390,18 @@ You can access the elements of the struct that your struct pointer is pointing t
 
 *Note: this is a feature and definitely not me being too incompetent to parse that*
 
+You can also define a struct pointer to the struct itself, allowing for linked lists:
+
+```
+struct node{
+    dec item as node ptr -> null;
+
+    dec data as int -> 0;
+}
+```
+
+
+
 If you want to see more code about struct pointers with some small unit tests, view `examples/struct_pointers.brick` 
 
 ##
