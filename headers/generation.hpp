@@ -10,7 +10,7 @@ private:
         bool bool_limit = false; //ah yes creative naming I know
         bool immutable = false;
         bool ptr = false;
-        bool struct_ptr = false;
+        bool is_struct_ptr = false;
         size_t base_pointer_offset;
         std::string name;
         std::string ptr_type;
@@ -133,7 +133,7 @@ private:
     template<typename iterator,typename var_set>
     void var_set_ptr_array(iterator it,var_set array_set,std::string base_string);
     template<typename iterator,typename var_set>
-    void var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::string base_string,bool lea = false);
+    void var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::string base_string,bool lea = false,bool ret = false);
     inline void line_err(const std::string& err_msg);
     inline std::string mk_label();
     inline std::string mk_str_lit();
