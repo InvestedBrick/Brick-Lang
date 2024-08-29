@@ -33,6 +33,7 @@ private:
     bool add_struct_info = false;
     std::vector<std::pair<std::string,size_t>>* generic_name_to_offsets = nullptr;
     std::vector<node::_var_metadata>* generic_var_metadata = nullptr;
+    std::vector<std::string> struct_names;
     Arena_allocator m_Allocator;
 
     bool is_logical_operator(Token_type type);
