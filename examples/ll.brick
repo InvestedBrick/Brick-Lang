@@ -1,0 +1,44 @@
+#include funcs.brick
+
+
+
+
+
+struct node{
+
+    dec item as node ptr -> null;
+
+    dec data as int -> 0;
+}
+
+brick print_linked_list : int ptr -> root{
+    dec r as node ptr -> ptr_shenanigans(root);
+
+    while r != null{
+        output int_to_ascii(r.data), " " noend;
+        set r to r.item;
+    }
+    output;
+}
+
+brick main{
+
+    dec root as node;
+    dec node1 as node;
+    dec node2 as node;
+    dec node3 as node;
+
+    set root.data to 1;
+    set root.item to &node1;
+    set root.item.data to 2;
+    set root.item.item to &node2;
+    set root.item.item.data to 3;
+    set root.item.item.item to &node3;
+    set root.item.item.item.data to 4;
+
+
+    print_linked_list(&root);
+
+
+    exit 0;
+}
