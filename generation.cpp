@@ -222,7 +222,7 @@ std::string Generator::gen_term_struct(iterator struct_it, struct_ident struct_i
     std::stringstream offset;
     if(std::holds_alternative<Var>(*it)){
         Var var = std::get<Var>(*it);
-        if(var.struct_ptr && moved){
+        if(var.is_struct_ptr && moved){
             offset << this->gen_term_struct_ptr(&var,struct_ident_,base_string);
         }
         else if (var.ptr && struct_ident_->index_expr != nullptr){
@@ -489,7 +489,7 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                     ss << "Struct with the name '" << struct_ident->ident.value.value() << "' was not declared in this scope";
                     gen->line_err(ss.str());
                 }
-                if(!(*struct_ptr_it).struct_ptr){
+                if(!(*struct_ptr_it).is_struct_ptr){
                     gen->line_err("Cannot get struct values from non-struct pointer");
                 }
                 ret_val = gen->gen_term_struct_ptr(struct_ptr_it,struct_ident,EBP_OFF);
@@ -1032,7 +1032,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                         }
                     }
                     if (gen->emit_var_gen_asm){
-                        gen->m_code << "    mov " << var.type <<  PTR_KEYWORD << " [ebp - " << gen->m_base_ptr_off << "]" << "," << num << std::endl;
+                        gen->m_code << "    mov " << var.type <<  PTR_KEYWORD << " [ebp - " << gen->m_base_ptr_off << "]" << ", " << num << std::endl;
                     }
                 }
                 else {
@@ -1212,7 +1212,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             var.type = "dword";
             var.immutable = var_dec_struct_ptr->_const;
             var.ptr = true;
-            var.struct_ptr = true;
+            var.is_struct_ptr = true;
             var.name = var_dec_struct_ptr->ident.value.value();
             var.ptr_type = var_dec_struct_ptr->struct_name;
             
@@ -1457,25 +1457,29 @@ void Generator::var_set_array(iterator it,var_set array_set,std::string base_str
 template<typename iterator,typename var_set>
 void Generator::var_set_struct(iterator struct_it,var_set struct_set,std::string base_string){
     std::string expected = struct_set->item->ident.value.value();
-    if(struct_set->item->item != nullptr){
-        struct_set->item = struct_set->item->item;
-    }
+    
+    
     //find the first element in the vars vector of the struct that has the name of our searched item and return an iterator to it
     const auto it  = std::find_if((*struct_it).vars.cbegin(), (*struct_it).vars.cend(), [&](const auto& var) {
     return std::visit([&](const auto& element) { return element.name == expected; }, var);
     });
     
+    if(struct_set->item->item != nullptr && !(std::holds_alternative<Var>(*it) && std::get<Var>(*it).is_struct_ptr)){
+        struct_set->item = struct_set->item->item;
+    }
+    
+    
     if(it == (*struct_it).vars.cend()){
         std::stringstream ss;
-        ss << "Item with the name '" << expected << "' was not found"; 
         this->line_err(ss.str());
     }    
+
     if(std::holds_alternative<Var>(*it)){
         Var var = std::get<Var>(*it);
-        if (var.struct_ptr){
-            this->var_set_struct_ptr(&var,struct_set,base_string);
+        if (var.is_struct_ptr){
+            this->var_set_struct_ptr(&var,struct_set,base_string,true);
         }else{
-            if constexpr (std::is_same<var_set, node::_var_set_array*>::value){
+            if constexpr (std::is_same<std::remove_pointer_t<var_set>, node::_var_set_array>::value){
                 this->var_set_ptr_array(&var,struct_set,base_string);
             }else{
                 this->var_set_number(&var,struct_set,base_string);
@@ -1502,7 +1506,7 @@ void Generator::var_set_struct(iterator struct_it,var_set struct_set,std::string
 
 
 template<typename iterator,typename var_set>
-void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::string base_string,bool lea){
+void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::string base_string,bool lea,bool ret){
     std::string op = lea ? "lea" : "mov" ;
     this->m_code << "    "<<op<<" edx, dword" << PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]"<<std::endl;
     //get struct info for the struct type which the pointer is pointing to
@@ -1514,12 +1518,18 @@ void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::strin
         ss << "Struct with name " << (*it).ptr_type << " not found";
         this->line_err(ss.str());
     }
+
     
+
+
     std::string item_name = struct_ptr_set->item->ident.value.value();
     bool moved = false;
     if (struct_ptr_set->item->item != nullptr){
         struct_ptr_set->item = struct_ptr_set->item->item;
         moved = true;
+    }
+    if((*it).ptr_type == struct_info->name && ret && !moved){
+        return;
     }
     //     |          i
     // my_bdnl_ptr -> p -> null -> null -> ...
@@ -1527,7 +1537,7 @@ void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::strin
 
     //     |               i
     // my_bdnl_ptr -> p -> z -> null -> null -> ...
-    //itemname = p
+    //itemname = p -> z
 
 
     const auto meta = std::find_if(struct_info->var_metadatas.cbegin(), struct_info->var_metadatas.cend(),
@@ -1574,7 +1584,9 @@ void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::strin
         var.base_pointer_offset = find_offset(struct_info->var_name_to_offset,(*meta).name);
         var.ptr_type = (*meta).struct_name;
         std::string val;
-        this->var_set_struct_ptr(&var,struct_ptr_set,EDX_OFF,!moved);
+        if(!(!moved && var.base_pointer_offset == 0)){
+            this->var_set_struct_ptr(&var,struct_ptr_set,EDX_OFF,!moved,!moved);
+        }
         if(!moved){ //ptr is the last thing in the chain
             val = this->gen_expr(struct_ptr_set->expr).value();
             if(is_numeric(val)){
@@ -1601,8 +1613,8 @@ void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::strin
                                         }
                                         return false;
                                     });
-        struct_ = std::get<Struct>(*struct_it);
-        this->var_set_struct(&struct_,struct_ptr_set,EDX_OFF);
+        Struct nested_struct = std::get<Struct>(*struct_it);
+        this->var_set_struct(&nested_struct,struct_ptr_set,EDX_OFF);
     }
 
 }
@@ -1657,7 +1669,7 @@ inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set)
                     ss << "Struct with the name '" << struct_set->ident.value.value() << "' was not declared in this scope";
                     gen->line_err(ss.str());
                 }else{  
-                    if (!(*struct_ptr_it).struct_ptr){
+                    if (!(*struct_ptr_it).is_struct_ptr){
                         gen->line_err("Cannot use non-struct-pointer to set a struct");
                     }
 
