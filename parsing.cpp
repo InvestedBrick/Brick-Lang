@@ -608,11 +608,20 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
     }
     else if (t.type == Token_type::_ident){
         const auto it = this->struct_name_alloc_map.find(t.value.value());
-        if (it == this->struct_name_alloc_map.end()){
-            line_err("Invalid Struct name");
-        }
+        
 
         if (peek(3).has_value() && peek(3).value().type == Token_type::_ptr){
+            
+            std::string struct_name;
+            if(it == this->struct_name_alloc_map.end() ){
+                if(!this->struct_names.empty() && this->struct_names.back() == t.value.value()){
+                    struct_name = t.value.value();
+                }else{
+                    line_err("Invalid Struct name");
+                }
+            }else{
+                struct_name = (*it).first;
+            }
             auto var_struct_ptr = m_Allocator.alloc<node::_var_dec_struct_ptr>();
 
             var_struct_ptr->ident = consume();
@@ -624,7 +633,7 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
                 alloc_size += 4;
             }
             
-            var_struct_ptr->struct_name = (*it).first;
+            var_struct_ptr->struct_name = struct_name;
             consume(); // =
             consume(); // struct name
             consume(); // ptr
@@ -655,7 +664,9 @@ inline std::optional<node::_statement_var_dec*> Parser::parse_var_dec() {
             stmt_dec->var = var_struct_ptr;
 
         }else{
-            
+            if (it == this->struct_name_alloc_map.end()){
+                line_err("Invalid Struct name");
+            }
             auto var_struct = m_Allocator.alloc<node::_var_dec_struct>();
             var_struct->ident = consume();
             if (add_struct_info){
@@ -801,6 +812,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
                 current->item = next_struct;
                 current = next_struct;
             }
+
     
             set_struct->deref = deref;
             bool is_array = false;
@@ -1034,7 +1046,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
             line_err("Struct with that name already exists");
         }
         try_consume(Token_type::_open_cur_brac,"Expected '{'");
-
+        this->struct_names.push_back(struct_->ident.value.value());
         while(true){
             if(try_consume(Token_type::_back_n)){
                 struct_->n_lines++; //I really dont know of a better way rn
@@ -1044,8 +1056,9 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
             struct_->vars.push_back(parse_var_dec().value());
             }else{break;}
         }
+        this->struct_names.pop_back();
+        this->struct_name_alloc_map.insert(std::make_pair(struct_->ident.value.value(),alloc_size)); 
         try_consume(Token_type::_close_cur_brac,"Expected '}'");
-        this->struct_name_alloc_map.insert(std::make_pair(struct_->ident.value.value(),alloc_size));
         in_func = false;
         alloc_size = 0;
         add_struct_info = false;
