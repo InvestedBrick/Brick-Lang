@@ -1775,6 +1775,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                     }
                     gen->scope_end(true, main_scope->stack_space);
                     gen->valid_space = false;
+                    gen->m_code << "    ret \n" << std::endl; //needed for the optimizer to do it's job correctly
                 }
                 else {
                     gen->line_err("Cannot define function inside of the main scope");
@@ -1838,7 +1839,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                     }
                     gen->m_code << func.ret_lbl << ":" << std::endl;
                     gen->scope_end(true, stmt_func->stack_space + stack_space_add);
-                    gen->m_code << "    ret" << std::endl;
+                    gen->m_code << "    ret " << std::endl;
 #ifdef _WIN32                    
                     gen->m_code << func.name << " endp" << std::endl;
 #endif
@@ -2121,7 +2122,7 @@ if(flags.needs_str_cpy_func){
     m_output << "    inc edi                   " << std::endl;
     m_output << "    cmp al, 0                 " << std::endl;
     m_output << "    jne sys~internal_strcpy\n " << std::endl;
-    m_output << "    ret" << std::endl;
+    m_output << "    ret " << std::endl;
 }
 
 if(flags.needs_str_cout_func){
@@ -2133,7 +2134,7 @@ if(flags.needs_str_cout_func){
     m_output << "    inc ecx               " << std::endl;
     m_output << "    jmp .loop             " << std::endl;
     m_output << ".done:                    " << std::endl;
-    m_output << "    ret                   " << std::endl;
+    m_output << "    ret " << std::endl;
 }
 
 if(flags.needs_nl_replace_func){
@@ -2147,7 +2148,7 @@ m_output << "    inc edi                             " << std::endl;
 m_output << "    jmp find_newline                    " << std::endl;
 m_output << "replace_char:                           " << std::endl;
 m_output << "    mov byte [edi], 0                   " << std::endl;
-m_output << "    ret                                 " << std::endl;                   
+m_output << "    ret " << std::endl;                   
 
 }
 #endif
@@ -2155,5 +2156,6 @@ m_output << "    ret                                 " << std::endl;
 #ifdef _WIN32
     m_output << "end _main\n";
 #endif    
+
     return m_output.str();
 }
