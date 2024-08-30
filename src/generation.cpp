@@ -738,7 +738,7 @@ inline std::optional<std::string> Generator::gen_bin_expr(const node::_bin_expr*
             void operator()(const node::_bin_expr_div* bin_expr_div) {
                 ret_val = gen->generic_bin_expr(bin_expr_div,"div");
                 if(bin_expr_div->_modulo){
-                    gen->m_code << "    mov edx, eax" << std::endl;
+                    gen->m_code << "    mov eax, edx" << std::endl;
                 }
             }
             void operator()(const node::_bin_expr_xor* bin_expr_xor){
