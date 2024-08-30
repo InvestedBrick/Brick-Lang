@@ -8,8 +8,8 @@ SRC_FILES = src/main.cpp \
             src/preprocessor.cpp \
             src/generation.cpp \
             src/parsing.cpp \
-            src/tokenization.cpp
-
+            src/tokenization.cpp \
+            src/optimizer.cpp
 
 
 # Target executable
