@@ -20,8 +20,14 @@ For Linux:
 - On Windows you need to run the command: `g++ -std=c++17 -O2 preprocessor.cpp tokenization.cpp parsing.cpp generation.cpp -o brick.exe`
 
 ## Running
-- To compile your .brick file just run `brick <pathname> `
+- To compile your .brick file just run `brick <pathname> [flags]`
+
+    *Note: It is important that the pathnale is the first supplied argument*
+
 - Optional compilerflags include `-info` for compilation information and `-nomicrosoft` on Windows to get rid of the Microsoft Logo things when using masm32
+
+
+- You can also add the `-O1` flag, which is a first level of optimization. which strips the assembly code of all not used functions
 
 - Then just run the file with `./<filename>` on Linux or `.\filename.exe` on Windows
 
