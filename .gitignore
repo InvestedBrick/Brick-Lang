@@ -1,8 +1,8 @@
 #ignore all .brick example files and .asm files
 *.asm
 *.o
-*.
-
+*
+!*.*
 brick
 .vscode/
 .vs/
