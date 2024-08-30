@@ -25,13 +25,22 @@ The Compiler for the Brick Programming Language
 #include <string>
 #include <vector>
 #include <chrono>
+
+#ifdef __linux__
+#include "headers/optimizer.hpp"
+#endif
+
 #include "headers/preprocessor.hpp"
 #include "headers/generation.hpp"
 bool output_info = false;
+#ifdef _WIN32
+std::string nologo = "";
+#endif
+#ifdef __linux__
+int optimization_level = 0;
+#endif
 
-
-
-bool is_arg(std::string arg){
+bool handle_if_is_arg(std::string arg){
     if(arg == "-info"){
         output_info = true;
         return true;
@@ -42,6 +51,13 @@ bool is_arg(std::string arg){
         return true;
     }
 #endif    
+#ifdef __linux__
+    else if(arg == "-O1"){
+        optimization_level = 1;
+        return true;
+    }
+#endif
+
     return false;
 
 }
@@ -73,7 +89,7 @@ int main(int argc, char* argv[]) {
     }
     if(argc > 2){
         for(int i = 2; i < argc; i++){
-            if(!is_arg(argv[i])){
+            if(!handle_if_is_arg(argv[i])){
                 std::cerr << "Invalid Argment '" << argv[i] << "' was supplied" << std::endl;
                 exit(EXIT_FAILURE);
             }
@@ -104,15 +120,26 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
     Generator generator(prog.value());
+#ifdef __linux__
+    Optimizer optimizer(generator.gen_program(),optimization_level);
+    if (output_info)
+            std::cout << "Finished Generating..." << std::endl;
+#endif
 
     std::stringstream output_filename;
     {
         std::fstream output;
         output_filename << filename.substr(0, filename.find_last_of(".")) << ".asm";
         output.open(output_filename.str(), std::ios::out);
+#ifdef __Win32__
         output << generator.gen_program();
         if (output_info)
             std::cout << "Finished Generating..." << std::endl;
+#elif __linux__
+        output << optimizer.optimize();
+        if (output_info)
+            std::cout << "Finished Optimizing at level " << optimization_level << "..." << std::endl;
+#endif
         output.close();
     }
     auto stop_time = std::chrono::high_resolution_clock::now();
