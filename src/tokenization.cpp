@@ -423,7 +423,7 @@ std::vector<Token> Tokenizer::tokenize()
         break;}
     case '"':
         {consume();
-        buf.push_back(consume());
+        //buf.push_back(consume());
         while (peek().has_value() && peek().value() != '"') {
             buf.push_back(consume());
         }
