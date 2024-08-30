@@ -2,8 +2,7 @@
 *.asm
 *.o
 *.
-*/
-!.*/*
+
 brick
 .vscode/
 .vs/
