@@ -22,12 +22,12 @@ For Linux:
 ## Running
 - To compile your .brick file just run `brick <pathname> [flags]`
 
-    *Note: It is important that the pathnale is the first supplied argument*
+    *Note: It is important that the pathname is the first supplied argument*
 
 - Optional compilerflags include `-info` for compilation information and `-nomicrosoft` on Windows to get rid of the Microsoft Logo things when using masm32
 
 
-- You can also add the `-O1` flag, which is a first level of optimization. which strips the assembly code of all not used functions
+- You can also add the `-O1` flag, which is a first level of optimization to strip the assembly code of not used functions.
 
 - Then just run the file with `./<filename>` on Linux or `.\filename.exe` on Windows
 
