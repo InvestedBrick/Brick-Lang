@@ -27,19 +27,20 @@ __asm__{"    ; Null-terminate the string"};
 __asm__{"    mov byte [edi], 0"};
 __asm__{"    ; Reverse the string"};
 __asm__{"    mov esi, num_buffer       ; esi = start of the string"};
-__asm__{"    call reverse_string"};
-__asm__{"    jmp int_to_ascii_done"};
+__asm__{"    jmp .reverse_string"};
+__asm__{".return:"};
+__asm__{"    jmp .int_to_ascii_done"};
 __asm__{".handle_zero:"};
 __asm__{"    mov byte [edi], '0'       ; Handle zero case"};
 __asm__{"    inc edi"};
 __asm__{"    mov byte [edi], 0"};
-__asm__{"    jmp int_to_ascii_done"};
-__asm__{"reverse_string:"};
+__asm__{"    jmp .int_to_ascii_done"};
+__asm__{".reverse_string:"};
 __asm__{"    ; esi = start of string, edi = end of string (currently at the null terminator)"};
 __asm__{"    dec edi                   ; Move edi to the last character (not null terminator)"};
 __asm__{".reverse_loop:"};
 __asm__{"    cmp esi, edi"};
-__asm__{"    jge reverse_string_done     ; If start >= end, stop"};
+__asm__{"    jge .reverse_string_done     ; If start >= end, stop"};
 __asm__{"    mov al, [esi]             ; Swap characters at esi and edi"};
 __asm__{"    mov bl, [edi]"};
 __asm__{"    mov [esi], bl"};
@@ -47,9 +48,9 @@ __asm__{"    mov [edi], al"};
 __asm__{"    inc esi"};
 __asm__{"    dec edi"};
 __asm__{"    jmp .reverse_loop"};
-__asm__{"reverse_string_done:"};
-__asm__{"    ret"};
-__asm__{"int_to_ascii_done:    "};
+__asm__{".reverse_string_done:"};
+__asm__{"    jmp .return"};
+__asm__{".int_to_ascii_done:"};
 }
 
 brick itoa : int -> x{
