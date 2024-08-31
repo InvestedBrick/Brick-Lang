@@ -1,0 +1,39 @@
+// Proto:
+// PROT_READ = 1
+// PROT_WRITE = 2
+// PROT_EXEC = 4
+
+// flags:
+// chose one: 
+// MAP_SHARED = 1
+// MAP_SHARED_VALIDATE = 3
+// MAP_PRIVATE = 2
+// additional: 
+// MAP_ANONYMOUS = 32
+// MAP_DENYWRITE = 2048
+
+// fail:
+// MAP_FAILED = -1 (ptr type)
+brick mmap : int -> n_bytes, int -> prot, int -> flags, int -> fd{
+    __asm__{"    push ebx"};
+    __asm__{"    push ecx"};
+    __asm__{"    push edx"};
+    __asm__{"    push esi"};
+    __asm__{"    push edi"};
+
+    __asm__{"    mov ebx, 0"};
+    __asm__{"    mov ecx, dword [ebp - 4]"};
+    __asm__{"    mov edx, dword [ebp - 8]"};
+    __asm__{"    mov esi, dword [ebp - 12]"};
+    __asm__{"    mov edi, dword [ebp - 16]"};
+    __asm__{"    push ebp"};
+    __asm__{"    mov ebp, 0"};
+    __asm__{"    mov eax, 90"};
+    __asm__{"    int 0x80"};
+    __asm__{"    pop ebp"};
+    __asm__{"    pop edi"};
+    __asm__{"    pop esi"};
+    __asm__{"    pop edx"};
+    __asm__{"    pop ecx"};
+    __asm__{"    pop ebx"};
+}=> byte ptr
