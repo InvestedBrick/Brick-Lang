@@ -17,7 +17,7 @@ For Linux:
 
 - On Linux you can just run `make` with the makefile
 
-- On Windows you need to run the command: `g++ -std=c++17 -O2 preprocessor.cpp tokenization.cpp parsing.cpp generation.cpp -o brick.exe`
+- On Windows you need to run the command: `g++ -std=c++17 -O2 src/preprocessor.cpp src/tokenization.cpp src/parsing.cpp src/generation.cpp -o brick.exe`
 
 ## Running
 - To compile your .brick file just run `brick <pathname> [flags]`
@@ -28,6 +28,8 @@ For Linux:
 
 
 - You can also add the `-O1` flag, which is a first level of optimization to strip the assembly code of not used functions.
+
+*Note: This is currently only possible on Linux*
 
 - Then just run the file with `./<filename>` on Linux or `.\filename.exe` on Windows
 
