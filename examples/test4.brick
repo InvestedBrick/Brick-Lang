@@ -1,4 +1,4 @@
-#include funcs.brick //funcs hs itoa
+#include stdlib/funcs.brick //funcs hs itoa
 brick main{
     dec seed as int -> 221542513;
     dec size as int -> 10 const;
