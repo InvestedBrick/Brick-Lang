@@ -1,7 +1,4 @@
-#include funcs.brick
-
-
-
+#include stdlib/funcs.brick
 
 
 struct node{
