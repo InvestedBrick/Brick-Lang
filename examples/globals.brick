@@ -1,0 +1,15 @@
+
+globals : [
+    dec x as int -> 32;
+    dec y as short -> 5;
+    dec z as bool -> 2; // should correct to 1
+
+    dec arr as array int -> 5;
+
+]
+
+
+brick main{
+
+    exit 0;
+}
