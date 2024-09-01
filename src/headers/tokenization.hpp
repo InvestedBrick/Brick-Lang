@@ -70,8 +70,12 @@ enum class Token_type {
     _struct,
     _dot,
     _or,
-    _xor
+    _xor,
+    _globals
 };
+
+
+#ifdef DEBUG
 inline std::unordered_map<Token_type, std::string> tokenTypeToString = {
     {Token_type::_exit, "_exit"},
     {Token_type::_int_lit, "_int_lit"},
@@ -139,8 +143,11 @@ inline std::unordered_map<Token_type, std::string> tokenTypeToString = {
     {Token_type::_dot, "_dot"},
     {Token_type::_or, "_or"},
     {Token_type::_xor, "_xor"},
+    {Token_type::_globals, "_globals"},
 
 };
+#endif
+
 std::optional<int> bin_prec(Token_type type);
 struct Token
 {
