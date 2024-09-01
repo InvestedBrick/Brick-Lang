@@ -1202,9 +1202,10 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
         void operator()(const node::_var_dec_struct* var_struct){
             const auto it  = std::find_if(gen->m_struct_infos.cbegin(), gen->m_struct_infos.cend(), [&](const Struct_info& inf) {return inf.name == var_struct->struct_name; });
             if(it == gen->m_struct_infos.cend()){
-                gen->line_err("How did this happen??");
+                gen->line_err("Struct name not found");//should usually not happen
             }
             Struct struct_;
+            struct_.name = var_struct->ident.value.value();
             bool generating_struct_vars_save = gen->generating_struct_vars;
             gen->generating_struct_vars = true;
             gen->ignore_var_already_exists = true;
@@ -1218,7 +1219,6 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             gen->generic_struct_vars = struct_vars_save;
             gen->ignore_var_already_exists = false;
 
-            struct_.name = var_struct->ident.value.value();
             generating_struct_vars_save ? (*gen->generic_struct_vars).push_back(struct_) : gen->m_structs.push_back(struct_);
         }
         void operator()(const node::_var_dec_struct_ptr* var_dec_struct_ptr){
@@ -1652,19 +1652,20 @@ void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::strin
 
 }
 
+template <typename var_array>
+inline void Generator::gen_global_vars_recursive(var_array vars){
+    for (const auto& var : vars){
+        if (std::holds_alternative<node::_var_dec_struct*>(var->var)){
+            const auto dec_struct = std::get<node::_var_dec_struct*>(var->var);
+            const auto struct_info = std::find_if(this->m_struct_infos.cbegin(),this->m_struct_infos.cend(), [&](const Struct_info inf){return inf.name == dec_struct->struct_name;});
 
-inline void Generator::gen_global_vars(const node::_statement_globals* globals){
-    if (valid_space){
-        this->line_err("Cannot declared global variables inside scope");
-    }
-    this->emit_var_gen_asm = false;
-    this->generic_struct_vars = &(this->global_vars);
-    size_t bpo_save = this->m_base_ptr_off;
-    this->m_base_ptr_off = 0;
-    this->only_allow_int_exprs = true;
-    this->valid_space = true;
-    this->generating_struct_vars = true;
-    for (const auto& var : globals->vars){
+            if (struct_info == this->m_struct_infos.cend()){
+                this->line_err("Struct name not found");//should usually not happen
+            }
+
+            this->gen_global_vars_recursive(struct_info->var_decs);
+            return;
+        }
         this->gen_var_stmt(var);
         auto last_var = global_vars.back();
         if (std::holds_alternative<Var>(last_var)){
@@ -1685,19 +1686,34 @@ inline void Generator::gen_global_vars(const node::_statement_globals* globals){
             assert(false && "not implemented")
             exit(EXIT_FAILURE);
 #endif
-
-        }else if(std::holds_alternative<Struct>(last_var)){
-            assert(false && "not implemented");
         }
 
     }
-    this->generating_struct_vars = false;
-    this->valid_space = false;
-    this->only_allow_int_exprs = false;
+
+}
+
+
+inline void Generator::gen_global_vars(const node::_statement_globals* globals){
+    if (valid_space){
+        this->line_err("Cannot declared global variables inside scope");
+    }
+    this->generic_struct_vars = &(this->global_vars);
+    size_t bpo_save = this->m_base_ptr_off;
+    this->m_base_ptr_off = 0;
+    this->valid_space = true;
+    this->emit_var_gen_asm = false;
+    this->only_allow_int_exprs = true;
+    this->generating_struct_vars = true;
+
+    this->gen_global_vars_recursive(globals->vars);
+    
     this->line_counter += globals->n_lines;
-    this->m_base_ptr_off = bpo_save;
+    this->generating_struct_vars = false;
     this->generic_struct_vars = nullptr;
+    this->only_allow_int_exprs = false;
+    this->m_base_ptr_off = bpo_save;
     this->emit_var_gen_asm = true;
+    this->valid_space = false;
 
 }
 
