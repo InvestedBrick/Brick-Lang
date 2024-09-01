@@ -44,13 +44,13 @@ inline std::string Generator::mk_label() {
 inline std::string Generator::mk_str_lit() {
     std::stringstream ss;
     ss << "string_lit_" << string_counter;
-    if (this->emit_var_gen_asm){string_counter++;}
+    if (this->emit_var_gen_asm || this->only_allow_int_exprs){string_counter++;}
     return ss.str();
 }
 inline std::string Generator::mk_str_buf() {
     std::stringstream ss;
     ss << "string_buffer_" << string_buffer_counter;
-    if (this->emit_var_gen_asm){string_counter++;}
+    if (this->emit_var_gen_asm || this->only_allow_int_exprs){string_counter++;}
     return ss.str();
 }
 
@@ -89,6 +89,20 @@ inline std::string Generator::get_mov_instruc(const std::string& dest, const std
     }
 
 }
+
+inline std::string asm_type_to_define(std::string type){
+    if (type == "dword"){
+        return "dd";
+    }else if (type == "word"){
+        return "dw";
+    }else if (type == "byte"){
+        return "db";
+    }
+    std::cerr << "asm_type_to_define failed, should not happen" << std::endl;
+    exit(EXIT_FAILURE);    
+}
+
+
 //clear labels
 inline void Generator::reset_labels(){
     this->initial_label_and.reset();
@@ -1007,8 +1021,19 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                 }
             }
             std::string val;
-            if (gen->emit_var_gen_asm){
+            if (gen->emit_var_gen_asm || gen->only_allow_int_exprs){
                 val = gen->gen_expr(var_num->expr).value();
+
+                if (gen->only_allow_int_exprs){
+                    if (is_numeric(val)){
+                        gen->universal_integer_expression_because_I_cant_be_bothered_to_make_this_an_argument = std::stoi(val);
+                        if (var_num->type == Token_type::_bool){
+                            gen->universal_integer_expression_because_I_cant_be_bothered_to_make_this_an_argument = (gen->universal_integer_expression_because_I_cant_be_bothered_to_make_this_an_argument != 0);
+                        }
+                    }else{
+                        gen->line_err("Can only assign integer value");
+                    }
+                }
             }
             Var var;
             var.type = var_type_to_str(var_num->type);
@@ -1016,6 +1041,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             var.ptr = var_num->_ptr;
             var.bool_limit = var_num->type == Token_type::_bool;
             gen->m_base_ptr_off += gen->asm_type_to_bytes(var.type);
+            var.name = var_num->ident.value.value();
             if(var.ptr){
                 var.ptr_type = var.type;
                 var.type = "dword";
@@ -1031,9 +1057,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                             gen->line_err("Integer value for pointer may only be null (0)");
                         }
                     }
-                    if (gen->emit_var_gen_asm){
-                        gen->m_code << "    mov " << var.type <<  PTR_KEYWORD << " [ebp - " << gen->m_base_ptr_off << "]" << ", " << num << std::endl;
-                    }
+                    gen->m_code << "    mov " << var.type <<  PTR_KEYWORD << " [ebp - " << gen->m_base_ptr_off << "]" << ", " << num << std::endl;
                 }
                 else {
                     if (var.bool_limit) {
@@ -1063,7 +1087,6 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                     }
                 }
             }
-            var.name = var_num->ident.value.value();
             var.base_pointer_offset = gen->m_base_ptr_off;
             gen->generating_struct_vars ? (*gen->generic_struct_vars).push_back(var) : gen->m_vars.push_back(var);
             
@@ -1219,9 +1242,18 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             gen->m_base_ptr_off += 4; //size for a dword
             
             std::string val;
-            if (gen->emit_var_gen_asm){
+            if (gen->emit_var_gen_asm || gen->only_allow_int_exprs){
                 val = gen->gen_expr(var_dec_struct_ptr->expr).value();
+                if (gen->only_allow_int_exprs){
+                    if (is_numeric(val) && std::stoi(val) == 0){
+                        gen->universal_integer_expression_because_I_cant_be_bothered_to_make_this_an_argument = std::stoi(val);
+                    }else{
+                        gen->line_err("Can only assign integer value");
+                    }
+                }
+            }
 
+            if (gen->emit_var_gen_asm){
                 if(is_numeric(val)){
 
                     if(std::stoi(val) != 0){
@@ -1251,6 +1283,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
     else {
         line_err("Can currently not declare variables outside of valid space like function");
     }
+    
 }
 void Generator::var_set_str(){
     this->line_err("Strings are immutable at the current stage of development :(");
@@ -1619,6 +1652,55 @@ void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::strin
 
 }
 
+
+inline void Generator::gen_global_vars(const node::_statement_globals* globals){
+    if (valid_space){
+        this->line_err("Cannot declared global variables inside scope");
+    }
+    this->emit_var_gen_asm = false;
+    this->generic_struct_vars = &(this->global_vars);
+    size_t bpo_save = this->m_base_ptr_off;
+    this->m_base_ptr_off = 0;
+    this->only_allow_int_exprs = true;
+    this->valid_space = true;
+    this->generating_struct_vars = true;
+    for (const auto& var : globals->vars){
+        this->gen_var_stmt(var);
+        auto last_var = global_vars.back();
+        if (std::holds_alternative<Var>(last_var)){
+            this->m_globals << "    " << asm_type_to_define(std::get<Var>(last_var).type) << " " << this->universal_integer_expression_because_I_cant_be_bothered_to_make_this_an_argument << std::endl;
+        }else if (std::holds_alternative<String>(last_var)){
+            String str = std::get<String>(last_var);
+            this->m_data << "    " << str.generated << " db \"" << str.str_val << "\",0" << std::endl;
+#ifdef __linux__        
+            this->m_data << "    " << str.generated << "_len equ $ - " << str.generated << std::endl;
+#endif        
+        }else if(std::holds_alternative<string_buffer>(last_var)){
+            //already done
+        }else if(std::holds_alternative<Var_array>(last_var)){
+            Var_array arr = std::get<Var_array>(last_var);
+#ifdef __linux__            
+            this->m_globals << "    times " << arr.size << " " << asm_type_to_define(arr.type) << " 0" << std::endl;
+#elif _WIN32
+            assert(false && "not implemented")
+            exit(EXIT_FAILURE);
+#endif
+
+        }else if(std::holds_alternative<Struct>(last_var)){
+            assert(false && "not implemented");
+        }
+
+    }
+    this->generating_struct_vars = false;
+    this->valid_space = false;
+    this->only_allow_int_exprs = false;
+    this->line_counter += globals->n_lines;
+    this->m_base_ptr_off = bpo_save;
+    this->generic_struct_vars = nullptr;
+    this->emit_var_gen_asm = true;
+
+}
+
 inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set) {
 
     struct set_visitor {
@@ -1758,6 +1840,9 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
         }
         void operator()(const node::_statement_scope* statement_scope) {
             gen->gen_scope(statement_scope);
+        }
+        void operator()(const node::_statement_globals* globals){
+            gen->gen_global_vars(globals);
         }
         void operator()(const node::_main_scope* main_scope) {
             if (!gen->main_proc) {
@@ -2090,6 +2175,10 @@ std::string Generator::gen_program() {
 #endif
     }
     m_output << m_data.str();
+    if (m_globals.str() != ""){
+        m_output << "globals:" << std::endl;
+    }
+    m_output << m_globals.str();
 
 #ifdef __linux__
     m_output << "section .bss\n";
