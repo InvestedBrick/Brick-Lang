@@ -176,6 +176,8 @@ private:
     inline void gen_ctrl_statement(const node::_ctrl_statement* _ctrl);
     inline void gen_var_stmt(const node::_statement_var_dec* stmt_var_dec);
     inline void gen_var_set(const node::_statement_var_set* stmt_var_set);
+    template <typename var_array>
+    inline void gen_global_vars_recursive(var_array vars);
     inline void gen_global_vars(const node::_statement_globals* globals);
     inline void gen_stmt(const node::_statement* stmt);
 public:
