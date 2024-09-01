@@ -270,9 +270,32 @@ namespace node {
         std::vector<std::pair<std::string,size_t>> name_to_offsets;
         std::vector<_var_metadata> vars_metadata;
     };
+
+    struct _statement_globals{
+        std::vector<_statement_var_dec*>  vars{};
+        int n_lines;
+    };
+
     struct _statement
     {
-        std::variant<_statement_exit*, _statement_var_dec*, _statement_var_set*, _asm_*, _statement_scope*, _ctrl_statement*, _main_scope*, _null_stmt*, _statement_output*, _statement_input*, _statement_function*, _statement_ret*, _statement_pure_expr*, _op_equal*,_statement_struct*> var;
+        std::variant<
+        _statement_exit*
+        , _statement_var_dec*
+        , _statement_var_set*
+        , _asm_*
+        , _statement_scope*
+        , _ctrl_statement*
+        , _main_scope*
+        , _null_stmt*
+        , _statement_output*
+        , _statement_input*
+        , _statement_function*
+        , _statement_ret*
+        , _statement_pure_expr*
+        , _op_equal*
+        , _statement_struct*
+        , _statement_globals*
+        > var;
     };
 
     struct _program {
