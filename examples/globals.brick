@@ -1,3 +1,8 @@
+struct my_struct{
+    dec v as int -> 22;
+    dec p as int ptr -> null;
+}
+
 
 globals : [
     dec x as int -> 32;
@@ -5,6 +10,8 @@ globals : [
     dec z as bool -> 2; // should correct to 1
 
     dec arr as array int -> 5;
+
+    dec s as my_struct;
 
 ]
 
