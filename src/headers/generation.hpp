@@ -60,34 +60,39 @@ private:
         std::vector<std::variant<Var,string_buffer,String,Var_array,Struct>> pre_gen_vars;
     
     };
+
+    std::vector<std::variant<Var,string_buffer,String,Var_array,Struct>> global_vars;
     
     bool main_proc = false;
     bool valid_space = false;
-    bool ignore_var_already_exists = false;
+    bool only_allow_int_exprs = false;
     bool generating_struct_vars = false;
+    bool ignore_var_already_exists = false;
     bool emit_var_gen_asm = true;
-    std::vector<std::variant<Var,string_buffer,String,Var_array,Struct>>* generic_struct_vars = nullptr;
     std::optional<std::string> initial_label_or;
     std::optional<std::string> initial_label_and;
     std::optional<std::string> ending_label;
     size_t label_counter = 0;
     size_t string_counter = 0;
     size_t string_buffer_counter = 0;
+    size_t m_base_ptr_off = 0;
+    size_t line_counter = 1;
+    size_t universal_integer_expression_because_I_cant_be_bothered_to_make_this_an_argument;
     const node::_program m_prog;
 #ifdef __linux    
     std::stringstream m_bss;
 #endif    
+    std::stringstream m_output;
     std::stringstream m_data;
     std::stringstream m_code;
-    std::stringstream m_output;
     std::stringstream m_func_space;
+    std::stringstream m_globals;
 #ifdef _WIN32
     std::string m_header = ".686p\noption casemap:none\ninclude <C:\\masm32\\include\\masm32rt.inc>\n\n";
 #elif __linux__
     std::string m_header = "global _start\n";
 #endif
-    size_t m_base_ptr_off = 0;
-    size_t line_counter = 1;
+    std::vector<std::variant<Var,string_buffer,String,Var_array,Struct>>* generic_struct_vars = nullptr;
     std::vector<std::string> curr_func_name{};
     std::vector<size_t> m_base_ptr_pos{};
     std::vector<Var> m_vars{};
@@ -101,8 +106,8 @@ private:
     std::vector<Var_array> m_arrays{};
     std::vector<size_t> m_scope_arrays{};
     std::vector<std::string> filestack{};
-    const std::string m_func_registers[4] = {"edi","esi","edx","ecx"};
     const std::string m_bin_expr_registers[4] {"ecx","edx","esi","edi"};
+    const std::string m_func_registers[4] = {"edi","esi","edx","ecx"};
     uint m_bin_expr_idx = 0;
     std::unordered_map<std::string, size_t> str_bit_sizes = {
     {"eax",32},
@@ -161,18 +166,19 @@ private:
     std::string gen_term_struct(iterator struct_it, struct_ident struct_ident_,std::string base_string);
     template<typename iterator, typename struct_ptr_ident>
     std::string gen_term_struct_ptr(iterator struct_ptr_it, struct_ptr_ident struct_ptr_ident_,std::string base_string,bool lea = false);
-
-public:
     inline void intern_flags(const node::_null_stmt* null_stmt);
-    inline explicit Generator(node::_program root) : m_prog(std::move(root)) {};
     inline std::optional<std::string> gen_term(const node::_term* term);
     inline std::optional<std::string> gen_bin_expr(const node::_bin_expr* bin_expr);
     inline std::optional<std::string> gen_expr(const node::_expr* expr);
+
     inline logic_data_packet gen_logical_expr(const node::_logical_expr* logic_expr,std::optional<std::string> provided_scope_lbl,bool invert = false);
     inline logic_data_packet gen_logical_stmt(const node::_logical_stmt* logic_stmt,std::optional<std::string> provided_scope_lbl,bool invert = false);
     inline void gen_ctrl_statement(const node::_ctrl_statement* _ctrl);
     inline void gen_var_stmt(const node::_statement_var_dec* stmt_var_dec);
     inline void gen_var_set(const node::_statement_var_set* stmt_var_set);
+    inline void gen_global_vars(const node::_statement_globals* globals);
     inline void gen_stmt(const node::_statement* stmt);
+public:
+    inline explicit Generator(node::_program root) : m_prog(std::move(root)) {};
     std::string gen_program();
 };
