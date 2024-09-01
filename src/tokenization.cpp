@@ -213,6 +213,11 @@ std::vector<Token> Tokenizer::tokenize()
                 buf.clear();
                 continue;
             }
+            else if (buf == "globals") {
+                token_arr.push_back(mk_tok(Token_type::_globals));
+                buf.clear();
+                continue;
+            }
             else if (buf == "FILE") {
                 std::string buffer;
                 consume(); //consume the empty space after FILE
