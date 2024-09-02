@@ -186,6 +186,12 @@ inline bool Parser::peek_type(Token_type type, size_t offset) {
 }
 inline std::optional<node::_term*> Parser::parse_term() {
     auto term = m_Allocator.alloc< node::_term>();
+    if (peek_type(Token_type::_globals) && peek_type(Token_type::_colon,1) && peek_type(Token_type::_colon,2) && peek_type(Token_type::_ident,3)){
+        consume();
+        consume();
+        consume();
+        term->var_is_global = true;
+    }
     if (auto int_lit = try_consume(Token_type::_int_lit)) {
         auto il = m_Allocator.alloc<node::_term_int_lit>();
         il->_int_lit = int_lit.value();
@@ -279,6 +285,12 @@ inline std::optional<node::_term*> Parser::parse_term() {
     else if (peek_type(Token_type::_deref)) {
         consume();
         auto deref = m_Allocator.alloc<node::_term_deref>();
+        if (peek_type(Token_type::_globals) && peek_type(Token_type::_colon,1) && peek_type(Token_type::_colon,2)){
+        consume();
+        consume();
+        consume();
+        term->var_is_global = true;
+    }
         deref->ident = try_consume(Token_type::_ident, "Expected variable name after '$'");
         term->var = deref;
         return term;
