@@ -46,14 +46,21 @@ inline void PreProcessor::pre_process_include() {
                 while (peek().has_value() && peek().value() != '\n' && peek().value() != ' ') { //consume Filename until end of line etc
                     buf.push_back(consume());
                 }
+                bool add_stdlib = false;
+                //this is to get rid of things in stdlib from including each other and messing that up
                 std::ifstream f(buf);
                 if (!f.good()) {
-                    line_err("Input file was not found!");
+                    std::ifstream ifs("stdlib/"+buf);
+                    if (!ifs.good()){
+                        line_err("Input file was not found!");
+                    }
+                    add_stdlib = true;
+                    
                 }
                 std::string contents;
                 {
                     std::stringstream contents_stream;
-                    std::fstream input(buf, std::ios::in);
+                    std::fstream input(add_stdlib ? "stdlib/" + buf: buf, std::ios::in);
                     contents_stream << input.rdbuf();//read the file to a string
                     contents = contents_stream.str();
                 }
