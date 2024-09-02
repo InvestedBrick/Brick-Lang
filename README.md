@@ -79,7 +79,6 @@ dec my_var as int -> 42;
 ```
 *Note : booleans can only be initalized with `true`, `false` or `null`*
 
-*Note 1: There are no global variables, as these are considered bad practise*
 
 Variables can also be declared as immutable by adding the `const` keyword after the value  
 <br><br>
@@ -100,6 +99,36 @@ Or changed by an expression like this:
 ```
 my_var += 5 * 2;
 my_var /= 10;
+```
+
+**Global variables**
+
+Even though global variables might be considered bad pactise, Brick-Lang opts for giving the programmer as much freedom as realistically possible.
+
+Therefore global variables are declared like this:
+
+```
+globals : [
+    <variable declaration>
+    ...
+
+]
+```
+
+You can declare your global variables inside of this globals scope and access them like every other variable by adding `globals::` before the variable name
+
+Example:
+
+```
+globals : [
+    dec x as int -> 42;
+]
+
+brick main{
+    set globals::x to 13;
+
+    dec y as int -> globals::x;
+}
 ```
 
 **Arrays**
