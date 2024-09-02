@@ -1,0 +1,28 @@
+// work in progress
+#include funcs.brick
+#include syscalls.brick
+
+brick align8 : int -> x{
+    if x % 8 == 0 {
+        return x;
+    }
+    return x + (8 - (x % 8));
+}=> int
+
+struct meta_block{
+    dec free as bool -> false;
+    dec size as int -> 0;
+    dec next as meta_block ptr -> null;
+    dec prev as meta_block ptr -> null;
+    dec _ptr as int ptr -> null;
+    dec data as byte ptr -> null;
+}
+
+
+brick main{
+
+    dec base as int ptr -> null;
+    dec mem as byte ptr -> mmap(4096,1 | 2,1 | 32,-1);
+    output itoa(mem);
+    exit 0;
+}
