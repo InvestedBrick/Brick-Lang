@@ -1,5 +1,7 @@
+//original for windows, but brokes af, do not use
+
 #include funcs.brick
-#include memory.brick
+#include stdlib/win_memory.brick
 bundle dynamic_array{
     dec capacity as int -> 1;
     dec size as int -> 0;
