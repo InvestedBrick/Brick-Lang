@@ -17,6 +17,8 @@
 
 #define EDX_OFF " [edx - "
 
+#define GLOBAL_OFF " [globals + "
+
 bool is_numeric(const std::string& str) {
     for (char c : str) {
         if (!std::isdigit(c)) {
@@ -311,7 +313,7 @@ std::string Generator::gen_term_struct_ptr(iterator struct_ptr_it, struct_ptr_id
 
     if (struct_info == this->m_struct_infos.cend()){
         std::stringstream ss;
-        ss << "Struct with name " << (*struct_ptr_it).ptr_type << " not found";
+        ss << "Struct with name '" << (*struct_ptr_it).ptr_type << "' not found";
         this->line_err(ss.str());
     }
     
@@ -1026,10 +1028,11 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
 
                 if (gen->only_allow_int_exprs){
                     if (is_numeric(val)){
-                        gen->universal_integer_expression_because_I_cant_be_bothered_to_make_this_an_argument = std::stoi(val);
+                        size_t num = std::stoi(val);
                         if (var_num->type == Token_type::_bool){
-                            gen->universal_integer_expression_because_I_cant_be_bothered_to_make_this_an_argument = (gen->universal_integer_expression_because_I_cant_be_bothered_to_make_this_an_argument != 0);
+                            num = (num != 0);
                         }
+                        gen->global_nums.push(num);
                     }else{
                         gen->line_err("Can only assign integer value");
                     }
@@ -1040,7 +1043,10 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             var.immutable = var_num->_const;
             var.ptr = var_num->_ptr;
             var.bool_limit = var_num->type == Token_type::_bool;
-            gen->m_base_ptr_off += gen->asm_type_to_bytes(var.type);
+            if (!gen->only_allow_int_exprs){ // if it is a global var, increment after
+                gen->m_base_ptr_off += gen->asm_type_to_bytes(var.type);
+            }
+            
             var.name = var_num->ident.value.value();
             if(var.ptr){
                 var.ptr_type = var.type;
@@ -1088,6 +1094,9 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                 }
             }
             var.base_pointer_offset = gen->m_base_ptr_off;
+            if (gen->only_allow_int_exprs){
+                gen->m_base_ptr_off += gen->asm_type_to_bytes(var.type);
+            }
             gen->generating_struct_vars ? (*gen->generic_struct_vars).push_back(var) : gen->m_vars.push_back(var);
             
         }
@@ -1176,8 +1185,9 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             arr.type = var_type_to_str(var_array->type);
             arr.bool_limit = var_array->type == Token_type::_bool;
             arr.size = var_array->_array_size;
-            arr.head_base_pointer_offset = gen->m_base_ptr_off + arr.size * gen->asm_type_to_bytes(arr.type);
-            gen->m_base_ptr_off = arr.head_base_pointer_offset;
+            gen->m_base_ptr_off += arr.size * gen->asm_type_to_bytes(arr.type);
+            arr.head_base_pointer_offset = gen->m_base_ptr_off;
+            
 #ifdef __linux__
             if (gen->emit_var_gen_asm){
                 if(var_array->init_str.has_value()){
@@ -1206,20 +1216,26 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             }
             Struct struct_;
             struct_.name = var_struct->ident.value.value();
-            bool generating_struct_vars_save = gen->generating_struct_vars;
-            gen->generating_struct_vars = true;
-            gen->ignore_var_already_exists = true;
+            bool generating_struct_vars_save;
+            if (!gen->overwrite_flags){
+                generating_struct_vars_save = gen->generating_struct_vars;
+                gen->generating_struct_vars = true;
+                gen->ignore_var_already_exists = true;
+            }
 
             auto struct_vars_save = gen->generic_struct_vars;
             gen->generic_struct_vars = &struct_.vars;
             for (node::_statement_var_dec* var_dec : (*it).var_decs){
                 gen->gen_var_stmt(var_dec);
             }
-            gen->generating_struct_vars = generating_struct_vars_save;
+            if (!gen->overwrite_flags){
+                gen->generating_struct_vars = generating_struct_vars_save;
+                gen->ignore_var_already_exists = false;
+            }
+            
             gen->generic_struct_vars = struct_vars_save;
-            gen->ignore_var_already_exists = false;
 
-            generating_struct_vars_save ? (*gen->generic_struct_vars).push_back(struct_) : gen->m_structs.push_back(struct_);
+            gen->generating_struct_vars ? (*gen->generic_struct_vars).push_back(struct_) : gen->m_structs.push_back(struct_);
         }
         void operator()(const node::_var_dec_struct_ptr* var_dec_struct_ptr){
             if (!gen->ignore_var_already_exists){
@@ -1238,15 +1254,16 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             var.is_struct_ptr = true;
             var.name = var_dec_struct_ptr->ident.value.value();
             var.ptr_type = var_dec_struct_ptr->struct_name;
-            
-            gen->m_base_ptr_off += 4; //size for a dword
+            if (!gen->only_allow_int_exprs){
+                gen->m_base_ptr_off += 4; //size for a dword
+            }
             
             std::string val;
             if (gen->emit_var_gen_asm || gen->only_allow_int_exprs){
                 val = gen->gen_expr(var_dec_struct_ptr->expr).value();
                 if (gen->only_allow_int_exprs){
                     if (is_numeric(val) && std::stoi(val) == 0){
-                        gen->universal_integer_expression_because_I_cant_be_bothered_to_make_this_an_argument = std::stoi(val);
+                        gen->global_nums.push(std::stoi(val));
                     }else{
                         gen->line_err("Can only assign integer value");
                     }
@@ -1272,6 +1289,9 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             }
 
             var.base_pointer_offset = gen->m_base_ptr_off;
+            if (gen->only_allow_int_exprs){
+                gen->m_base_ptr_off += 4;
+            }
             gen->generating_struct_vars ? (*gen->generic_struct_vars).push_back(var) : gen->m_vars.push_back(var);
         }
     };
@@ -1548,7 +1568,7 @@ void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::strin
     
     if (struct_info == this->m_struct_infos.cend()){
         std::stringstream ss;
-        ss << "Struct with name " << (*it).ptr_type << " not found";
+        ss << "Struct with name '" << (*it).ptr_type << "' not found";
         this->line_err(ss.str());
     }
 
@@ -1652,43 +1672,36 @@ void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::strin
 
 }
 
-template <typename var_array>
-inline void Generator::gen_global_vars_recursive(var_array vars){
-    for (const auto& var : vars){
-        if (std::holds_alternative<node::_var_dec_struct*>(var->var)){
-            const auto dec_struct = std::get<node::_var_dec_struct*>(var->var);
-            const auto struct_info = std::find_if(this->m_struct_infos.cbegin(),this->m_struct_infos.cend(), [&](const Struct_info inf){return inf.name == dec_struct->struct_name;});
-
-            if (struct_info == this->m_struct_infos.cend()){
-                this->line_err("Struct name not found");//should usually not happen
-            }
-
-            this->gen_global_vars_recursive(struct_info->var_decs);
-            return;
-        }
-        this->gen_var_stmt(var);
-        auto last_var = global_vars.back();
-        if (std::holds_alternative<Var>(last_var)){
-            this->m_globals << "    " << asm_type_to_define(std::get<Var>(last_var).type) << " " << this->universal_integer_expression_because_I_cant_be_bothered_to_make_this_an_argument << std::endl;
-        }else if (std::holds_alternative<String>(last_var)){
-            String str = std::get<String>(last_var);
-            this->m_data << "    " << str.generated << " db \"" << str.str_val << "\",0" << std::endl;
+template <typename variant_item>
+inline void Generator::gen_global_vars_recursive(const variant_item last_var){
+    
+    if (std::holds_alternative<Var>(last_var)){
+        this->m_globals << "    " << asm_type_to_define(std::get<Var>(last_var).type) << " " << this->global_nums.front() << std::endl;
+        this->global_nums.pop();
+    }else if (std::holds_alternative<String>(last_var)){
+        String str = std::get<String>(last_var);
+        this->m_data << "    " << str.generated << " db \"" << str.str_val << "\",0" << std::endl;
 #ifdef __linux__        
-            this->m_data << "    " << str.generated << "_len equ $ - " << str.generated << std::endl;
+        this->m_data << "    " << str.generated << "_len equ $ - " << str.generated << std::endl;
 #endif        
-        }else if(std::holds_alternative<string_buffer>(last_var)){
-            //already done
-        }else if(std::holds_alternative<Var_array>(last_var)){
-            Var_array arr = std::get<Var_array>(last_var);
+    }else if(std::holds_alternative<string_buffer>(last_var)){
+        //already done
+    }else if(std::holds_alternative<Var_array>(last_var)){
+        Var_array arr = std::get<Var_array>(last_var);
 #ifdef __linux__            
-            this->m_globals << "    times " << arr.size << " " << asm_type_to_define(arr.type) << " 0" << std::endl;
+        this->m_globals << "    times " << arr.size << " " << asm_type_to_define(arr.type) << " 0" << std::endl;
 #elif _WIN32
-            assert(false && "not implemented")
-            exit(EXIT_FAILURE);
+        assert(false && "not implemented")
+        exit(EXIT_FAILURE);
 #endif
+    }else if(std::holds_alternative<Struct>(last_var)){
+        Struct struct_ = std::get<Struct>(last_var);
+        for (const auto& var : struct_.vars){
+            this->gen_global_vars_recursive(var);
         }
-
     }
+
+    
 
 }
 
@@ -1697,21 +1710,28 @@ inline void Generator::gen_global_vars(const node::_statement_globals* globals){
     if (valid_space){
         this->line_err("Cannot declared global variables inside scope");
     }
-    this->generic_struct_vars = &(this->global_vars);
+    this->generic_struct_vars = &(this->m_global_vars);
     size_t bpo_save = this->m_base_ptr_off;
+
+
     this->m_base_ptr_off = 0;
     this->valid_space = true;
+    this->overwrite_flags = true;
     this->emit_var_gen_asm = false;
     this->only_allow_int_exprs = true;
     this->generating_struct_vars = true;
 
-    this->gen_global_vars_recursive(globals->vars);
+    for (const auto& var : globals->vars){
+        this->gen_var_stmt(var);
+        this->gen_global_vars_recursive(this->m_global_vars.back());
+    }
     
     this->line_counter += globals->n_lines;
     this->generating_struct_vars = false;
     this->generic_struct_vars = nullptr;
     this->only_allow_int_exprs = false;
     this->m_base_ptr_off = bpo_save;
+    this->overwrite_flags = false;
     this->emit_var_gen_asm = true;
     this->valid_space = false;
 
@@ -1721,62 +1741,124 @@ inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set)
 
     struct set_visitor {
         Generator* gen;
+        bool is_global;
         void operator()(const node::_var_set_num* var_num) {
-            const auto str_it = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(), [&](const String& var) {return var.name == var_num->ident.value.value(); });
-            if (str_it != gen->m_strs.cend()) {gen->var_set_str();return;}//in case I want to strings mutable one day and forget this
-            
-            const auto str_buf_it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& var) {return var.name == var_num->ident.value.value(); });
-            if(str_buf_it != gen->m_str_bufs.cend()){
-                gen->var_set_str_buf(str_buf_it,var_num," ");
-                return;
-            }
-            const auto it  = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == var_num->ident.value.value(); });
-            if (it == gen->m_vars.cend()) {
-                std::stringstream ss;
-                ss << "Identifier '" << var_num->ident.value.value() << "' was not declared in this scope!" << std::endl;
-                gen->line_err(ss.str());
-                
-            }
-            else {
-                gen->var_set_number(it,var_num,EBP_OFF);
+
+            if (is_global){
+                const auto var_it = std::find_if(gen->m_global_vars.cbegin(),gen->m_global_vars.cend(),[&](const auto& var) {
+                                        return std::visit([&](const auto& item) { return item.name == var_num->ident.value.value(); }, var);
+                                        });
+                if (var_it == gen->m_global_vars.cend()){
+                    std::stringstream ss;
+                    ss << "Global variable with the name '" << var_num->ident.value.value() <<"' was not found";
+                }
+                if(std::holds_alternative<String>(*var_it)){
+                    gen->var_set_str(); //in case I want to strings mutable one day and forget this
+                    return;
+                }else if(std::holds_alternative<string_buffer>(*var_it)){
+                    gen->var_set_str_buf(&std::get<string_buffer>(*var_it),var_num, " ");
+                }else if (std::holds_alternative<Var>(*var_it)){
+                    gen->var_set_number(&std::get<Var>(*var_it),var_num,GLOBAL_OFF);
+                }
+
+            }else{
+                const auto str_it = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(), [&](const String& var) {return var.name == var_num->ident.value.value(); });
+                if (str_it != gen->m_strs.cend()) {gen->var_set_str();return;}//in case I want to strings mutable one day and forget this
+
+                const auto str_buf_it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(), [&](const string_buffer& var) {return var.name == var_num->ident.value.value(); });
+                if(str_buf_it != gen->m_str_bufs.cend()){
+                    gen->var_set_str_buf(str_buf_it,var_num," ");
+                    return;
+                }
+                const auto it  = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == var_num->ident.value.value(); });
+                if (it == gen->m_vars.cend()) {
+                    std::stringstream ss;
+                    ss << "Identifier '" << var_num->ident.value.value() << "' was not declared in this scope!" << std::endl;
+                    gen->line_err(ss.str());
+
+                }
+                else {
+                    gen->var_set_number(it,var_num,EBP_OFF);
+                }
             }
         }
         void operator()(const node::_var_set_array* array_set) {
-            const auto it  = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array& var) {return var.name == array_set->ident.value.value(); });
-            if (it == gen->m_arrays.cend()) {
-                const auto  ptr_it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == array_set->ident.value.value(); });
-                if (ptr_it == gen->m_vars.cend()) {
+            if (is_global){
+                const auto var_it = std::find_if(gen->m_global_vars.cbegin(),gen->m_global_vars.cend(),[&](const auto& var) {
+                                        return std::visit([&](const auto& item) { return item.name == array_set->ident.value.value(); }, var);
+                                        });
+                if (var_it == gen->m_global_vars.cend()){
                     std::stringstream ss;
-                    ss << "Array with the name '" << array_set->ident.value.value() << "' was not declared in this scope";
-                    gen->line_err(ss.str());
+                    ss << "Global variable with the name '" << array_set->ident.value.value() <<"' was not found";
                 }
-                gen->var_set_ptr_array(ptr_it,array_set,EBP_OFF);
-            }
-            else {
-                gen->var_set_array(it,array_set,EBP_OFF);
-            }
-        }
-        void operator()(node::_var_set_struct* struct_set){
-            const auto  struct_it = std::find_if(gen->m_structs.cbegin(),gen->m_structs.cend(), [&](const Struct& _struct){return _struct.name == struct_set->ident.value.value();});
-            if(struct_it == gen->m_structs.cend()){
-                const auto struct_ptr_it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var){return var.name == struct_set->ident.value.value();});
 
-                if (struct_ptr_it == gen->m_vars.cend()){
-
-                    std::stringstream ss;
-                    ss << "Struct with the name '" << struct_set->ident.value.value() << "' was not declared in this scope";
-                    gen->line_err(ss.str());
-                }else{  
-                    if (!(*struct_ptr_it).is_struct_ptr){
-                        gen->line_err("Cannot use non-struct-pointer to set a struct");
-                    }
-
-                    gen->var_set_struct_ptr(struct_ptr_it,struct_set,EBP_OFF);
-
+                if (std::holds_alternative<Var_array>(*var_it))
+                {   
+                    Var_array arr = std::get<Var_array>(*var_it);
+                    std::cout << "Here with: " << arr.name << ", adn hbpo: " << arr.head_base_pointer_offset << std::endl; 
+                    gen->var_set_array(&arr,array_set,GLOBAL_OFF);
+                }else if (std::holds_alternative<Var>(*var_it))
+                {
+                    gen->var_set_ptr_array(&std::get<Var>(*var_it),array_set,GLOBAL_OFF);
                 }
             }
             else{
-                gen->var_set_struct(struct_it,struct_set,EBP_OFF);
+                const auto it  = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array& var) {return var.name == array_set->ident.value.value(); });
+                if (it == gen->m_arrays.cend()) {
+                    const auto  ptr_it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var) {return var.name == array_set->ident.value.value(); });
+                    if (ptr_it == gen->m_vars.cend()) {
+                        std::stringstream ss;
+                        ss << "Array with the name '" << array_set->ident.value.value() << "' was not declared in this scope";
+                        gen->line_err(ss.str());
+                    }
+                    gen->var_set_ptr_array(ptr_it,array_set,EBP_OFF);
+                }
+                else {
+                    gen->var_set_array(it,array_set,EBP_OFF);
+                }
+            }
+        }
+        void operator()(node::_var_set_struct* struct_set){
+            
+            if (is_global){
+                const auto var_it = std::find_if(gen->m_global_vars.cbegin(),gen->m_global_vars.cend(),[&](const auto& var) {
+                                        return std::visit([&](const auto& item) { return item.name == struct_set->ident.value.value(); }, var);
+                                        });
+                if (var_it == gen->m_global_vars.cend()){
+                    std::stringstream ss;
+                    ss << "Global variable with the name '" << struct_set->ident.value.value() <<"' was not found";
+                }
+
+                if (std::holds_alternative<Struct>(*var_it))
+                {
+                    std::cout << "Rather here" << std::endl;
+                    gen->var_set_struct(&std::get<Struct>(*var_it),struct_set,GLOBAL_OFF);
+                }else if (std::holds_alternative<Var>(*var_it))
+                {
+                    std::cout << "Here" << std::endl;
+                    gen->var_set_struct_ptr(&std::get<Var>(*var_it),struct_set,GLOBAL_OFF);
+                }
+            }
+            else{
+                const auto  struct_it = std::find_if(gen->m_structs.cbegin(),gen->m_structs.cend(), [&](const Struct& _struct){return _struct.name == struct_set->ident.value.value();});
+                if(struct_it == gen->m_structs.cend()){
+                    const auto struct_ptr_it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var){return var.name == struct_set->ident.value.value();});
+
+                    if (struct_ptr_it == gen->m_vars.cend()){
+
+                        std::stringstream ss;
+                        ss << "Struct with the name '" << struct_set->ident.value.value() << "' was not declared in this scope";
+                        gen->line_err(ss.str());
+                    }else{  
+                        if (!(*struct_ptr_it).is_struct_ptr){
+                            gen->line_err("Cannot use non-struct-pointer to set a struct");
+                        }
+                        gen->var_set_struct_ptr(struct_ptr_it,struct_set,EBP_OFF);
+                    }
+                }
+                else{
+                    gen->var_set_struct(struct_it,struct_set,EBP_OFF);
+                }
             }
             
         }
@@ -1785,6 +1867,7 @@ inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set)
     if (this->valid_space) {
         set_visitor visitor;
         visitor.gen = this;
+        visitor.is_global = stmt_var_set->var_is_global;
         std::visit(visitor, stmt_var_set->var);
     }
     else {
