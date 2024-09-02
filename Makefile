@@ -2,14 +2,14 @@
 CXX = g++
 CXXFLAGS = --std=c++17 -O2
 
-
+SRC_DIR = src
 # Source files
-SRC_FILES = src/main.cpp \
-            src/preprocessor.cpp \
-            src/generation.cpp \
-            src/parsing.cpp \
-            src/tokenization.cpp \
-            src/optimizer.cpp
+SRC_FILES = $(SRC_DIR)/main.cpp \
+            $(SRC_DIR)/preprocessor.cpp \
+            $(SRC_DIR)/generation.cpp \
+            $(SRC_DIR)/parsing.cpp \
+            $(SRC_DIR)/tokenization.cpp \
+            $(SRC_DIR)/optimizer.cpp
 
 
 # Target executable
