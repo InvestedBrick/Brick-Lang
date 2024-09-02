@@ -81,6 +81,7 @@ namespace node {
     struct _term
     {
         std::variant<_term_int_lit*, _term_ident*, _term_paren*, _term_str_lit*, _function_call*,_term_negate*,_term_deref*, _term_array_index*,_double_op*,_term_struct_ident*> var;
+        bool var_is_global = false;
     };
     struct _expr_ref {
         _expr* expr;
@@ -172,6 +173,7 @@ namespace node {
     struct _statement_var_set
     {
         std::variant<_var_set_array*, _var_set_num*,_var_set_struct*> var;
+        bool var_is_global = false;
     };
 
     struct _statement_scope
