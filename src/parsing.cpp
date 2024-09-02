@@ -732,6 +732,13 @@ inline node::_statement_var_set* Parser::parse_var_set(){
     }
     Token t;
 
+    if (peek_type(Token_type::_globals) && peek_type(Token_type::_colon,1) && peek_type(Token_type::_colon,2)){
+        consume();
+        consume();
+        consume();
+        stmt_set->var_is_global = true;
+    }
+
     if(peek_type(Token_type::_ident) && (peek_type(Token_type::_dot,1) )){
         auto set_struct = m_Allocator.alloc<node::_var_set_struct>();
         set_struct->ident = consume();
@@ -880,6 +887,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
 
         auto globals = m_Allocator.alloc<node::_statement_globals>();
         this->in_func = true;
+        size_t alloc_save = this->alloc_size;
         while(true){
             if(try_consume(Token_type::_back_n)){
                 globals->n_lines++; //I really dont know of a better way rn
@@ -889,6 +897,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
             globals->vars.push_back(parse_var_dec());
             }else{break;}
         }
+        this->alloc_size = alloc_save;
         try_consume(Token_type::_close_sq_brac, "Expected ']' ");
         this->in_func = false;
         return mk_stmt(globals);
