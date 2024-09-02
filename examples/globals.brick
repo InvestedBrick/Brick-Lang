@@ -7,16 +7,23 @@ struct my_struct{
 globals : [
     dec x as int -> 32;
     dec y as short -> 5;
-    dec z as bool -> 2; // should correct to 1
+    dec z as bool -> true;
 
     dec arr as array int -> 5;
 
     dec s as my_struct;
-
 ]
 
 
 brick main{
+
+    set globals::x to 5;
+
+    set globals::z to false;
+
+    set globals::arr[4] to 3;
+
+    set globals::s.v to 11;
 
     exit 0;
 }
