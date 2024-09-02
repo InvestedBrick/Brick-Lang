@@ -18,6 +18,9 @@ LOGS:
 13.08.24: about 4000 lines and 570 lines of brick code (ported to linux)
 16.08.24: about 4100 lines and 551 lines of brick code (added bitwise operations + some refactoring)
 28.08.24: about 4630 lines and 634 lines of brick code (added struct pointers)
+02.09.27: about 5400 liens and 784 lines of brick code (added global variables + start of malloc + start of small optimizer)
+
+
 Needs to be refactored
     
 checklist:
@@ -36,6 +39,7 @@ checklist:
 [X] reading/writing from and to files
 [X] OR, XOR, AND operators
 [X] struct pointers
+[X] global vars
 [ ] floating points
 [ ] write own malloc / free for Linux
 [ ] unit tests
