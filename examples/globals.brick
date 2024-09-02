@@ -1,3 +1,5 @@
+#include stdlib/funcs.brick
+
 struct my_struct{
     dec v as int -> 22;
     dec p as int ptr -> null;
@@ -21,9 +23,17 @@ brick main{
 
     set globals::z to false;
 
-    set globals::arr[4] to 3;
+    set globals::arr[4] to 4;
+    set globals::arr[3] to 3;
+    set globals::arr[2] to 2;
+    set globals::arr[1] to 1;
+    set globals::arr[0] to 0;
 
     set globals::s.v to 11;
+
+    dec x as int -> globals::x;
+    //need to pass last element bc memory layout is other way around
+    print_array(&globals::arr[4],5);
 
     exit 0;
 }
