@@ -1,6 +1,9 @@
 #pragma once
 #include <sstream>
+#ifdef _WIN32
 #include <cassert>
+#endif
+#include <queue>
 #include "parsing.hpp"
 bool is_numeric(const std::string& str);
 class Generator {
@@ -61,7 +64,7 @@ private:
     
     };
 
-    std::vector<std::variant<Var,string_buffer,String,Var_array,Struct>> global_vars;
+    std::vector<std::variant<Var,string_buffer,String,Var_array,Struct>> m_global_vars;
     
     bool main_proc = false;
     bool valid_space = false;
@@ -69,6 +72,7 @@ private:
     bool generating_struct_vars = false;
     bool ignore_var_already_exists = false;
     bool emit_var_gen_asm = true;
+    bool overwrite_flags = false; // this is the point when you know, that you have too many flags 
     std::optional<std::string> initial_label_or;
     std::optional<std::string> initial_label_and;
     std::optional<std::string> ending_label;
@@ -77,7 +81,7 @@ private:
     size_t string_buffer_counter = 0;
     size_t m_base_ptr_off = 0;
     size_t line_counter = 1;
-    size_t universal_integer_expression_because_I_cant_be_bothered_to_make_this_an_argument;
+    std::queue<size_t> global_nums;
     const node::_program m_prog;
 #ifdef __linux    
     std::stringstream m_bss;
@@ -176,8 +180,8 @@ private:
     inline void gen_ctrl_statement(const node::_ctrl_statement* _ctrl);
     inline void gen_var_stmt(const node::_statement_var_dec* stmt_var_dec);
     inline void gen_var_set(const node::_statement_var_set* stmt_var_set);
-    template <typename var_array>
-    inline void gen_global_vars_recursive(var_array vars);
+    template <typename variant_item>
+    inline void gen_global_vars_recursive(const variant_item last_var);
     inline void gen_global_vars(const node::_statement_globals* globals);
     inline void gen_stmt(const node::_statement* stmt);
 public:
