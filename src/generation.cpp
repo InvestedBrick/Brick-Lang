@@ -1201,14 +1201,15 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             var.immutable = var_num->_const;
             var.ptr = var_num->_ptr;
             var.bool_limit = var_num->type == Token_type::_bool;
-            if (!gen->only_allow_int_exprs){ // if it is a global var, increment after
-                gen->m_base_ptr_off += gen->asm_type_to_bytes(var.type);
-            }
+            
             
             var.name = var_num->ident.value.value();
             if(var.ptr){
                 var.ptr_type = var.type;
                 var.type = "dword";
+            }
+            if (!gen->only_allow_int_exprs){ // if it is a global var, increment after
+                gen->m_base_ptr_off += gen->asm_type_to_bytes(var.type);
             }
             if (gen->emit_var_gen_asm){
                 if (is_numeric(val)) {
@@ -1570,7 +1571,7 @@ void Generator::var_set_ptr_array(iterator it,var_set array_set,std::string base
         }
         this->m_code << "    mov edx, dword" << PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]" << std::endl;
         if(is_numeric(index_val)){
-            this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,"ebx") << " " << (*it).ptr_type <<  PTR_KEYWORD << " [edx + " << std::stoi(index_val) * this->asm_type_to_bytes((*it).ptr_type) << "], "  << num << std::endl;
+            this->m_code << "    mov " << (*it).ptr_type <<  PTR_KEYWORD << " [edx + " << std::stoi(index_val) * this->asm_type_to_bytes((*it).ptr_type) << "], "  << num << std::endl;
         }else{
             if(index_val != "eax"){
                 this->m_code << "    " << this->get_mov_instruc("eax", index_val.substr(0, index_val.find_first_of(" "))) << " eax, " << index_val << std::endl;
