@@ -28,7 +28,7 @@ brick mmap : int -> n_bytes, int -> prot, int -> flags, int -> fd{
     __asm__{"    mov edi, dword [ebp - 16]"};
     __asm__{"    push ebp"};
     __asm__{"    mov ebp, 0"};
-    __asm__{"    mov eax, 90"};
+    __asm__{"    mov eax, 192"}; // need to use mmap2 for some unknown reason
     __asm__{"    int 0x80"};
     __asm__{"    pop ebp"};
     __asm__{"    pop edi"};
