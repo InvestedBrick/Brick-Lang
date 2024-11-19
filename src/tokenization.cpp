@@ -6,6 +6,7 @@
 
 */
 #include "headers/tokenization.hpp"
+// the higher the prec, the more important
 std::optional<int> bin_prec(Token_type type) {
     switch (type)
     {
@@ -20,6 +21,8 @@ std::optional<int> bin_prec(Token_type type) {
     case Token_type::_xor:
     case Token_type::_ampersand:
         return 3;
+    case Token_type::_bitwise_not:
+        return 4;
     default:
         return {};
     }
@@ -394,6 +397,11 @@ std::vector<Token> Tokenizer::tokenize()
     case '^':{
         consume();
         token_arr.push_back(mk_tok(Token_type::_xor));
+        break;
+    }
+    case '~':{
+        consume();
+        token_arr.push_back(mk_tok(Token_type::_bitwise_not));
         break;
     }
     case '=':
