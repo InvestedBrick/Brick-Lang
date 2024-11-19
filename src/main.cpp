@@ -74,7 +74,6 @@ int main(int argc, char* argv[]) {
         std::cerr << "brick <input.brick>" << std::endl;
         exit(EXIT_FAILURE);
     }
-    int x = 2;
     std::string filename = argv[1];
     if (filename.substr(filename.find_last_of(".") + 1) != "brick") {
         std::cerr << "Invalid input file, has to have .brick extension!" << std::endl;
