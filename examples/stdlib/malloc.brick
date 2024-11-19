@@ -1,6 +1,14 @@
-// work in progress
 #include funcs.brick
 #include syscalls.brick
+
+// PLEASE, PLEASE do not use this, this just exists for quick testing purposes
+brick slow_leaky_malloc : int -> n_bytes{
+    dec mem as byte ptr -> mmap(n_bytes,1 | 2,1 | 32,-1);
+    if mem == 0{
+        output "Mapping failed!";
+    }
+    return mem;
+}=> byte ptr
 
 brick align8 : int -> x{
     if x % 8 == 0 {
@@ -22,7 +30,14 @@ struct meta_block{
 brick main{
 
     dec base as int ptr -> null;
-    dec mem as byte ptr -> mmap(4096,1 | 2,1 | 32,-1);
+    dec mem as byte ptr -> mmap(4,1 | 2,1 | 32,-1);
+    if mem == 0{
+        output "Mapping failed!";
+    }
     output itoa(mem);
+    set mem[0] to 69;
+    set mem[1] to 5;
+    dec val as int -> mem[1];
+    output itoa(val);
     exit 0;
 }
