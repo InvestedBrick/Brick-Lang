@@ -411,6 +411,8 @@ set my_var to my_var & 5;   // 0b111 & 0b101 = 0b101 = 5
 set my_var to myvar ^ 1;    // 0b101 ^ 0b001 = 0b100 = 4
 ```
 
+The bitwise operation `not` is denoted with a leading `~`:
+
 **Struct Pointers**
 
 Pointers to structs can be defined as the following:
