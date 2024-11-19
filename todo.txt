@@ -34,12 +34,12 @@ checklist:
 [X] structs
 [X] make array indexing from startptr possible like in C
 [X] allow setting of indexed ptr 
-[X] dynamic memory (view examples/memory.brick)
 [X] port generation to Linux / split win && Linux
 [X] reading/writing from and to files
 [X] OR, XOR, AND operators
 [X] struct pointers
 [X] global vars
+[ ] bitshifting and bitwise not
 [ ] floating points
 [ ] write own malloc / free for Linux
 [ ] unit tests
