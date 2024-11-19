@@ -71,7 +71,8 @@ enum class Token_type {
     _dot,
     _or,
     _xor,
-    _globals
+    _globals,
+    _bitwise_not
 };
 
 
@@ -144,6 +145,7 @@ inline std::unordered_map<Token_type, std::string> tokenTypeToString = {
     {Token_type::_or, "_or"},
     {Token_type::_xor, "_xor"},
     {Token_type::_globals, "_globals"},
+    {Token_type::_bitwise_not, "_bitwise_not"},
 
 };
 #endif
