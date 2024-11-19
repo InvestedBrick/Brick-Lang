@@ -64,6 +64,9 @@ namespace node {
     struct _term_negate {
         _expr* expr;
     };
+    struct _term_bitwise_not{
+        _expr* expr;
+    };
     struct _term_array_index {
         Token ident;
         _expr* index_expr;
@@ -80,7 +83,7 @@ namespace node {
     };
     struct _term
     {
-        std::variant<_term_int_lit*, _term_ident*, _term_paren*, _term_str_lit*, _function_call*,_term_negate*,_term_deref*, _term_array_index*,_double_op*,_term_struct_ident*> var;
+        std::variant<_term_int_lit*, _term_ident*, _term_paren*, _term_str_lit*, _function_call*,_term_negate*,_term_deref*, _term_array_index*,_double_op*,_term_struct_ident*,_term_bitwise_not*> var;
         bool var_is_global = false;
     };
     struct _expr_ref {
