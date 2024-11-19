@@ -663,6 +663,20 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
             gen->m_code << "    neg eax" << std::endl;
             ret_val = "eax";
         }
+        void operator()(const node::_term_bitwise_not* term_not) {
+            const std::string expr = gen->gen_expr(term_not->expr).value();
+
+            if (expr != "eax") {
+                if (is_numeric(expr)) {
+                    gen->m_code << "    mov eax," << expr << std::endl;
+                }
+                else {
+                    gen->m_code << "    " << gen->get_mov_instruc("eax", expr.substr(0, expr.find_first_of(' '))) << " eax," << expr << std::endl;
+                }
+            }
+            gen->m_code << "    not eax" << std::endl;
+            ret_val = "eax";
+        }
         void operator()(const node::_term_deref* deref) {
 
             if (is_global){
@@ -833,7 +847,6 @@ inline std::string Generator::generic_bin_expr(bin_expr_type* bin_expr,std::stri
         }
     }
     const std::string str_2 = this->gen_expr(bin_expr->right).value();
-    
     const bool str_1_numeric = is_numeric(str_1);
     const bool str_2_numeric = is_numeric(str_2);
     if (str_1_numeric && str_2_numeric)
@@ -2201,7 +2214,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                 else {
                     gen->line_err("Cannot declare a function inside of a function");
                 }
-            }
+            } 
         }
         void operator()(const node::_ctrl_statement* _ctrl) {
             gen->gen_ctrl_statement(_ctrl);
