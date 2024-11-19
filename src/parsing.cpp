@@ -282,6 +282,18 @@ inline std::optional<node::_term*> Parser::parse_term() {
         term->var = neg;
         return term;
     }
+    else if (peek_type(Token_type::_bitwise_not)) {
+        consume();
+        auto not_ = m_Allocator.alloc<node::_term_bitwise_not>();
+        if (const auto expr = parse_expr()) {
+            not_->expr = expr.value();
+        }
+        else {
+            line_err("Invalid Expression");
+        }
+        term->var = not_;
+        return term;
+    }
     else if (peek_type(Token_type::_deref)) {
         consume();
         auto deref = m_Allocator.alloc<node::_term_deref>();
