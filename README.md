@@ -88,6 +88,12 @@ Assignment of variables looks like this:
 set <variable name> to <new value> ;
 ```
 
+
+e.g. :
+```
+set x to (5 * 2) + 1;
+```
+
 Variables can also be incemented or decremented:
 ```
 my_var++;
@@ -205,7 +211,7 @@ Pointers are essential when dealing with low-level byte manipulation or managing
 dec my_ptr as <var type to point to> ptr -> <value>;
 ```
 
-The value of a pointer can be either `null` or de address of a variable with matching type, which can be accessed using the `&` operator: 
+The value of a pointer can be either `null` or the address of a variable with matching type, which can be accessed using the `&` operator: 
 
 ```
 dec my_ptr as int ptr -> &my_var;
@@ -275,9 +281,9 @@ To include another file, you can simply write
 #include <pathname>
 ```
 
-This is a copy-cut-paste operation, meaning the code of the other file will simply be added to the current file (exept for the main function, that gets cut out)
+This is a copy-cut-paste operation, meaning the code of the other file will simply be added to the current file (except for the main function, that gets cut out)
 
-It is important that the pathname is literally just the name without any symbols around it. If I wanted to include the file operation file from the standart library, I would just write: 
+It is important that the pathname is literally just the name without any symbols around it. If I wanted to include the file operation file from the standard library, I would just write: 
 
 ```
 #include stdlib/fileops.brick
@@ -411,7 +417,18 @@ set my_var to my_var & 5;   // 0b111 & 0b101 = 0b101 = 5
 set my_var to myvar ^ 1;    // 0b101 ^ 0b001 = 0b100 = 4
 ```
 
+There are also bit shifting operators:
+
+```
+set my_var to my_var << 3; // Shift left by 3, same as multiplying by 8
+set my_var to my_var >> 3; // Shift right by 3, same as dividing by 8
+```
+
 The bitwise operation `not` is denoted with a leading `~`:
+
+```
+set my_var to ~my_var; // if my_var was 0000 0001 before, it is now 1111 1110
+```
 
 **Struct Pointers**
 
@@ -447,5 +464,5 @@ If you want to see more code about struct pointers with some small unit tests, v
 
 If you have any questions left, you can look at the example code provided in examples/ 
 
-If you feel, that there is any functionality missing in the standard function, open a pull request and write it yourself
+If you feel, that there is any functionality missing in the standard library, open a pull request and write it yourself
 
