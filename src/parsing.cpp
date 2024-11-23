@@ -856,13 +856,6 @@ inline node::_null_stmt* Parser::mk_null_stmt(std::variant<node::_newline*, node
 }
 
 inline std::optional<node::_statement*> Parser::parse_statement() {
-#ifdef DEBUG
-        for (auto& token : m_tokens) {
-            print_token(token);
-        }
-        #undef DEBUG
-#endif
-
     if (peek_type(Token_type::_back_n)) {
         auto newline = m_Allocator.alloc<node::_newline>();
         consume();
