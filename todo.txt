@@ -39,7 +39,7 @@ checklist:
 [X] OR, XOR, AND operators
 [X] struct pointers
 [X] global vars
-[ ] bitshifting and bitwise not
+[X] bitshifting and bitwise not
 [ ] floating points
 [ ] write own malloc / free for Linux
 [ ] unit tests
