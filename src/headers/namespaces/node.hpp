@@ -50,9 +50,19 @@ namespace node {
         _expr* right;
         bool _modulo;
     };
+    struct _bin_expr_shift_left
+    {
+        _expr* left;
+        _expr* right;
+    };
+    struct _bin_expr_shift_right
+    {
+        _expr* left;
+        _expr* right;
+    };
     struct _bin_expr
     {
-        std::variant<_bin_expr_add*, _bin_expr_mul*, _bin_expr_sub*, _bin_expr_div*,_bin_expr_xor*,_bin_expr_or*,_bin_expr_and*> var;
+        std::variant<_bin_expr_add*, _bin_expr_mul*, _bin_expr_sub*, _bin_expr_div*,_bin_expr_xor*,_bin_expr_or*,_bin_expr_and*,_bin_expr_shift_left*,_bin_expr_shift_right*> var;
     };
     struct _term_deref {
         Token ident;
