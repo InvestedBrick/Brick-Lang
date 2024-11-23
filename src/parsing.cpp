@@ -334,6 +334,7 @@ inline std::optional<node::_term*> Parser::parse_term() {
         return {};
     }
 }
+
 inline std::optional<node::_expr*> Parser::parse_expr(int min_prec) {
 
     std::optional<node::_term*> term_left = parse_term();
@@ -379,60 +380,87 @@ inline std::optional<node::_expr*> Parser::parse_expr(int min_prec) {
         auto bin_expr = m_Allocator.alloc<node::_bin_expr>();
 
         const auto expr_left_2 = m_Allocator.alloc<node::_expr>();//sorry for the naming
-        if (op.type == Token_type::_add) {
-            auto add = m_Allocator.alloc<node::_bin_expr_add>();
-            expr_left_2->var = expr_left->var;
-            add->left = expr_left_2;
-            add->right = expr_right.value();
-            bin_expr->var = add;
-        }
-        else if (op.type == Token_type::_sub) {
-            auto sub = m_Allocator.alloc<node::_bin_expr_sub>();
-            expr_left_2->var = expr_left->var;
-            sub->left = expr_left_2;
-            sub->right = expr_right.value();
-            bin_expr->var = sub;
-        }
-        else if (op.type == Token_type::_mul) {
-            auto mul = m_Allocator.alloc<node::_bin_expr_mul>();
-            expr_left_2->var = expr_left->var;
-            mul->left = expr_left_2;
-            mul->right = expr_right.value();
-            bin_expr->var = mul;
-        }
-        else if (op.type == Token_type::_div || op.type == Token_type::_mod) {
-            auto div = m_Allocator.alloc<node::_bin_expr_div>();
-            expr_left_2->var = expr_left->var;
-            div->left = expr_left_2;
-            div->right = expr_right.value();
-            if (op.type == Token_type::_mod) {
-                div->_modulo = true;
+        switch (op.type){
+            case Token_type::_add: {
+                // I have decided to not make each of these an individual function, because too many arguments would be needed
+                auto add = m_Allocator.alloc<node::_bin_expr_add>();
+                expr_left_2->var = expr_left->var;
+                add->left = expr_left_2;
+                add->right = expr_right.value();
+                bin_expr->var = add;
+                break;
             }
-            else {
-                div->_modulo = false;
+            case Token_type::_sub: {
+                auto sub = m_Allocator.alloc<node::_bin_expr_sub>();
+                expr_left_2->var = expr_left->var;
+                sub->left = expr_left_2;
+                sub->right = expr_right.value();
+                bin_expr->var = sub;
+                break;
             }
-            bin_expr->var = div;
-        }
-        else if(op.type == Token_type::_xor){
-            auto xor_ = m_Allocator.alloc<node::_bin_expr_xor>();
-            expr_left_2->var = expr_left->var;
-            xor_->left = expr_left_2;
-            xor_->right = expr_right.value();
-            bin_expr->var = xor_;
-        }
-        else if(op.type == Token_type::_or){
-            auto or_ = m_Allocator.alloc<node::_bin_expr_or>();
-            expr_left_2->var = expr_left->var;
-            or_->left = expr_left_2;
-            or_->right = expr_right.value();
-            bin_expr->var = or_;
-        }
-        else if(op.type == Token_type::_ampersand){
-            auto and_ = m_Allocator.alloc<node::_bin_expr_and>();
-            expr_left_2->var = expr_left->var;
-            and_->left = expr_left_2;
-            and_->right = expr_right.value();
-            bin_expr->var = and_;
+            case Token_type::_mul: {
+                auto mul = m_Allocator.alloc<node::_bin_expr_mul>();
+                expr_left_2->var = expr_left->var;
+                mul->left = expr_left_2;
+                mul->right = expr_right.value();
+                bin_expr->var = mul;
+                break;
+            }
+            case Token_type::_div: 
+            case Token_type::_mod: {
+                auto div = m_Allocator.alloc<node::_bin_expr_div>();
+                expr_left_2->var = expr_left->var;
+                div->left = expr_left_2;
+                div->right = expr_right.value();
+                if (op.type == Token_type::_mod) {
+                    div->_modulo = true;
+                }
+                else {
+                    div->_modulo = false;
+                }
+                bin_expr->var = div;
+                break;
+            }
+            case Token_type::_xor:{
+                auto xor_ = m_Allocator.alloc<node::_bin_expr_xor>();
+                expr_left_2->var = expr_left->var;
+                xor_->left = expr_left_2;
+                xor_->right = expr_right.value();
+                bin_expr->var = xor_;
+                break;
+            }
+            case Token_type::_or:{
+                auto or_ = m_Allocator.alloc<node::_bin_expr_or>();
+                expr_left_2->var = expr_left->var;
+                or_->left = expr_left_2;
+                or_->right = expr_right.value();
+                bin_expr->var = or_;
+                break;
+            }
+            case Token_type::_ampersand:{
+                auto and_ = m_Allocator.alloc<node::_bin_expr_and>();
+                expr_left_2->var = expr_left->var;
+                and_->left = expr_left_2;
+                and_->right = expr_right.value();
+                bin_expr->var = and_;
+                break;
+            }
+            case Token_type::_shift_left:{
+                auto shl = m_Allocator.alloc<node::_bin_expr_shift_left>();
+                expr_left_2->var = expr_left->var;
+                shl->left = expr_left_2;
+                shl->right = expr_right.value();
+                bin_expr->var = shl;
+                break;
+            }
+            case Token_type::_shift_right:{
+                auto shr = m_Allocator.alloc<node::_bin_expr_shift_right>();
+                expr_left_2->var = expr_left->var;
+                shr->left = expr_left_2;
+                shr->right = expr_right.value();
+                bin_expr->var = shr;
+                break;
+            }
         }
 
         expr_left->var = bin_expr;
