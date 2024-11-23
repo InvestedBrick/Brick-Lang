@@ -696,7 +696,7 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
 
                 Var v = std::get<Var>(*global_it);
                 if (v.is_struct_ptr){
-                    gen->line_err("Cannot dereference struct pointer"); // TODO: make possible, somehow
+                    gen->line_err("Cannot dereference struct pointer"); 
                 }
 
                 gen->m_code << "    mov eax, dword" << PTR_KEYWORD << GLOBAL_OFF << v.base_pointer_offset << "]" << std::endl;
