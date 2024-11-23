@@ -7,22 +7,28 @@
 */
 #include "headers/tokenization.hpp"
 // the higher the prec, the more important
+// values werer inspired by the operator precedence of C/C++
 std::optional<int> bin_prec(Token_type type) {
     switch (type)
     {
+    case Token_type::_or:
+        return 1;
+    case Token_type::_xor:
+        return 2;
+    case Token_type::_ampersand:
+        return 3;
+    case Token_type::_shift_left:
+    case Token_type::_shift_right:
+        return 4;
     case Token_type::_add:
     case Token_type::_sub:
-        return 1;
+        return 5;
     case Token_type::_mul:
     case Token_type::_div:
     case Token_type::_mod:
-        return 2;
-    case Token_type::_or:
-    case Token_type::_xor:
-    case Token_type::_ampersand:
-        return 3;
+        return 6;
     case Token_type::_bitwise_not:
-        return 4;
+        return 7;
     default:
         return {};
     }
@@ -421,7 +427,12 @@ std::vector<Token> Tokenizer::tokenize()
         if (peek().value() == '=') {
             consume();
             token_arr.push_back(mk_tok(Token_type::_greater_eq_as));
-        } else {
+        }
+        else if (peek().value() == '>'){
+            consume();
+            token_arr.push_back(mk_tok(Token_type::_shift_right));
+        } 
+        else {
             token_arr.push_back(mk_tok(Token_type::_greater_as));
         }
         break;}
@@ -430,7 +441,12 @@ std::vector<Token> Tokenizer::tokenize()
         if (peek().value() == '=') {
             consume();
             token_arr.push_back(mk_tok(Token_type::_less_eq_as));
-        } else {
+        }
+        else if (peek().value() == '<'){
+            consume();
+            token_arr.push_back(mk_tok(Token_type::_shift_left));
+        }  
+        else {
             token_arr.push_back(mk_tok(Token_type::_less_as));
         }
         break;}
