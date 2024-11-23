@@ -902,8 +902,12 @@ inline std::string Generator::generic_bin_expr(bin_expr_type* bin_expr,std::stri
                 this->m_code << "    xor edx, edx" << std::endl;
             }
         }    
-
-        this->m_code << "    "<<  operation << mul_div_no_eax << (str_2_is_dword ? str_2 : "ebx") << std::endl;
+        bool is_shift_op = false;
+        if (operation == "shl" || operation == "shr"){
+            is_shift_op = true;
+            this->m_code << "    mov ecx, ebx " << std::endl;
+        }
+        this->m_code << "    "<<  operation << mul_div_no_eax << (str_2_is_dword ? str_2 : is_shift_op ?  "cl" :"ebx") << std::endl;
         return "eax";
     }
 }
@@ -936,6 +940,12 @@ inline std::optional<std::string> Generator::gen_bin_expr(const node::_bin_expr*
             }
             void operator()(const node::_bin_expr_and* bin_expr_and){
                 ret_val = gen->generic_bin_expr(bin_expr_and,"and");
+            }
+            void operator()(const node::_bin_expr_shift_left* bin_expr_shl){
+                ret_val = gen->generic_bin_expr(bin_expr_shl,"shl");
+            }
+            void operator()(const node::_bin_expr_shift_right* bin_expr_shr){
+                ret_val = gen->generic_bin_expr(bin_expr_shr,"shr");
             }
         };
         bin_expr_visitor visitor;
