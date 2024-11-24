@@ -1259,9 +1259,9 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                             if (val == "&eax") {
                                 val = "eax";
                             }
-                            else {
-                                gen->line_err("Pointer cannot be assigned the value of a non-reference");
-                            }
+                            //else {
+                            //    gen->line_err("Pointer cannot be assigned the value of a non-reference");
+                            //}
                         }
                         if (val == "&eax") {
                             gen->line_err("Cannot assign reference to non-pointer");
@@ -1472,7 +1472,8 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
 
                 }else{
                     if(val != "&eax"){
-                        gen->line_err("Pointer cannot be assigned the value of a non-reference");
+                        //gen->line_err("Pointer cannot be assigned the value of a non-reference");
+                        gen->m_code << "    " << gen->get_mov_instruc("eax",val.substr(0,val.find_first_of(' '))) << " eax, " << val << std::endl;
                     }
 
                     gen->m_code << "    mov dword" << PTR_KEYWORD << " [ebp - " << gen->m_base_ptr_off << "], eax"<< std::endl;
@@ -1840,7 +1841,8 @@ void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::strin
                 this->m_code << "    mov " << var.type <<  PTR_KEYWORD << " [edx], 0"<< std::endl;
             }else{
                 if(val != "&eax"){
-                    this->line_err("Pointer cannot be assigned the value of a non-reference");
+                    //this->line_err("Pointer cannot be assigned the value of a non-reference");
+                    this->m_code << "    " << this->get_mov_instruc("eax",val.substr(0,val.find_first_of(" "))) << " eax, " << val << std::endl;
                 }
                 this->m_code << "    mov dword" << PTR_KEYWORD << " [edx], eax"<< std::endl;
             }
