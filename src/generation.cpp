@@ -879,6 +879,12 @@ inline std::string Generator::generic_bin_expr(bin_expr_type* bin_expr,std::stri
         else if (operation == "and"){
             num = num_1 & num_2;
         }
+        else if (operation == "shl"){
+            num = num_1 << num_2;
+        }
+        else if (operation == "shr"){
+            num = num_1 >> num_2;
+        }
         return std::to_string(num);
     }
     else
@@ -900,6 +906,7 @@ inline std::string Generator::generic_bin_expr(bin_expr_type* bin_expr,std::stri
         if (operation == "div" || operation == "mul"){
             mul_div_no_eax = " ";
             if(operation == "div"){
+                this->m_code << "    push edx" << std::endl; // needed in case edx is used to get a struct pointer, if not needed should be removed by the optimizer
                 this->m_code << "    xor edx, edx" << std::endl;
             }
         }    
@@ -932,6 +939,7 @@ inline std::optional<std::string> Generator::gen_bin_expr(const node::_bin_expr*
                 if(bin_expr_div->_modulo){
                     gen->m_code << "    mov eax, edx" << std::endl;
                 }
+                gen->m_code << "    pop edx" << std::endl; // needed in case edx is used to get a struct pointer, if not needed should be removed by the optimizer
             }
             void operator()(const node::_bin_expr_xor* bin_expr_xor){
                 ret_val = gen->generic_bin_expr(bin_expr_xor,"xor");
