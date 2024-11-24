@@ -1833,18 +1833,19 @@ void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::strin
             this->var_set_struct_ptr(&var,struct_ptr_set,EDX_OFF,!moved,!moved);
         }
         if(!moved){ //ptr is the last thing in the chain
+            this->m_code << "    mov esi, edx" << std::endl;
             val = this->gen_expr(struct_ptr_set->expr).value();
             if(is_numeric(val)){
                 if(std::stoi(val) != 0){
                     this->line_err("Integer value for pointer may only be null (0)");
                 }
-                this->m_code << "    mov " << var.type <<  PTR_KEYWORD << " [edx], 0"<< std::endl;
+                this->m_code << "    mov " << var.type <<  PTR_KEYWORD << " [esi], 0"<< std::endl;
             }else{
                 if(val != "&eax"){
                     //this->line_err("Pointer cannot be assigned the value of a non-reference");
                     this->m_code << "    " << this->get_mov_instruc("eax",val.substr(0,val.find_first_of(" "))) << " eax, " << val << std::endl;
                 }
-                this->m_code << "    mov dword" << PTR_KEYWORD << " [edx], eax"<< std::endl;
+                this->m_code << "    mov dword" << PTR_KEYWORD << " [esi], eax"<< std::endl;
             }
         }
 
