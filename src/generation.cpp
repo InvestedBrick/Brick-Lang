@@ -249,7 +249,7 @@ std::string Generator::gen_term_struct(iterator struct_it, struct_ident struct_i
                 this->m_code << "    " << this->get_mov_instruc("eax",var.ptr_type) << " eax, " << var.ptr_type <<  PTR_KEYWORD << " [edx + " << std::stoi(val) * this->asm_type_to_bytes(var.ptr_type) << "]" << std::endl;
             }else{
                 if (val != "eax"){
-                    this->m_code << "    " << this->get_mov_instruc("eax",val.substr(val.find_first_of(" "))) << " eax, " << val << std::endl;
+                    this->m_code << "    " << this->get_mov_instruc("eax",val.substr(0,val.find_first_of(" "))) << " eax, " << val << std::endl;
                 }
                 this->m_code << "    " << this->get_mov_instruc("eax",var.ptr_type) << " eax, " << var.ptr_type << PTR_KEYWORD << " [edx + eax * " << this->asm_type_to_bytes(var.ptr_type) << "]" << std::endl;
             }
@@ -330,6 +330,7 @@ std::string Generator::gen_term_struct_ptr(iterator struct_ptr_it, struct_ptr_id
     std::stringstream offset;
     if ((*meta).variable_kind == "number"){
         Var var;
+        var.ptr = (*meta)._ptr;
         var.base_pointer_offset = find_offset(struct_info->var_name_to_offset,(*meta).name);
         var.type = var_type_to_str((*meta).type);
         if (var.ptr && struct_ptr_ident_->index_expr != nullptr){
@@ -342,7 +343,7 @@ std::string Generator::gen_term_struct_ptr(iterator struct_ptr_it, struct_ptr_id
                 this->m_code << "    " << this->get_mov_instruc("eax",var.ptr_type) << " eax, " << var.ptr_type <<  PTR_KEYWORD << " [edx + " << std::stoi(val) * this->asm_type_to_bytes(var.ptr_type) << "]" << std::endl;
             }else{
                 if (val != "eax"){
-                    this->m_code << "    " << this->get_mov_instruc("eax",val.substr(val.find_first_of(" "))) << " eax, " << val << std::endl;
+                    this->m_code << "    " << this->get_mov_instruc("eax",val.substr(0,val.find_first_of(' '))) << " eax, " << val << std::endl;
                 }
                 this->m_code << "    " << this->get_mov_instruc("eax",var.ptr_type) << " eax, " << var.ptr_type << PTR_KEYWORD << " [edx + eax * " << this->asm_type_to_bytes(var.ptr_type) << "]" << std::endl;
             }
@@ -1605,34 +1606,33 @@ void Generator::var_set_ptr_array(iterator it,var_set array_set,std::string base
         
     }else{
         if (val == "eax") { // to prevent the two expressions from overwriting if they are both eax
-            this->m_code << "    mov edx, eax" << std::endl;
+            this->m_code << "    mov esi, eax" << std::endl;
         }
         else {
-            this->m_code << "    " << this->get_mov_instruc("edx", val.substr(0, val.find_first_of(" "))) << " edx, " << val << std::endl;
+            this->m_code << "    " << this->get_mov_instruc("esi", val.substr(0, val.find_first_of(" "))) << " esi, " << val << std::endl;
         }
-        val = "edx";
+        val = "esi";
         std::string index_val = this->gen_expr(array_set->index_expr).value();
         if ((*it).bool_limit) {
             this->m_code << "    cmp " << val << ", 0" << std::endl;
             this->m_code << "    setne bl" << std::endl;
         }
         this->m_code << "    mov ecx, dword" << PTR_KEYWORD << base_string << (*it).base_pointer_offset << "]" << std::endl;
+        std::string mov_reg =  "esi";
         if (is_numeric(index_val)) {
-            std::string mov_reg = "edx";
             if((*it).bool_limit){
                 mov_reg = "bl";
             }
             this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,mov_reg) << " " << (*it).ptr_type <<  PTR_KEYWORD << " [ecx + " << std::stoi(index_val) * this->asm_type_to_bytes((*it).ptr_type) << "], "  << mov_reg << std::endl;
         }
         else {
-            std::string mov_reg =  "edx";
             if ((*it).bool_limit) {
                 mov_reg = "bl";
             }
             
             if (index_val != "eax") {
                 this->m_code << "    " << this->get_mov_instruc("eax", index_val.substr(0, index_val.find_first_of(" "))) << " eax, " << index_val << std::endl;
-            } // now: index value in eax and expression value in edx or bl
+            } // now: index value in eax and expression value in esi or bl
             this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,mov_reg) << " " << (*it).ptr_type <<  PTR_KEYWORD << " [ecx + eax * " << this->asm_type_to_bytes((*it).ptr_type) << "], "  << mov_reg << std::endl;
         }
     }
