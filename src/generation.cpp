@@ -2096,18 +2096,16 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                 int num = std::stoi(expr_val);
                 mov_val = "mov";
             }
-#ifdef _WIN32
             else
             {
                 mov_val = gen->get_mov_instruc("eax", expr_val.substr(0, expr_val.find_first_of(' ')));
             }
 
+#ifdef _WIN32
             gen->m_code << "    " << mov_val << " eax," << expr_val << std::endl;
             gen->m_code << "    invoke ExitProcess,eax" << std::endl;
 #elif __linux__
-            else{
-                mov_val = "movzx";
-            }
+            
             gen->m_code << "    "<< mov_val <<" ebx, " << expr_val << std::endl;
             gen->m_code << "    mov eax, 1 ; sys-exit" << std::endl;
             gen->m_code << "    int 0x80" << std::endl;
@@ -2419,6 +2417,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
             gen->generating_struct_vars = true;
             gen->ignore_var_already_exists = true;
             size_t base_ptr_off_save = gen->m_base_ptr_off;
+            gen->m_base_ptr_off = 0;
             gen->generic_struct_vars = &struct_inf.pre_gen_vars;
             for (node::_statement_var_dec* var_dec : struct_inf.var_decs){
                 gen->gen_var_stmt(var_dec);
