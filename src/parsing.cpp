@@ -566,8 +566,13 @@ inline node::_statement_var_dec* Parser::parse_var_dec() {
     if (t.type == Token_type::_int || t.type == Token_type::_short || t.type == Token_type::_byte || t.type == Token_type::_bool) {
         auto var_num = m_Allocator.alloc<node::_var_dec_num>();
         var_num->ident = consume();
+        
         if (add_struct_info){
-            (*generic_name_to_offsets).push_back(std::make_pair(var_num->ident.value.value(),alloc_size));
+            if ((*generic_name_to_offsets).empty()){
+                struct_size = -var_type_to_bytes(t.type);
+            }
+            struct_size += var_type_to_bytes(t.type); 
+            (*generic_name_to_offsets).push_back(std::make_pair(var_num->ident.value.value(),struct_size));
         }
         if (in_func) {
             alloc_size += var_type_to_bytes(t.type);
@@ -611,9 +616,6 @@ inline node::_statement_var_dec* Parser::parse_var_dec() {
     else if (t.type == Token_type::_array) {
         auto var_array = m_Allocator.alloc<node::_var_dec_array>();
         var_array->ident = consume();
-        if (add_struct_info){
-            generic_name_to_offsets->push_back(std::make_pair(var_array->ident.value.value(),alloc_size));
-        }
         consume();
         consume();
         if (is_data_type(peek().value().type)) {
@@ -626,6 +628,13 @@ inline node::_statement_var_dec* Parser::parse_var_dec() {
         var_array->_array_size = std::stoi(try_consume(Token_type::_int_lit, "Expected integer literal for size of array").value.value());
         if (var_array->_array_size < 1) {
             line_err("Array size 0 or negative");
+        }
+        if (add_struct_info){
+            if ((*generic_name_to_offsets).empty()){
+                struct_size = -(var_array->_array_size * var_type_to_bytes(var_array->type));
+            }
+            struct_size += var_array->_array_size * var_type_to_bytes(var_array->type); 
+            (*generic_name_to_offsets).push_back(std::make_pair(var_array->ident.value.value(),struct_size));
         }
 #ifdef __linux__        
         //initialization of byte array with a string
@@ -702,7 +711,11 @@ inline node::_statement_var_dec* Parser::parse_var_dec() {
 
             var_struct_ptr->ident = consume();
             if (add_struct_info){
-                generic_name_to_offsets->push_back(std::make_pair(var_struct_ptr->ident.value.value(),alloc_size));
+                if (generic_name_to_offsets->empty()){
+                    struct_size = -4;
+                }
+                struct_size += 4;
+                generic_name_to_offsets->push_back(std::make_pair(var_struct_ptr->ident.value.value(),struct_size));
             }
 
             if(in_func){
@@ -1162,6 +1175,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         this->struct_name_alloc_map.insert(std::make_pair(struct_->ident.value.value(),alloc_size)); 
         try_consume(Token_type::_close_cur_brac,"Expected '}'");
         in_func = false;
+        struct_size = 0;
         alloc_size = 0;
         add_struct_info = false;
         generic_name_to_offsets = nullptr;
