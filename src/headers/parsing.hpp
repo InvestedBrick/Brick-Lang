@@ -28,6 +28,7 @@ private:
     std::vector<std::string> filestack;
     size_t m_idx = 0;
     size_t alloc_size = 0;
+    int struct_size = 0;
     size_t line_counter = 1;
     bool in_func = false;
     bool add_struct_info = false;
