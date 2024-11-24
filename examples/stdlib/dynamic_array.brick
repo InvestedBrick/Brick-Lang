@@ -1,0 +1,65 @@
+#include memory.brick
+#include funcs.brick
+struct dynamic_array{
+    dec data as int ptr -> malloc(4);
+    dec size as int -> 0;
+    dec capacity as int -> 1;
+}
+
+brick resize : int ptr -> arr_, int -> new_capacity{
+    dec arr as dynamic_array ptr -> arr_;
+    dec new_data as int ptr -> malloc(4 * new_capacity);
+    for dec i as int -> 0; i < arr.size;i++;{
+        set new_data[i] to arr.data[i];
+    }
+    free(arr.data);
+    set arr.data to null;
+
+    set arr.capacity to new_capacity;
+    set arr.data to new_data;
+}
+
+brick array_append : int ptr -> arr_, int -> item{
+    dec arr as dynamic_array ptr -> arr_;
+    if arr.size >= arr.capacity{
+        resize(arr,arr.capacity * 2);
+    }
+    set arr.data[arr.size] to item;
+    set arr.size to arr.size + 1;
+}
+
+brick array_pop : int ptr -> arr_{
+    dec arr as dynamic_array ptr -> arr_;
+    if arr.size <= arr.capacity / 4{
+        resize(arr,arr.capacity / 2);
+    }
+
+    set arr.size to arr.size - 1;
+    return arr.data[arr.size];
+}=> int
+
+brick main{
+    dec vector as dynamic_array;
+    array_append(&vector,4);
+    array_append(&vector,6);
+    array_append(&vector,3);
+    array_append(&vector,23);
+    array_append(&vector,19);
+
+    print_array(vector.data,vector.size);
+    print_array(vector.data,vector.capacity);
+
+
+    output "Popping 3";
+    array_pop(&vector);
+    array_pop(&vector);
+    array_pop(&vector);
+
+    print_array(vector.data,vector.size);
+    print_array(vector.data,vector.capacity);
+
+    // always free your data
+    free(vector.data);
+
+    exit 0;
+}
