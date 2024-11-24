@@ -1,5 +1,7 @@
 #include stdlib/int_to_ascii.brick
 
+
+
 struct struct_2{
     dec a as short -> 32;
 }
@@ -12,8 +14,8 @@ struct struct_1{
 
 struct my_bndl{
     dec x as int -> 9;
-    dec y as int -> 5;
-
+    dec y as short -> 5;
+    dec z as int -> 7;
 
     dec m_ptr as int ptr -> null;
     dec arr as array int -> 32;
@@ -29,7 +31,7 @@ brick main{
 
     dec my_bundle_ptr as my_bndl ptr -> &b;
 
-    set my_bundle_ptr.arr[3] to 3;
+    set my_bundle_ptr.y to 3;
 
     set my_bundle_ptr.p to &b_1;
     set my_bundle_ptr.p.z to 32;
@@ -72,6 +74,10 @@ brick main{
     if c_1 == b.arr[3] and c_2 == b.p and c_3 == b.p.z and my_bundle_ptr.p.p_1.a == b_2.a{
         output "All Tests:                                   PASSED!";
     }
+    dec x as int -> my_bundle_ptr.y;
+
+    output itoa(x);
+    output itoa(my_bundle_ptr.z);
 
     exit 0;
 }
