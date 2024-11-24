@@ -19,7 +19,7 @@ LOGS:
 16.08.24: about 4100 lines and 551 lines of brick code (added bitwise operations + some refactoring)
 28.08.24: about 4630 lines and 634 lines of brick code (added struct pointers)
 02.09.24: about 5400 liens and 784 lines of brick code (added global variables + start of malloc + start of small optimizer)
-23.11.24: about 5530 lines and 817 lines of brick code (Added bitshifting amd bitwise not)
+23.11.24: about 5530 lines and 909 lines of brick code (Added bitshifting and bitwise not)
 
 Needs to be refactored
     
@@ -40,8 +40,8 @@ checklist:
 [X] struct pointers
 [X] global vars
 [X] bitshifting and bitwise not
+[X] write own malloc / free for Linux
 [ ] floating points
-[ ] write own malloc / free for Linux
 [ ] unit tests
 [ ] small optimzer to optimize the garbage that this compiler outputs
 
