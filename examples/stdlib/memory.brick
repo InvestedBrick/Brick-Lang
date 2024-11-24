@@ -1,4 +1,3 @@
-#include funcs.brick
 #include syscalls.brick
 
 brick system_request_memory : int -> n_bytes{
@@ -22,7 +21,7 @@ globals : [
 ]
 
 brick find_free_block : int -> size{
-    dec current as system_memory_block ptr -> ptr_shenanigans(globals::system_free_list);
+    dec current as system_memory_block ptr -> globals::system_free_list;
     while current != null{
         if current.free == true and current.size >= size{
             return current;
@@ -33,16 +32,16 @@ brick find_free_block : int -> size{
 }=> byte ptr
 
 brick split_block : int ptr -> block, int -> size{
-    dec the_block as system_memory_block ptr -> ptr_shenanigans(block);
+    dec the_block as system_memory_block ptr -> block;
     if the_block.size > size + globals::system_memory_block_size{
         dec n as int -> block + globals::system_memory_block_size + size;
-        dec new_block as system_memory_block ptr -> ptr_shenanigans(n); // professional programming action
+        dec new_block as system_memory_block ptr -> n; 
         set new_block.size to the_block.size - size - globals::system_memory_block_size;
         set new_block.free to true;
         set new_block.next to the_block.next;
 
         set the_block.size to size;
-        set the_block.next to ptr_shenanigans(new_block);
+        set the_block.next to new_block;
     }
 }
 
@@ -54,7 +53,7 @@ brick malloc : int -> n_bytes{
 
     if block != null {
         // this is needed because stack and heap grow in different directions and I can't track where a variable is coming from
-        set block to ptr_shenanigans(block + (globals::system_memory_block_size - 4));
+        set block to block + (globals::system_memory_block_size - 4);
         set block.free to false;
         split_block(block, n_bytes);
         return block + 4;
@@ -66,20 +65,20 @@ brick malloc : int -> n_bytes{
         return null;
     }
     // I need to manually help bc of heap things
-    set block to ptr_shenanigans(block + (globals::system_memory_block_size - 4));
+    set block to block + (globals::system_memory_block_size - 4);
     set block.size to n_bytes; 
     set block.free to false;
-    set block.next to ptr_shenanigans(globals::system_free_list);
-    set globals::system_free_list to ptr_shenanigans(block);
+    set block.next to globals::system_free_list;
+    set globals::system_free_list to block;
 
     return block + 4;
 }=> byte ptr
 
 brick system_merge_blocks : int ptr -> block{
-    dec the_block as system_memory_block ptr -> ptr_shenanigans(block);
+    dec the_block as system_memory_block ptr -> block;
     while the_block.next != null and the_block.next.free == true{
         set the_block.size to the_block.size + 9 + the_block.next.size;
-        set the_block.next to ptr_shenanigans(the_block.next.next);
+        set the_block.next to the_block.next.next;
     }
 }
 
@@ -87,13 +86,11 @@ brick free : byte ptr -> p{
     if p == null{
         return null;
     }
-    dec block as system_memory_block ptr -> ptr_shenanigans(p);
-    set block to ptr_shenanigans(block - 4);
+    dec block as system_memory_block ptr -> p;
+    set block to block - 4;
     set block.free to true;
 
-    output "Here";
     system_merge_blocks(block);
-    output "not Here";
 }
 
 struct system_test{
@@ -102,7 +99,7 @@ struct system_test{
 }
 
 brick main{
-
+    /*
     dec x as int ptr -> malloc(4 * 4);
 
     set x[0] to 1;
@@ -115,7 +112,6 @@ brick main{
     set my_struct.x to 27;
     set my_struct.y to 4;
 
-    print_array(x,4);
     output itoa(x);
     output itoa(x[2]);
     output itoa(my_struct.y);
@@ -125,5 +121,6 @@ brick main{
     set x[2] to 43;
 
     output itoa(x[2]);
+    */
     exit 0;
 }
