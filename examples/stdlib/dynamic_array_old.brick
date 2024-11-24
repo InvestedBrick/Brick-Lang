@@ -1,0 +1,72 @@
+//original for windows, but brokes af, do not use
+
+#include funcs.brick
+#include stdlib/win_memory.brick
+bundle dynamic_array{
+    dec capacity as int -> 1;
+    dec size as int -> 0;
+    dec data as int ptr -> alloc(4);
+}
+
+brick ptr_val_as_ptr : int ptr -> p{
+    return $p;
+}=>int ptr
+
+brick array_append : int ptr -> arr, int -> item{
+    dec data as int ptr -> ptr_val_as_ptr(arr);
+    if arr[1] >= arr[2]{
+        dec new_capacity as int -> arr[2] * 2;
+        dec new_data as int ptr -> realloc(data,arr[1],new_capacity * 4);
+        set arr[2] to new_capacity;
+        //I do not know why, but both need to be updated for some reason
+        set data to new_data; 
+        set arr[0] to new_data;   
+    }
+    set data[arr[1]] to item;
+    set arr[1] to arr[1] + 1;
+}
+
+brick array_pop : int ptr -> arr{
+    dec data as int ptr -> ptr_val_as_ptr(arr);
+    dec local_capacity as int -> arr[2] / 4;
+    if arr[1] <= local_capacity{
+        dec new_capacity as int -> arr[2] / 2;
+        dec new_data as int ptr -> realloc(data,arr[1],new_capacity * 4);
+        set arr[2] to new_capacity;
+        //I do not know why, but both need to be updated for some reason
+        set data to new_data; 
+        set arr[0] to new_data;
+    }
+    set arr[1] to arr[1] - 1;
+    return data[arr[1]];
+}=>int
+
+brick array_shrink_to_fit : int ptr -> arr{
+    if arr[2] > arr[1]{
+        dec data as int ptr -> ptr_val_as_ptr(arr);
+        dec new_data as int ptr -> realloc(data,arr[1],arr[1] * 4);
+        set arr[2] to arr[1];
+        //I do not know why, but both need to be updated for some reason
+        set data to new_data; 
+        set arr[0] to new_data;
+    }    
+}
+
+brick main{
+
+    dec vector as dynamic_array;
+    array_append(&vector.data,4);
+    array_append(&vector.data,5);
+    array_append(&vector.data,6);
+    array_append(&vector.data,7);
+    array_append(&vector.data,88);
+
+    print_array(vector.data,vector.size);
+    dec x as int -> array_pop(&vector.data);
+    array_pop(&vector.data);
+    print_array(vector.data,vector.capacity);
+    array_shrink_to_fit(&vector.data);
+    print_array(vector.data,vector.capacity);
+    free(vector.data);
+    exit(0);
+}
