@@ -33,6 +33,8 @@ For Linux:
 
 - Then just run the file with `./<filename>` on Linux or `.\filename.exe` on Windows
 
+    *Note: if you want to be able to access the compiler, just add `export PATH="$PATH:<\path to the brick compiler>/Brick-Lang"` to the end of ~/.bashrc*
+
 ## Documentation
 
 Like in C, your program will start executing at a main function:
@@ -379,7 +381,7 @@ You can output strings directly like this:
 output "Hello World!";
 ```
 
-This will print a newline automativally, if you don't want a newline just add a `noend` after the last argument.
+This will print a newline automatically, if you don't want a newline just add a `noend` after the last argument.
 
 To output variables you first need to convert them to their ascii representation:
 
