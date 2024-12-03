@@ -2148,9 +2148,38 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                     gen->m_code << "_main proc\n";
 #elif __linux__
                     gen->m_code << "_start:\n"; 
+
 #endif
+
                     gen->main_proc = true;
                     gen->scope_start(true, main_scope->stack_space);
+#ifdef __linux__
+                    if (main_scope->has_args){
+                        gen->m_code << "    mov esi, dword [ebp + 4] ; argc" << std::endl;
+                        gen->m_code << "    mov dword [ebp - 4], esi" << std::endl;
+                        Var argc;
+                        argc.base_pointer_offset = 4;
+                        argc.immutable = true;
+                        argc.name = main_scope->args[0];
+                        argc.type = "dword";
+                        gen->m_vars.push_back(argc);
+
+                        // gen->m_code << "    mov esi, dword [ebp + 8] ; argv" << std::endl;
+                        gen->m_code << "    mov dword [ebp - 8], ebp " << std::endl;
+                        gen->m_code << "    add dword [ebp - 8], 8" << std::endl;
+
+                        Var argv;
+                        argv.base_pointer_offset = 8;
+                        argv.immutable = true;
+                        argv.name = main_scope->args[1];
+                        argv.ptr = true;
+                        argv.type = "dword";
+                        argv.ptr_type = "dword";
+                        gen->m_vars.push_back(argv);
+
+                        gen->m_base_ptr_off = 8;
+                    }
+#endif
                     for (const node::_statement* stmt : main_scope->scope->statements) {
                         gen->gen_stmt(stmt);
                     }
@@ -2188,10 +2217,14 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
 #endif
                     int stack_space_add = 0;
                     for (int i = 0; i < stmt_func->arguments.size(); i++) {
-                        stack_space_add += (gen->str_bit_sizes.find(stmt_func->arguments[i]->type)->second) / 8; //get bit size and devide by 8 for bytes
+                        if (stmt_func->arguments[i]->_ptr){
+                            stack_space_add += 4;
+                        }else{
+                            stack_space_add += (gen->str_bit_sizes.find(stmt_func->arguments[i]->type)->second) / 8; //get bit size and divide by 8 for bytes
+                        }
                     }
                     gen->scope_start(true, stmt_func->stack_space + stack_space_add);
-                    //for each argumend, generate a local var
+                    //for each argument, generate a local var
                     for (int i = 0; i < stmt_func->arguments.size(); i++) {
                         Var var;
                         var.type = stmt_func->arguments[i]->type;
@@ -2322,7 +2355,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                     else if (val != "eax") { //if val == eax no need to mov eax, eax                    
                         gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " eax," << val << std::endl;
 #ifdef __linux__
-                    gen->m_code << "    mov dword [num_buffer], eax" << std::endl;
+                        gen->m_code << "    mov dword [num_buffer], eax" << std::endl;
 #endif
                     }
 #ifdef _WIN32                    
