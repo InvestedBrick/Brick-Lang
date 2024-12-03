@@ -902,7 +902,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         return mk_stmt(stmt_exit);
     }
     /*
-        I hereby declared the use of assembly tokens as extremely unsafe and if you use them them that's your risk
+        I hereby declared the use of assembly tokens as extremely unsafe and if you use them then that's your risk
     */
     else if (peek_type(Token_type::_asm_tok)) {
         consume();
@@ -966,6 +966,24 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
         consume();
         in_func = true;
         auto main_scope = m_Allocator.alloc<node::_main_scope>();
+
+        // adding argc and argv
+        if (try_consume(Token_type::_colon)){
+            main_scope->has_args = true;
+            auto tok = try_consume(Token_type::_ident);
+            if (!tok.has_value()){
+                line_err("Expected identifier for argument count");
+            }
+            main_scope->args[0] = tok.value().value.value();
+            try_consume(Token_type::_comma, "Expected ',' to seperate main arguments");
+
+            auto tok1 = try_consume(Token_type::_ident);
+            if (!tok1.has_value()){
+                line_err("Expected identifier for argument pointer");
+            }
+            main_scope->args[1] = tok1.value().value.value();
+        }
+
         if (auto scope = parse_scope()) {
 
             main_scope->scope = scope.value();
@@ -974,6 +992,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
             line_err("Invalid main scope");
         }
         main_scope->stack_space = alloc_size;
+        if (main_scope->has_args){main_scope->stack_space += 8;}
         alloc_size = 0;
         in_func = false;
         return mk_stmt(main_scope);
