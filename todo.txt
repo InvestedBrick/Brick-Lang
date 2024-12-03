@@ -41,7 +41,7 @@ checklist:
 [X] global vars
 [X] bitshifting and bitwise not
 [X] write own malloc / free for Linux
-[ ] argc and argv
+[X] argc and argv
 [ ] floating points
 [ ] unit tests
 [ ] small optimzer to optimize the garbage that this compiler outputs
