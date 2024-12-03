@@ -1,0 +1,13 @@
+#include stdlib/funcs.brick
+
+brick main : argc, argv {
+
+    output itoa(argc);
+
+    for dec i as int -> 1 ; i < argc; i++; {
+        dec arg as byte ptr -> argv[i];
+        print_string(arg);
+        output;
+    }
+    exit 0;
+}
