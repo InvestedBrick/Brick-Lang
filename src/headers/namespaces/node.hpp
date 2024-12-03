@@ -238,6 +238,8 @@ namespace node {
     {
         size_t stack_space;
         _statement_scope* scope;
+        bool has_args = false;
+        std::string args[2];
     };
     struct _statement_output
     {
