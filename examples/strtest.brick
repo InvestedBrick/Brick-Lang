@@ -1,3 +1,5 @@
+#include stdlib/funcs.brick
+
 brick main{
     dec x as strbuf -> 32;
     dec y as string -> "Hello World"; //basically just a string constant
@@ -9,17 +11,12 @@ brick main{
 
     dec str as array byte -> 32 {"Hey, what's up?: "};
 
-    dec i as int -> 0;
-    while str[i] != null {
-        output str[i++], noend;
-    }
+    print_string(str);
+    output;
 
     input str;
 
-    set i to 0;
-    while str[i] != null {
-        output str[i++], noend;
-    }
+    print_string(str);
     output;
 
 
