@@ -462,6 +462,23 @@ struct node{
 
 If you want to see more code about struct pointers with some small unit tests, view `examples/struct_pointers.brick` 
 
+
+**Console Arguments**
+
+You can access console arguments (which might be known as argc and argv in C) by just writing two variable names after the main function.
+
+The first variable will be assumed to be the argument count and the second one is the pointer to pointers of the arguments: 
+
+```
+brick main : argc, argv{
+
+}
+```
+
+These can then be used as regular variables
+
+*Note: argc is treated as an integer and argv as an int ptr*
+
 ##
 
 If you have any questions left, you can look at the example code provided in examples/ 
