@@ -164,6 +164,14 @@ brick q_sort : int ptr -> start, int -> size, int -> low, int -> high{
         q_sort(start,size,pi + 1,high);
     }
 }
+
+brick print_string : byte ptr -> str{
+    dec i as int -> 0;
+    while str[i] != null{
+        output str[i++] noend;
+    }
+}
+
 brick main {
     dec x as int -> 0;
     fib(20);
