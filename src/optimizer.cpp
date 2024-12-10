@@ -10,6 +10,24 @@
 
 #include "headers/optimizer.hpp"
 #include <iostream>
+#include <unordered_set>
+#include <string>
+bool is_numeric(const std::string& str) {
+    for (char c : str) {
+        if (!std::isdigit(c)) {
+            return false;
+        }
+    }
+    return true;
+}
+bool is_there_a_space_in_there(std::string& str){
+    for (char c : str) {
+        if (c == ' ') {
+            return true;
+        }
+    }
+    return false;
+}
 inline std::optional<char> Optimizer::peek(int offset) {
     if (this->m_idx + offset >= this->m_asm_code.length()) {
         return std::nullopt;
@@ -36,10 +54,116 @@ std::string Optimizer::optimize()
 {
 
     if (this->op_level >= 1){
-        return this->rem_unused_funcs();
+        this->rem_unused_funcs();
     }
 
     return this->m_asm_code;
+
+}
+inline void Optimizer::jmp_spaces(){
+    while (peek().has_value() && peek().value() == ' ')
+    {
+        consume();
+    }
+}
+inline std::string Optimizer::consume_until_char_and_consume_char(char c){
+    std::string str{};
+    while (peek().has_value() && peek().value() != c)
+    {
+        str.push_back(peek().value());
+    }
+    consume();
+    return str;
+    
+}
+bool is_register(std::string& str){
+    static const std::unordered_set<std::string> registers = {
+        "eax", "ebx", "ecx", "edx", "esi", "edi", "esp", "ebp", // 32-bit
+        "ax", "bx", "cx", "dx", "si", "di", "sp", "bp",         // 16-bit
+        "al", "ah", "bl", "bh", "cl", "ch", "dl", "dh"          // 8-bit
+    };
+    return registers.find(str) != registers.end();
+}
+
+
+
+inline void Optimizer::tokenize_asm()
+{
+    std::string buf{};
+    this->m_idx = this->m_asm_code.find("section .text");
+    this->m_idx += SIZE_OF_SECTION_DOT_TEXT;
+
+    while(peek().has_value()){
+        while(peek().has_value() && (peek().value() == ' ' || peek().value() == '\n')){
+            consume();
+        }
+        while(peek().has_value() && (peek().value() != ' ' || peek().value() == ',' || peek().value() == '\n')){
+            buf.push_back(consume());
+        }
+        Operation op;
+        op.idx = this->m_idx - buf.size();
+        consume(); // space
+        if (buf[buf.size() - 1] == ':'){ // Label
+            continue; // we currently do not care
+        }
+        else if (buf == "mov"){
+            op.op_type = OpType::_mov;
+            
+            op.op_1 = consume_until_char_and_consume_char(',');
+            jmp_spaces();
+            op.op_2 = consume_until_char_and_consume_char('\n');
+            op.operand_1 = is_register(op.op_1.value()) ? OperandType::_register : OperandType::_data_offset;
+            op.operand_2 = is_register(op.op_2.value()) ? OperandType::_register : 
+                             is_numeric(op.op_2.value()) ? OperandType::_int_lit : 
+                             is_there_a_space_in_there(op.op_2.value()) ? OperandType::_data_offset : OperandType::_byte_ref;
+            operations.push_back(op);
+            continue;
+        }
+        else if (buf == "lea"){
+            op.op_type = OpType::_lea;
+            op.op_1 = consume_until_char_and_consume_char(',');
+            jmp_spaces();
+            op.op_2 = consume_until_char_and_consume_char('\n');
+            op.operand_1 = is_register(op.op_1.value()) ? OperandType::_register : OperandType::_data_offset;
+            op.operand_2 = OperandType::_data_offset; 
+            operations.push_back(op);
+            continue;
+        }
+        else if (buf == "push"){
+            op.op_type = OpType::_push;
+            op.op_1 = consume_until_char_and_consume_char('\n');
+            op.operand_1 = OperandType::_register; // we trust the programmer to not push numbers to the stack with inline assembly
+            operations.push_back(op);
+            continue;
+        }
+        else if (buf == "pop"){
+            op.op_type = OpType::_pop;
+            op.op_1 = consume_until_char_and_consume_char('\n');
+            op.operand_1 = OperandType::_register;
+            operations.push_back(op);
+            continue;
+        }
+        else if (buf == "ret"){
+            op.op_type = OpType::_ret;
+            consume(); // newline after the space
+            operations.push_back(op);
+            continue;
+        }
+        else if (buf == "add" || buf == "sub"){
+            op.op_type = buf == "add" ? OpType::_add : OpType::_sub;
+            op.op_1 = consume_until_char_and_consume_char(',');
+            jmp_spaces();
+            op.op_2 = consume_until_char_and_consume_char('\n');
+            op.operand_1 = is_register(op.op_1.value()) ? OperandType::_register : OperandType::_data_offset;
+            op.operand_2 = is_register(op.op_2.value()) ? OperandType::_register : 
+                             is_numeric(op.op_2.value()) ? OperandType::_int_lit : OperandType::_data_offset; 
+            operations.push_back(op);
+            continue;
+        }
+
+
+
+    }
 
 }
 
@@ -116,7 +240,6 @@ inline void Optimizer::mark_funcs()
         this->call_indices.push_back(p);
 
 
-
         this->m_idx = (*it).start_idx;
         start = (*it).start_idx;
         end = (*it).end_idx;
@@ -125,7 +248,7 @@ inline void Optimizer::mark_funcs()
     }
 }
 
-inline std::string Optimizer::rem_unused_funcs()
+inline void Optimizer::rem_unused_funcs()
 {
     this->index_functions();
 
@@ -138,7 +261,5 @@ inline std::string Optimizer::rem_unused_funcs()
             this->m_asm_code.erase(func_infos[idx].start_idx - (func_infos[idx].name.length() + 2),func_infos[idx].end_idx - func_infos[idx].start_idx + (func_infos[idx].name.length() + 2));
         }
     }
-    
 
-    return this->m_asm_code;
 }
