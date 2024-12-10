@@ -38,7 +38,7 @@ private:
         _data_offset, // stuff like dword [ebp - x]
         _int_lit,
         _register,
-        _byte_lit,
+        _byte_ref, // strings etc
         _label
     };
 
@@ -78,6 +78,8 @@ private:
     inline void mark_funcs();
     inline void rem_unused_funcs();
     inline void tokenize_asm();
+    inline void jmp_spaces();
+    inline std::string consume_until_char_and_consume_char(char c);
     void peek_window(int n); //temporary
 public:
 
