@@ -12,7 +12,7 @@
 #include <iostream>
 #include <unordered_set>
 #include <string>
-bool is_numeric(const std::string& str) {
+bool _is_numeric(const std::string& str) {
     for (char c : str) {
         if (!std::isdigit(c)) {
             return false;
@@ -20,6 +20,7 @@ bool is_numeric(const std::string& str) {
     }
     return true;
 }
+
 bool is_there_a_space_in_there(std::string& str){
     for (char c : str) {
         if (c == ' ') {
@@ -56,6 +57,9 @@ std::string Optimizer::optimize()
     if (this->op_level >= 1){
         this->rem_unused_funcs();
     }
+    if (this->op_level >= 2){
+        this->tokenize_asm();
+    }
 
     return this->m_asm_code;
 
@@ -68,9 +72,21 @@ inline void Optimizer::jmp_spaces(){
 }
 inline std::string Optimizer::consume_until_char_and_consume_char(char c){
     std::string str{};
+    bool closed_bracket = false;
     while (peek().has_value() && peek().value() != c)
     {
-        str.push_back(peek().value());
+        char val = peek().value();
+        if (c == '\n' && val == ' ' && closed_bracket ){ // there is space before the newline
+            while (peek().value() != '\n'){ // after that, remove EVERYTHING
+                consume();
+            }
+            break;
+        }
+        if (val == ']'){
+            closed_bracket = true;
+        }
+        str.push_back(val);
+        consume();
     }
     consume();
     return str;
@@ -84,6 +100,12 @@ bool is_register(std::string& str){
     };
     return registers.find(str) != registers.end();
 }
+bool is_jmp_instruc(std::string& str){
+    static const std::unordered_set<std::string> jmps = {
+        "jmp", "je", "jne", "jg", "jge", "jl", "jle", "jz", "jnz", "js","jns"
+    };
+    return jmps.find(str) != jmps.end();
+}
 
 
 
@@ -92,29 +114,32 @@ inline void Optimizer::tokenize_asm()
     std::string buf{};
     this->m_idx = this->m_asm_code.find("section .text");
     this->m_idx += SIZE_OF_SECTION_DOT_TEXT;
-
+    
     while(peek().has_value()){
+        buf.clear();
         while(peek().has_value() && (peek().value() == ' ' || peek().value() == '\n')){
             consume();
         }
-        while(peek().has_value() && (peek().value() != ' ' || peek().value() == ',' || peek().value() == '\n')){
+        while(peek().has_value() && peek().value() != ' ' && peek().value() != '\n'){
             buf.push_back(consume());
         }
         Operation op;
         op.idx = this->m_idx - buf.size();
-        consume(); // space
+        if (this->m_idx < m_asm_code.length())
+            consume(); // space
+        std::cout << buf << std::endl;
         if (buf[buf.size() - 1] == ':'){ // Label
             continue; // we currently do not care
         }
-        else if (buf == "mov"){
-            op.op_type = OpType::_mov;
+        else if (buf == "mov" || buf == "movsx" || buf == "movzx"){
+            op.op_type = buf == "mov" ? OpType::_mov : buf == "movsx" ? OpType::_movsx : OpType::_movzx;
             
             op.op_1 = consume_until_char_and_consume_char(',');
             jmp_spaces();
             op.op_2 = consume_until_char_and_consume_char('\n');
             op.operand_1 = is_register(op.op_1.value()) ? OperandType::_register : OperandType::_data_offset;
             op.operand_2 = is_register(op.op_2.value()) ? OperandType::_register : 
-                             is_numeric(op.op_2.value()) ? OperandType::_int_lit : 
+                             _is_numeric(op.op_2.value()) ? OperandType::_int_lit : 
                              is_there_a_space_in_there(op.op_2.value()) ? OperandType::_data_offset : OperandType::_byte_ref;
             operations.push_back(op);
             continue;
@@ -156,12 +181,86 @@ inline void Optimizer::tokenize_asm()
             op.op_2 = consume_until_char_and_consume_char('\n');
             op.operand_1 = is_register(op.op_1.value()) ? OperandType::_register : OperandType::_data_offset;
             op.operand_2 = is_register(op.op_2.value()) ? OperandType::_register : 
-                             is_numeric(op.op_2.value()) ? OperandType::_int_lit : OperandType::_data_offset; 
+                             _is_numeric(op.op_2.value()) ? OperandType::_int_lit : OperandType::_data_offset; 
             operations.push_back(op);
             continue;
         }
+        else if (buf == "mul" || buf == "div"){
+            op.op_type = buf == "mul" ? OpType::_mul : OpType::_div;
+            op.op_1 = consume_until_char_and_consume_char('\n');
+            op.operand_1 = is_register(op.op_1.value()) ? OperandType::_register : OperandType::_data_offset;
+            operations.push_back(op);
+            continue;
+        }
+        else if(buf == "call" || is_jmp_instruc(buf)){
+            op.op_type = is_jmp_instruc(buf) ? OpType::_jmp : OpType::_call;
+            op.op_1 = consume_until_char_and_consume_char('\n');
+            op.operand_1 = OperandType::_label;
+            operations.push_back(op);
+            continue;
+        }
+        else if (buf == "int"){
+            op.op_type = OpType::_int;
+            op.op_1 = consume_until_char_and_consume_char('\n');
+            op.operand_1 = OperandType::_int_lit;
+            operations.push_back(op);
+            continue;
+        }
+        else if (buf == "cmp" || buf == "test"){
+            op.op_type = buf == "cmp" ? OpType::_cmp : OpType::_test;
+            op.op_1 = consume_until_char_and_consume_char(',');
+            jmp_spaces();
+            op.op_2 = consume_until_char_and_consume_char('\n');
 
+            op.operand_1 = is_register(op.op_1.value()) ? OperandType::_register : OperandType::_data_offset;
+            op.operand_2 = is_register(op.op_2.value()) ? OperandType::_register : _is_numeric(op.op_2.value()) ? OperandType::_int_lit : OperandType::_data_offset;
 
+            operations.push_back(op);
+            continue;
+        }
+        else if (buf == "or" || buf == "xor" || buf == "and"){
+            op.op_type = buf == "or" ? OpType::_or : 
+                        buf == "xor" ? OpType::_xor : OpType::_and; 
+
+            op.op_1 = consume_until_char_and_consume_char(',');
+            jmp_spaces();
+            op.op_2 = consume_until_char_and_consume_char('\n');
+
+            op.operand_1 = is_register(op.op_1.value()) ? OperandType::_register : _is_numeric(op.op_1.value()) ? OperandType::_int_lit : OperandType::_data_offset;
+            op.operand_2 = is_register(op.op_2.value()) ? OperandType::_register : _is_numeric(op.op_2.value()) ? OperandType::_int_lit : OperandType::_data_offset;
+
+            operations.push_back(op);
+            continue;
+        }
+        else if (buf == "dec" || buf == "inc" || buf == "neg" || buf == "not"){
+            op.op_type = buf == "dec" ?  OpType::_dec :
+                         buf == "inc" ? OpType::_inc :
+                         buf == "neg" ? OpType::_neg : OpType::_not;
+
+            op.op_1 = consume_until_char_and_consume_char('\n');
+
+            op.operand_1 = is_register(op.op_1.value()) ?  OperandType::_register : OperandType::_data_offset;
+
+            operations.push_back(op);
+            continue;
+        }
+        else if (buf == "shl" || buf == "shr"){
+            op.op_type = buf == "shl" ?  OpType::_shl : OpType::_shr;
+
+            op.op_1 = consume_until_char_and_consume_char(',');
+            jmp_spaces();
+            op.op_2 = consume_until_char_and_consume_char('\n');
+
+            op.operand_1 = is_register(op.op_1.value()) ? OperandType::_register : _is_numeric(op.op_1.value()) ? OperandType::_int_lit : OperandType::_data_offset;
+            op.operand_2 = is_register(op.op_2.value()) ? OperandType::_register : _is_numeric(op.op_2.value()) ? OperandType::_int_lit : OperandType::_data_offset;
+
+            operations.push_back(op);
+            continue;
+        }
+        else if (buf == ";"){
+            consume_until_char_and_consume_char('\n');
+            continue;
+        }
 
     }
 
@@ -205,9 +304,7 @@ inline void Optimizer::mark_funcs()
     size_t start = this->func_infos[0].start_idx;
     size_t end = this->func_infos[0].end_idx;
     while(true){
-        
         this->m_idx = this->m_asm_code.find("call",start);
-
         if (this->m_idx == std::string::npos || this->m_idx >= end){
             if (call_indices.empty()){
                 break;
@@ -239,11 +336,15 @@ inline void Optimizer::mark_funcs()
         p.func_end = end;
         this->call_indices.push_back(p);
 
-
-        this->m_idx = (*it).start_idx;
-        start = (*it).start_idx;
-        end = (*it).end_idx;
-        (*it).used = true;
+        if (!(*it).used){
+            this->m_idx = (*it).start_idx;
+            start = (*it).start_idx;
+            end = (*it).end_idx;
+            (*it).used = true;
+        }else{
+            this->m_idx += 4;
+            start = this->m_idx; // skip the "call"
+        }
 
     }
 }
