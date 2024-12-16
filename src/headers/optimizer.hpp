@@ -31,6 +31,7 @@ private:
         _shr,
         _shl,
         _neg,
+        _not
 
     };
 
