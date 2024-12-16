@@ -11,12 +11,11 @@ brick main{
 
     dec str as array byte -> 32 {"Hey, what's up?: "};
 
-    print_string(str);
-    output;
+    print_string(&str);
 
     input str;
 
-    print_string(str);
+    print_string(&str);
     output;
 
 
