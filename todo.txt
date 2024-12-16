@@ -20,7 +20,7 @@ LOGS:
 28.08.24: about 4630 lines and 634 lines of brick code (added struct pointers)
 02.09.24: about 5400 liens and 784 lines of brick code (added global variables + start of malloc + start of small optimizer)
 23.11.24: about 5530 lines and 909 lines of brick code (Added bitshifting and bitwise not)
-
+16.12.24: about 5882 lines and 985 lines of brick code (Optimizer is work in progress)
 Needs to be refactored
     
 checklist:
