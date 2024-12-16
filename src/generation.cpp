@@ -2541,7 +2541,7 @@ if(flags.needs_str_cpy_func){
     m_output << "    inc edi                   " << std::endl;
     m_output << "    cmp al, 0                 " << std::endl;
     m_output << "    jne sys~internal_strcpy\n " << std::endl;
-    m_output << "    ret " << std::endl;
+    m_output << "    ret \n" << std::endl;
 }
 
 if(flags.needs_str_cout_func){
@@ -2553,7 +2553,7 @@ if(flags.needs_str_cout_func){
     m_output << "    inc ecx               " << std::endl;
     m_output << "    jmp .loop             " << std::endl;
     m_output << ".done:                    " << std::endl;
-    m_output << "    ret " << std::endl;
+    m_output << "    ret \n" << std::endl;
 }
 
 if(flags.needs_nl_replace_func){
@@ -2567,7 +2567,7 @@ m_output << "    inc edi                             " << std::endl;
 m_output << "    jmp find_newline                    " << std::endl;
 m_output << "replace_char:                           " << std::endl;
 m_output << "    mov byte [edi], 0                   " << std::endl;
-m_output << "    ret " << std::endl;                   
+m_output << "    ret \n" << std::endl;                   
 
 }
 #endif
