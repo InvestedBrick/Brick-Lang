@@ -56,6 +56,10 @@ bool handle_if_is_arg(std::string arg){
         optimization_level = 1;
         return true;
     }
+    else if(arg == "-O2"){
+        optimization_level = 2;
+        return true;
+    }
 #endif
 
     return false;
@@ -136,7 +140,7 @@ int main(int argc, char* argv[]) {
             std::cout << "Finished Generating..." << std::endl;
 #elif __linux__
         output << optimizer.optimize();
-        if (output_info)
+        if (output_info && optimization_level > 0)
             std::cout << "Finished Optimizing at level " << optimization_level << "..." << std::endl;
 #endif
         output.close();
