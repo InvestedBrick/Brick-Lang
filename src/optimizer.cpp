@@ -11,6 +11,7 @@
 #include "headers/optimizer.hpp"
 #include <iostream>
 #include <unordered_set>
+#include <sstream>
 #include <string>
 bool _is_numeric(const std::string& str) {
     for (char c : str) {
@@ -59,6 +60,8 @@ std::string Optimizer::optimize()
     }
     if (this->op_level >= 2){
         this->tokenize_asm();
+        this->optimize_tokens();
+        this->reassemble_asm();
     }
 
     return this->m_asm_code;
@@ -92,7 +95,7 @@ inline std::string Optimizer::consume_until_char_and_consume_char(char c){
     return str;
     
 }
-bool is_register(std::string& str){
+bool is_register(const std::string& str){
     static const std::unordered_set<std::string> registers = {
         "eax", "ebx", "ecx", "edx", "esi", "edi", "esp", "ebp", // 32-bit
         "ax", "bx", "cx", "dx", "si", "di", "sp", "bp",         // 16-bit
@@ -107,6 +110,65 @@ bool is_jmp_instruc(std::string& str){
     return jmps.find(str) != jmps.end();
 }
 
+inline void Optimizer::reassemble_asm(){
+    this->m_idx = this->m_asm_code.find("section .text");
+    this->m_idx += SIZE_OF_SECTION_DOT_TEXT;
+    std::stringstream code;
+    code << this->m_asm_code.substr(0,m_idx);
+    code << "\n";
+    for(const Operation& op : operations){
+        if (!op.erased){
+            if(op.op_type == OpType::_label){
+                code << op.op_1.value() << ":\n";
+                continue;
+            }
+            if (op.op_type == OpType::_jmp){
+                code << "    " << op.op_2.value(); // the saved original jmp instruction
+            }else{
+                code << "    " << opTypeToString(op.op_type);
+            }
+            if (op.op_1.has_value()){
+                code << " " << op.op_1.value();
+                if (op.op_2.has_value() && op.op_type != OpType::_jmp){
+                    code << ", " << op.op_2.value();
+                }
+            }
+            if(op.op_type == OpType::_ret){
+                code << "\n";
+            }
+            code << "\n";
+        }else{
+            std::cout << "Erased Operation: " << opTypeToString(op.op_type) << " " << op.op_1.value() << ", " << op.op_2.value() << std::endl; 
+        }
+    }
+    this->m_asm_code = code.str();
+}
+
+inline void Optimizer::optimize_tokens()
+{
+    for (size_t i = 0; i < operations.size();i++){
+        Operation& op = operations[i];
+        switch (op.op_type)
+        {
+        case OpType::_mov:{
+            if (op.operand_1 == OperandType::_register && op.operand_2 != OperandType::_data_offset){ // if we have a data offset, we might try to move data to data
+                size_t j = i + 1;
+                // Move along the code and replace all instances of op.op1 in operand2 with op.op2
+                while (j < operations.size() && operations[j].operand_1 != op.operand_1 && operations[j].op_type != OpType::_ret){
+                    if(operations[j].op_2.has_value() && operations[j].op_2.value() == op.op_1.value()){
+                        operations[j].op_2 = op.op_2.value();
+                        op.erased = true;           
+                        operations[j].operand_2 == op.operand_2;
+                    }
+                    j++;
+                }
+            }
+            break;
+        }
+        
+        }      
+    }
+}
 
 
 inline void Optimizer::tokenize_asm()
@@ -129,7 +191,11 @@ inline void Optimizer::tokenize_asm()
             consume(); // space
         std::cout << buf << std::endl;
         if (buf[buf.size() - 1] == ':'){ // Label
-            continue; // we currently do not care
+            op.op_type = OpType::_label;
+            op.operand_1 = OperandType::_label;
+            op.op_1 = buf.substr(0,buf.size() - 1);
+            operations.push_back(op);
+            continue;
         }
         else if (buf == "mov" || buf == "movsx" || buf == "movzx"){
             op.op_type = buf == "mov" ? OpType::_mov : buf == "movsx" ? OpType::_movsx : OpType::_movzx;
@@ -196,6 +262,10 @@ inline void Optimizer::tokenize_asm()
             op.op_type = is_jmp_instruc(buf) ? OpType::_jmp : OpType::_call;
             op.op_1 = consume_until_char_and_consume_char('\n');
             op.operand_1 = OperandType::_label;
+            if (op.op_type == OpType::_jmp){
+                op.op_2 = buf; // we save the original jump isntruction
+            }
+            //std::cout << "op1 at call: '" << op.op_1.value() << "'" << std::endl;
             operations.push_back(op);
             continue;
         }
