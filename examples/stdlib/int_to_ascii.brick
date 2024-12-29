@@ -2,6 +2,7 @@
 // DO NOT TOUCH
 brick int_to_ascii : int -> x{
 __asm__{"    mov ebx, eax              ; ebx = integer value to be converted"};
+__asm__{"    mov eax, edi "}; // needs to be there so the optimizer doesnt completely mess up this function
 __asm__{"    mov edi, num_buffer       ; edi = pointer to the num_buffer"};
 __asm__{"    ; Handle zero explicitly"};
 __asm__{"    cmp ebx, 0"};
