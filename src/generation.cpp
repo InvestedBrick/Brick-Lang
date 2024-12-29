@@ -2333,6 +2333,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                         gen->m_code << "    call sys~internal~str_buf_len" << std::endl; //calculate lenght of strbuf and store in ecx
                         len = "ecx";
                     }
+                    //do not insert any spaces after the end of each line or else the optimizer will fail
                     gen->m_code << "    mov eax, 4" << std::endl;
                     gen->m_code << "    mov ebx, 1" << std::endl;
                     gen->m_code << "    mov ecx, " << val.substr(1) << std::endl;
