@@ -1,3 +1,6 @@
+// The standart library for syscalls
+// DO NOT MODIFY IF YOU DO NOT KNOW WHAT YOU ARE DOING
+
 // Proto:
 // PROT_READ = 1
 // PROT_WRITE = 2
@@ -30,6 +33,7 @@ brick mmap : int -> n_bytes, int -> prot, int -> flags, int -> fd{
     __asm__{"    mov ebp, 0"};
     __asm__{"    mov eax, 192"}; // need to use mmap2 for some unknown reason
     __asm__{"    int 0x80"};
+
     __asm__{"    pop ebp"};
     __asm__{"    pop edi"};
     __asm__{"    pop esi"};
