@@ -44,6 +44,15 @@ brick split_block : int ptr -> block, int -> size{
         set the_block.next to new_block;
     }
 }
+/*
+
+    It is to be mentioned that this function does currently NOT work with structs.
+    Structs overwrite their memory downwards, while arrays go upwards.
+    I will fix this soon.
+    Maybe...
+    But until then.
+    Use Stack allocated structs :)
+*/
 
 brick malloc : int -> n_bytes{
     if n_bytes <= 0{
