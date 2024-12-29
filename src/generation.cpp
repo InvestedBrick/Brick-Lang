@@ -2548,7 +2548,7 @@ if(flags.needs_str_cout_func){
     m_output << "sys~internal~str_buf_len:" << std::endl;
     m_output << "    xor ecx, ecx" << std::endl;
     m_output << ".loop:" << std::endl; 
-    m_output << "    cmp byte [edi + ecx]," << std::endl;
+    m_output << "    cmp byte [edi + ecx],0" << std::endl;
     m_output << "    je .done" << std::endl; 
     m_output << "    inc ecx" << std::endl;
     m_output << "    jmp .loop" << std::endl;
