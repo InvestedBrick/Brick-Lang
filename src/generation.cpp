@@ -61,16 +61,16 @@ inline size_t Generator::asm_type_to_bytes(std::string str) {
 }
 #ifdef __linux__
 inline void Generator::sys_read(size_t size,std::string ecx_and_edi,bool lea_or_mov){
-    this->m_code << "    mov eax, 3 ;sys-read" << std::endl;
+    this->m_code << "    mov eax, 3" << std::endl;
     this->m_code << "    xor ebx, ebx" << std::endl;
-    this->m_code << "    " << (lea_or_mov ? "lea " : "mov ") << " ecx, " << ecx_and_edi << std::endl;
+    this->m_code << "    " << (lea_or_mov ? "lea" : "mov") << " ecx, " << ecx_and_edi << std::endl;
     this->m_code << "    mov edx, " << size  << std::endl;
     this->m_code << "    int 0x80" << std::endl;
     this->m_code << "    cmp eax, " << size << std::endl;
     std::string no_need_to_replace_null = this->mk_label();
     this->m_code << "    jg " << no_need_to_replace_null << std::endl; 
     flags.needs_nl_replace_func = true;
-    this->m_code << "    " << (lea_or_mov ? "lea " : "mov ") << " edi, " << ecx_and_edi << std::endl;
+    this->m_code << "    " << (lea_or_mov ? "lea" : "mov") << " edi, " << ecx_and_edi << std::endl;
     this->m_code << "    call sys~internal_replace_nl_null" << std::endl;
     this->m_code << no_need_to_replace_null << ": " << std::endl;
 
@@ -2333,7 +2333,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                         gen->m_code << "    call sys~internal~str_buf_len" << std::endl; //calculate lenght of strbuf and store in ecx
                         len = "ecx";
                     }
-                    gen->m_code << "    mov eax, 4 ;sys-write" << std::endl;
+                    gen->m_code << "    mov eax, 4" << std::endl;
                     gen->m_code << "    mov ebx, 1" << std::endl;
                     gen->m_code << "    mov ecx, " << val.substr(1) << std::endl;
                     gen->m_code << "    mov edx, " << len<< std::endl; //length was declared in gen_str_lit
@@ -2534,39 +2534,39 @@ std::string Generator::gen_program() {
 
 #ifdef __linux__
 if(flags.needs_str_cpy_func){
-    m_output << "sys~internal_strcpy:          " << std::endl;
-    m_output << "    mov al, [esi]             " << std::endl;
-    m_output << "    mov [edi], al             " << std::endl;
-    m_output << "    inc esi                   " << std::endl;
-    m_output << "    inc edi                   " << std::endl;
-    m_output << "    cmp al, 0                 " << std::endl;
-    m_output << "    jne sys~internal_strcpy\n " << std::endl;
+    m_output << "sys~internal_strcpy:" << std::endl;
+    m_output << "    mov al, [esi]" << std::endl;
+    m_output << "    mov [edi], al" << std::endl;
+    m_output << "    inc esi" << std::endl;
+    m_output << "    inc edi" << std::endl;
+    m_output << "    cmp al, 0" << std::endl;
+    m_output << "    jne sys~internal_strcpy\n" << std::endl;
     m_output << "    ret \n" << std::endl;
 }
 
 if(flags.needs_str_cout_func){
-    m_output << "sys~internal~str_buf_len: " << std::endl;
-    m_output << "    xor ecx, ecx          " << std::endl;
-    m_output << ".loop:                    " << std::endl; 
-    m_output << "    cmp byte [edi + ecx],0" << std::endl;
-    m_output << "    je .done              " << std::endl; 
-    m_output << "    inc ecx               " << std::endl;
-    m_output << "    jmp .loop             " << std::endl;
-    m_output << ".done:                    " << std::endl;
+    m_output << "sys~internal~str_buf_len:" << std::endl;
+    m_output << "    xor ecx, ecx" << std::endl;
+    m_output << ".loop:" << std::endl; 
+    m_output << "    cmp byte [edi + ecx]," << std::endl;
+    m_output << "    je .done" << std::endl; 
+    m_output << "    inc ecx" << std::endl;
+    m_output << "    jmp .loop" << std::endl;
+    m_output << ".done:" << std::endl;
     m_output << "    ret \n" << std::endl;
 }
 
 if(flags.needs_nl_replace_func){
-m_output << "sys~internal_replace_nl_null:           " << std::endl;
+m_output << "sys~internal_replace_nl_null:" << std::endl;
 m_output << "    ; Loop to find the newline character" << std::endl;
-m_output << "    mov al, 10                          " << std::endl;
-m_output << "find_newline:                           " << std::endl;
-m_output << "    cmp byte [edi], al                  " << std::endl;
-m_output << "    je replace_char                     " << std::endl;
-m_output << "    inc edi                             " << std::endl;
-m_output << "    jmp find_newline                    " << std::endl;
-m_output << "replace_char:                           " << std::endl;
-m_output << "    mov byte [edi], 0                   " << std::endl;
+m_output << "    mov al, 10" << std::endl;
+m_output << "find_newline:" << std::endl;
+m_output << "    cmp byte [edi], al" << std::endl;
+m_output << "    je replace_char" << std::endl;
+m_output << "    inc edi" << std::endl;
+m_output << "    jmp find_newline" << std::endl;
+m_output << "replace_char:" << std::endl;
+m_output << "    mov byte [edi], 0" << std::endl;
 m_output << "    ret \n" << std::endl;                   
 
 }
