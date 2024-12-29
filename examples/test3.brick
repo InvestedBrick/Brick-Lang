@@ -21,6 +21,7 @@ brick main{
             output itoa(i), " " noend;
         }
     }
+    output;
     
     exit 0;
 }
