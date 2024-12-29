@@ -2118,7 +2118,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
 #elif __linux__
             
             gen->m_code << "    "<< mov_val <<" ebx, " << expr_val << std::endl;
-            gen->m_code << "    mov eax, 1 ; sys-exit" << std::endl;
+            gen->m_code << "    mov eax, 1" << std::endl;
             gen->m_code << "    int 0x80" << std::endl;
 #endif
         }
@@ -2368,7 +2368,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                     gen->m_code << "    mov edi, num_buffer" << std::endl;
                     gen->m_code << "    call sys~internal~str_buf_len" << std::endl;
                     gen->m_code << "    mov edi, ecx" << std::endl;
-                    gen->m_code << "    mov eax, 4 ; sys-write" << std::endl;
+                    gen->m_code << "    mov eax, 4" << std::endl;
                     gen->m_code << "    mov ebx, 1" << std::endl;
                     gen->m_code << "    mov ecx, num_buffer" << std::endl;
                     gen->m_code << "    mov edx, edi" << std::endl;
@@ -2380,7 +2380,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
 #ifdef _WIN32                
                 gen->m_code << "    invoke StdOut, offset backn" << std::endl;
 #elif __linux__
-                gen->m_code << "    mov eax, 4 ; sys-write" << std::endl;
+                gen->m_code << "    mov eax, 4" << std::endl;
                 gen->m_code << "    mov ebx, 1" << std::endl;
                 gen->m_code << "    mov ecx, newline" << std::endl;
                 gen->m_code << "    mov edx, 1" << std::endl;
