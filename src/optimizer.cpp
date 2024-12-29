@@ -75,18 +75,25 @@ inline void Optimizer::jmp_spaces(){
 }
 inline std::string Optimizer::consume_until_char_and_consume_char(char c){
     std::string str{};
-    bool closed_bracket = false;
+    bool in_brackets = false;
     while (peek().has_value() && peek().value() != c)
     {
         char val = peek().value();
-        if (c == '\n' && val == ' ' && closed_bracket ){ // there is space before the newline
-            while (peek().value() != '\n'){ // after that, remove EVERYTHING
-                consume();
+        if (c == '\n' && val == ' ' ){ 
+            if (!(peek(1).has_value() && peek(1).value() == '[') && (!in_brackets)){
+                //There is a space and it is not in brackets
+
+                while (peek().value() != '\n'){ // after that, remove EVERYTHING
+                    consume();
+                }
+                break;
             }
-            break;
+        }
+        if (val == '['){
+            in_brackets = true;
         }
         if (val == ']'){
-            closed_bracket = true;
+            in_brackets = false;
         }
         str.push_back(val);
         consume();
@@ -152,7 +159,7 @@ inline void Optimizer::optimize_tokens()
             if (op.operand_1 == OperandType::_register && op.operand_2 != OperandType::_data_offset){ // if we have a data offset, we might try to move data to data
                 size_t j = i + 1;
                 // Move along the code and replace all instances of op.op1 in operand2 with op.op2
-                while (j < operations.size() && operations[j].operand_1 != op.operand_1 && operations[j].op_type != OpType::_ret){
+                while (j < operations.size() && operations[j].op_1.has_value() && operations[j].op_1.value() != op.op_1.value() && operations[j].op_1.value() != op.op_2.value()){
                     if(operations[j].op_2.has_value() && operations[j].op_2.value() == op.op_1.value()){
                         operations[j].op_2 = op.op_2.value();
                         op.erased = true;           
@@ -250,6 +257,7 @@ inline void Optimizer::tokenize_asm()
         }
         else if (buf == "mul" || buf == "div"){
             op.op_type = buf == "mul" ? OpType::_mul : OpType::_div;
+            jmp_spaces();
             op.op_1 = consume_until_char_and_consume_char('\n');
             op.operand_1 = is_register(op.op_1.value()) ? OperandType::_register : OperandType::_data_offset;
             operations.push_back(op);
@@ -257,6 +265,7 @@ inline void Optimizer::tokenize_asm()
         }
         else if(buf == "call" || is_jmp_instruc(buf)){
             op.op_type = is_jmp_instruc(buf) ? OpType::_jmp : OpType::_call;
+            jmp_spaces();
             op.op_1 = consume_until_char_and_consume_char('\n');
             op.operand_1 = OperandType::_label;
             if (op.op_type == OpType::_jmp){
