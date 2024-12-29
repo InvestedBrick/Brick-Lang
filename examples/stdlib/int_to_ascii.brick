@@ -1,5 +1,5 @@
 //the Standart integer to ascii implementation.. will probably be rewritten in actual code
-
+// DO NOT TOUCH
 brick int_to_ascii : int -> x{
 __asm__{"    mov ebx, eax              ; ebx = integer value to be converted"};
 __asm__{"    mov edi, num_buffer       ; edi = pointer to the num_buffer"};
@@ -10,7 +10,7 @@ __asm__{"    ; Handle negative numbers"};
 __asm__{"    test ebx, ebx"};
 __asm__{"    jns .convert              ; Jump if number is non-negative"};
 __asm__{"    neg ebx                   ; Convert to positive"};
-__asm__{"    mov byte [edi], '-'"};
+__asm__{"    mov byte [edi ], '-'"};
 __asm__{"    inc edi"};
 __asm__{".convert:"};
 __asm__{"    ; Convert number to ASCII"};
@@ -19,21 +19,21 @@ __asm__{".convert_loop:"};
 __asm__{"    xor edx, edx              ; Clear edx before dividing (important for div)"};
 __asm__{"    div ecx                   ; eax = eax / 10, edx = eax % 10"};
 __asm__{"    add dl, '0'               ; Convert remainder to ASCII"};
-__asm__{"    mov [edi], dl             ; Store ASCII character"};
+__asm__{"    mov [edi ], dl             ; Store ASCII character"};
 __asm__{"    inc edi"};
 __asm__{"    test eax, eax             ; Test if eax (quotient) is zero"};
 __asm__{"    jnz .convert_loop         ; Continue if eax != 0"};
 __asm__{"    ; Null-terminate the string"};
-__asm__{"    mov byte [edi], 0"};
+__asm__{"    mov byte [edi ], 0"};
 __asm__{"    ; Reverse the string"};
 __asm__{"    mov esi, num_buffer       ; esi = start of the string"};
 __asm__{"    jmp .reverse_string"};
 __asm__{".return:"};
 __asm__{"    jmp .int_to_ascii_done"};
 __asm__{".handle_zero:"};
-__asm__{"    mov byte [edi], '0'       ; Handle zero case"};
+__asm__{"    mov byte [edi ], '0'       ; Handle zero case"};
 __asm__{"    inc edi"};
-__asm__{"    mov byte [edi], 0"};
+__asm__{"    mov byte [edi ], 0"};
 __asm__{"    jmp .int_to_ascii_done"};
 __asm__{".reverse_string:"};
 __asm__{"    ; esi = start of string, edi = end of string (currently at the null terminator)"};
@@ -41,10 +41,10 @@ __asm__{"    dec edi                   ; Move edi to the last character (not nul
 __asm__{".reverse_loop:"};
 __asm__{"    cmp esi, edi"};
 __asm__{"    jge .reverse_string_done     ; If start >= end, stop"};
-__asm__{"    mov al, [esi]             ; Swap characters at esi and edi"};
-__asm__{"    mov bl, [edi]"};
-__asm__{"    mov [esi], bl"};
-__asm__{"    mov [edi], al"};
+__asm__{"    mov al, [esi ]             ; Swap characters at esi and edi"};
+__asm__{"    mov bl, [edi ]"};
+__asm__{"    mov [esi ], bl"};
+__asm__{"    mov [edi ], al"};
 __asm__{"    inc esi"};
 __asm__{"    dec edi"};
 __asm__{"    jmp .reverse_loop"};
