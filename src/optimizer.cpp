@@ -133,7 +133,8 @@ inline void Optimizer::reassemble_asm(){
                 code << "    " << op.op_2.value(); // the saved original jmp instruction
             }else{
                 code << "    " << opTypeToString(op.op_type);
-            }
+            } 
+            // regenerate after the format : "    instruct op1, op2 \n"
             if (op.op_1.has_value()){
                 code << " " << op.op_1.value();
                 if (op.op_2.has_value() && op.op_type != OpType::_jmp){
@@ -226,6 +227,7 @@ inline void Optimizer::tokenize_asm()
         }
         else if (buf == "push"){
             op.op_type = OpType::_push;
+            jmp_spaces();
             op.op_1 = consume_until_char_and_consume_char('\n');
             op.operand_1 = OperandType::_register; // we trust the programmer to not push numbers to the stack with inline assembly
             operations.push_back(op);
@@ -233,6 +235,7 @@ inline void Optimizer::tokenize_asm()
         }
         else if (buf == "pop"){
             op.op_type = OpType::_pop;
+            jmp_spaces();
             op.op_1 = consume_until_char_and_consume_char('\n');
             op.operand_1 = OperandType::_register;
             operations.push_back(op);
@@ -277,6 +280,7 @@ inline void Optimizer::tokenize_asm()
         }
         else if (buf == "int"){
             op.op_type = OpType::_int;
+            jmp_spaces();
             op.op_1 = consume_until_char_and_consume_char('\n');
             op.operand_1 = OperandType::_int_lit;
             operations.push_back(op);
@@ -313,6 +317,7 @@ inline void Optimizer::tokenize_asm()
                          buf == "inc" ? OpType::_inc :
                          buf == "neg" ? OpType::_neg : OpType::_not;
 
+            jmp_spaces();    
             op.op_1 = consume_until_char_and_consume_char('\n');
 
             op.operand_1 = is_register(op.op_1.value()) ?  OperandType::_register : OperandType::_data_offset;
@@ -333,6 +338,7 @@ inline void Optimizer::tokenize_asm()
             operations.push_back(op);
             continue;
         }
+        // Remove any comments
         else if (buf == ";"){
             consume_until_char_and_consume_char('\n');
             continue;
