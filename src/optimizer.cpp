@@ -137,8 +137,6 @@ inline void Optimizer::reassemble_asm(){
                 code << "\n";
             }
             code << "\n";
-        }else{
-            std::cout << "Erased Operation: " << opTypeToString(op.op_type) << " " << op.op_1.value() << ", " << op.op_2.value() << std::endl; 
         }
     }
     this->m_asm_code = code.str();
@@ -189,7 +187,6 @@ inline void Optimizer::tokenize_asm()
         op.idx = this->m_idx - buf.size();
         if (this->m_idx < m_asm_code.length())
             consume(); // space
-        std::cout << buf << std::endl;
         if (buf[buf.size() - 1] == ':'){ // Label
             op.op_type = OpType::_label;
             op.operand_1 = OperandType::_label;
