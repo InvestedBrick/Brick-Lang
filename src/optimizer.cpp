@@ -150,6 +150,10 @@ inline void Optimizer::reassemble_asm(){
     this->m_asm_code = code.str();
 }
 
+bool Optimizer::is_end_operation(OpType op){
+    return (op == OpType::_ret  || op == OpType::_call || op == OpType::_jmp);
+}
+
 inline void Optimizer::optimize_tokens()
 {
     for (size_t i = 0; i < operations.size();i++){
@@ -160,11 +164,27 @@ inline void Optimizer::optimize_tokens()
             if (op.operand_1 == OperandType::_register && op.operand_2 != OperandType::_data_offset){ // if we have a data offset, we might try to move data to data
                 size_t j = i + 1;
                 // Move along the code and replace all instances of op.op1 in operand2 with op.op2
-                while (j < operations.size() && operations[j].op_1.has_value() && operations[j].op_1.value() != op.op_1.value() && operations[j].op_1.value() != op.op_2.value()){
+                while (j < operations.size() && operations[j].op_1.has_value() && (!operations[j].erased) && operations[j].op_1.value() != op.op_1.value() && operations[j].op_1.value() != op.op_2.value() && (!is_end_operation(operations[j].op_type))){
                     if(operations[j].op_2.has_value() && operations[j].op_2.value() == op.op_1.value()){
                         operations[j].op_2 = op.op_2.value();
                         op.erased = true;           
                         operations[j].operand_2 == op.operand_2;
+                    }
+                    j++;
+                }
+            }
+            if (op.operand_1 == OperandType::_register && op.op_1.value() != "eax"){ // eax gets overwritten after interrupts
+                size_t j = i + 1;
+                while(j < operations.size() && (!is_end_operation(operations[j].op_type))){
+                    if (operations[j].op_type == OpType::_mov && operations[j].op_1.value() == op.op_1.value() && operations[j].op_2.value() == op.op_2.value() && op.operand_2 != OperandType::_data_offset){ // we do not allow to remove data offset, since this is used to dereference pointers and can be used multiple times in nested structs
+                        // Same operation
+                        operations[j].erased = true;
+                    }
+                    if((operations[j].op_1.has_value() && operations[j].op_1.value() == op.op_1.value()  && 
+                       operations[j].op_2.has_value() && operations[j].op_2.value() != op.op_2.value()) || (
+                       operations[j].op_1.has_value() && operations[j].op_1.value() == op.op_2.value())){
+                        // new assignment or value gets overwritten, which could be a danger for future removals
+                        break;
                     }
                     j++;
                 }
