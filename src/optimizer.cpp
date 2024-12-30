@@ -60,7 +60,9 @@ std::string Optimizer::optimize()
     }
     if (this->op_level >= 2){
         this->tokenize_asm();
-        this->optimize_tokens();
+        for (int i = 0; i <= this->op_level;i++){ // sometimes optimizations can be optimized further
+            this->optimize_tokens();
+        }
         this->reassemble_asm();
     }
 
@@ -193,6 +195,15 @@ inline void Optimizer::optimize_tokens()
                 op.op_type = OpType::_xor;
                 op.op_2 = op.op_1.value();
                 op.operand_2 = OperandType::_register;
+            }
+            if (i + 1 < operations.size() && operations[i + 1].op_type == OpType::_mov && operations[i + 1].op_1.value() == op.op_2.value() && operations[i + 1].op_2.value() == op.op_1.value()){
+                // removes second instruction when we have
+                /*
+                    mov data_off, reg
+                    mov reg, data_off
+                */
+               std::cout << "Here" << std::endl;
+                operations[i + 1].erased = true;
             }
             break;
         }
