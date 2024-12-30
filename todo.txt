@@ -43,7 +43,7 @@ checklist:
 [X] bitshifting and bitwise not
 [X] write own malloc / free for Linux
 [X] argc and argv
+[X] small optimzer to optimize the garbage that this compiler outputs
 [ ] floating points
 [ ] unit tests
-[ ] small optimzer to optimize the garbage that this compiler outputs
 
