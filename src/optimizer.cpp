@@ -189,6 +189,11 @@ inline void Optimizer::optimize_tokens()
                     j++;
                 }
             }
+            if (op.operand_1 == OperandType::_register && op.operand_2 == OperandType::_int_lit && op.op_2.value() == "0"){
+                op.op_type = OpType::_xor;
+                op.op_2 = op.op_1.value();
+                op.operand_2 = OperandType::_register;
+            }
             break;
         }
         case OpType::_jmp:{
