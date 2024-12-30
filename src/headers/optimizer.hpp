@@ -116,6 +116,7 @@ private:
     inline void optimize_tokens();
     inline void reassemble_asm();
     inline std::string consume_until_char_and_consume_char(char c);
+    bool is_end_operation(OpType op);
     void peek_window(int n); //temporary
 public:
 
