@@ -191,6 +191,13 @@ inline void Optimizer::optimize_tokens()
             }
             break;
         }
+        case OpType::_jmp:{
+            if (i + 1 < operations.size() && operations[i+1].op_type == OpType::_label && op.op_2.value() == "jmp" && op.op_1.value() == operations[i + 1].op_1.value()){
+                // remove useless jump instructions
+                op.erased = true;
+            }
+            break;
+        }
         
         }      
     }
