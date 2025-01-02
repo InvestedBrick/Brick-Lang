@@ -32,6 +32,8 @@ private:
         _shl,
         _neg,
         _not,
+        _imul,
+        _idiv,
         _label
 
     };
@@ -63,6 +65,8 @@ private:
         case OpType::_shl:   return "shl";
         case OpType::_neg:   return "neg";
         case OpType::_not:   return "not";
+        case OpType::_imul:   return "_imul";
+        case OpType::_idiv:   return "_idiv";
         default:             exit(EXIT_FAILURE); // should not happen
     }
 }
