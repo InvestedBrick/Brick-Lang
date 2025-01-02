@@ -1,0 +1,16 @@
+#include stdlib/int_to_ascii.brick
+
+brick main{
+
+
+    dec x as int -> 5;
+
+    set x to (x << 1) * 3;
+    // 30
+    
+    dec y as byte -> 1;
+    set x to x >> y;
+    // 15
+    output itoa(x);
+    exit 0;
+}
