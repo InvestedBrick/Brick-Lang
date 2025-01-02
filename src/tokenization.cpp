@@ -363,6 +363,7 @@ std::vector<Token> Tokenizer::tokenize()
             this->line_counter++;
         } else if (peek(1).value() == '=') {
             consume();
+            consume();
             token_arr.push_back(mk_tok(Token_type::_div_eq));
         } else {
             consume();
