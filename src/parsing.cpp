@@ -63,7 +63,6 @@ std::string var_type_to_str(Token_type type) {
         break;
     }
 }
-
 #ifdef DEBUG
 void print_token(Token token) {
     auto it = tokenTypeToString.find(token.type);
