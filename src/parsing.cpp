@@ -940,7 +940,7 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
     else if (peek_type(Token_type::_globals)){
         consume();
         try_consume(Token_type::_colon,"Expected ':' after 'globals'");
-        try_consume(Token_type::_open_sq_brac, "Expectd '[' ");
+        try_consume(Token_type::_open_sq_brac, "Expected '[' ");
 
         auto globals = m_Allocator.alloc<node::_statement_globals>();
         this->in_func = true;
