@@ -77,7 +77,6 @@ enum class Token_type {
     _shift_left
 };
 
-
 #ifdef DEBUG
 inline std::unordered_map<Token_type, std::string> tokenTypeToString = {
     {Token_type::_exit, "_exit"},
