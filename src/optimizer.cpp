@@ -380,6 +380,25 @@ inline void Optimizer::tokenize_asm()
             operations.push_back(op);
             continue;
         }
+        else if (buf == "idiv"){
+            op.op_type = OpType::_idiv;
+
+            jmp_spaces();
+            op.op_1 = consume_until_char_and_consume_char('\n');
+            op.operand_1 = is_register(op.op_1.value()) ? OperandType::_register : OperandType::_data_offset;
+            operations.push_back(op);
+            continue;
+        }
+        else if (buf == "imul"){
+            op.op_type = OpType::_imul;
+            op.op_1 = consume_until_char_and_consume_char(',');
+            jmp_spaces();
+            op.op_2 = consume_until_char_and_consume_char('\n');
+            op.operand_1 = OperandType::_register;
+            op.operand_2 = is_register(op.op_2.value()) ? OperandType::_register : OperandType::_data_offset;
+            operations.push_back(op);
+            continue;
+        }
         // Remove any comments
         else if (buf == ";"){
             consume_until_char_and_consume_char('\n');
