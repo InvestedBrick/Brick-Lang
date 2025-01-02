@@ -101,6 +101,7 @@ tester = Tester()
 
 tester.add_test("var_dec.brick",expected_return_code=3)
 tester.add_test("var_set.brick",expected_return_code=13)
+tester.add_test("global_vars.brick",expected_return_code=36)
 
 tester.run_tests()
 tester.cleanup()

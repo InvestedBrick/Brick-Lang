@@ -1,0 +1,11 @@
+brick main{
+    dec x as int -> 0;
+    set x to 5 * 2 + 1;
+    x *= 2;
+    x -= 2;
+    x /= 2;
+    x++;
+    x += 3;
+    x--;
+    exit x;
+}

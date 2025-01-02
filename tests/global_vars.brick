@@ -1,0 +1,14 @@
+
+globals : [
+    dec x as int -> 55;
+    dec z as array byte -> 20;
+]
+
+brick main{
+    set globals::x to 4;
+    set globals::z[8] to 32;
+    set globals::x to globals::x + globals::z[8];
+
+    exit globals::x;
+
+}

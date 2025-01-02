@@ -1,0 +1,4 @@
+brick main{
+    dec a as int -> 3;
+    exit a;
+}
