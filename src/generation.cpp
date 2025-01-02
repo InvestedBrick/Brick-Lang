@@ -2310,8 +2310,9 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                     break;
                 }
                 case Token_type::_div_eq: {
-                    gen->m_code << "    " << gen->get_mov_instruc("edx", (*it).type) << " edx, " << ss.str() << std::endl;
-                    gen->m_code << "    idiv edx,eax" << std::endl;
+                    gen->m_code << "    mov ecx, eax" << std::endl;
+                    gen->m_code << "    " << gen->get_mov_instruc("eax", (*it).type) << " eax, " << ss.str() << std::endl;
+                    gen->m_code << "    idiv ecx" << std::endl;
                     gen->m_code << "    mov " << ss.str() << ", " << gen->get_correct_part_of_register((*it).type,true) << std::endl;
                     break;
                 }
