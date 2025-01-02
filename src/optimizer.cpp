@@ -399,6 +399,11 @@ inline void Optimizer::tokenize_asm()
             operations.push_back(op);
             continue;
         }
+        else if (buf == "cdq"){
+            op.op_type = OpType::_cdq;
+            operations.push_back(op);
+            continue;
+        }
         // Remove any comments
         else if (buf == ";"){
             consume_until_char_and_consume_char('\n');
