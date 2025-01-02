@@ -202,7 +202,6 @@ inline void Optimizer::optimize_tokens()
                     mov data_off, reg
                     mov reg, data_off
                 */
-               std::cout << "Here" << std::endl;
                 operations[i + 1].erased = true;
             }
             break;
