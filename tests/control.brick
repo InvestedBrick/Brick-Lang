@@ -1,0 +1,22 @@
+brick main{
+    dec x as int -> 5;
+
+    if x < 11{
+        dec n as short -> 0;
+
+        while x > 0{
+            x--;
+            n++;
+        }
+
+        for dec i as int -> 0; i < x + 5 and i != 3; i++;{
+            n--;
+        }
+
+        exit n;    
+    }else{
+        exit 2;
+    }
+
+    exit x;
+}
