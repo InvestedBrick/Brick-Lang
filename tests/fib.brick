@@ -1,0 +1,13 @@
+// This does currently not work because ecx gets overwritten. Need to somehow detect that and then push ecx at the right time 
+
+brick fib : int -> n{
+    if n <= 1{
+        return n;
+    }else{
+        return fib(n - 1) + fib(n - 2); 
+    }
+}=> int
+
+brick main{
+    exit fib(7) + fib(3);
+}
