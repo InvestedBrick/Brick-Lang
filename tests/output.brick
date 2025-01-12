@@ -1,0 +1,4 @@
+brick main{
+    output "Hello, World!" noend;
+    exit 0;
+}
