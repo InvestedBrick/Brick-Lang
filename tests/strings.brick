@@ -1,0 +1,21 @@
+brick print_string : byte ptr -> str{
+    dec i as int -> 0;
+    while str[i] != null{
+        output str[i++] noend;
+    }
+}
+
+brick main{
+    dec my_str_1 as string -> "Variant 1";
+    dec my_str_2 as array byte -> 10 {"Variant 2"};
+    set my_str_2[0] to 'v';
+
+    dec buf as strbuf -> 12;
+    output buf noend;
+    set buf to my_str_1;
+
+    output buf noend;
+    print_string(&my_str_2);
+
+    exit 0;
+}
