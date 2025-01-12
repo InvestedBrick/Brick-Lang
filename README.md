@@ -27,13 +27,13 @@ For Linux:
 - Optional compilerflags include `-info` for compilation information and `-nomicrosoft` on Windows to get rid of the Microsoft Logo things when using masm32
 
 
-- You can also add the `-O1` flag, which is a first level of optimization to strip the assembly code of not used functions.
+- You can also add the `-O1` or `-O2` flag. The `-O1` flag removes unused functions from the assembly and the `-O2` flag does some slight optimizations.
 
 *Note: This is currently only possible on Linux*
 
 - Then just run the file with `./<filename>` on Linux or `.\filename.exe` on Windows
 
-    *Note: if you want to be able to access the compiler, just add `export PATH="$PATH:<\path to the brick compiler>/Brick-Lang"` to the end of ~/.bashrc*
+    *Note: if you want to be able to access the compiler, just add `export PATH="$PATH:<\path-to-the-brick-compiler>/Brick-Lang"` to the end of ~/.bashrc on Linux
 
 ## Documentation
 
@@ -350,7 +350,7 @@ struct my_struct{
     dec x as int -> 0;
     dec y as int -> 0;
     dec arr as array byte -> 32;
-    dec other_bundle as my_struct_one;
+    dec other_struct as my_struct_one;
 }
 
 brick main{
