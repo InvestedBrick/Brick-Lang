@@ -24,7 +24,7 @@ class Tester:
         self.expected_stdouts = []
         self.expected_stderrs = []
 
-    def add_test(self,filepath : str,expected_return_code : int, expected_stdout : str = None, expected_stderr : str = None):
+    def add_test(self,filepath : str,expected_return_code : int = 0, expected_stdout : str = None, expected_stderr : str = None):
         self.total_programs += 1
         self.files.append(filepath)
         self.expected_return_codes.append(expected_return_code)
@@ -79,6 +79,8 @@ class Tester:
             if ret_code != self.expected_return_codes[i] or \
             (self.expected_stdouts[i] != None and stdout != self.expected_stdouts[i]) or\
             (self.expected_stderrs[i] != None and stderr != self.expected_stderrs[i]):
+                if ret_code != self.expected_return_codes[i]:
+                    print(ret_code, " : ", self.expected_return_codes[i])
                 self.n_failed += 1
                 self.failed_tests.append(self.files[i])
                 print(bcolors.FAIL + f"'{self.files[i]}' failed..." + bcolors.ENDC)
@@ -87,7 +89,7 @@ class Tester:
         
             print("")
         if self.n_failed == 0:
-            print(bcolors.OKGREEN + "ALL TESTS PASSED!" + bcolors.ENDC)
+            print(bcolors.OKGREEN + f"ALL {len(self.files)} TESTS PASSED!" + bcolors.ENDC)
             print("")
         else:
             print(bcolors.FAIL + f"{self.n_failed} TESTS FAILED!" + bcolors.ENDC)
@@ -102,6 +104,9 @@ tester = Tester()
 tester.add_test("var_dec.brick",expected_return_code=3)
 tester.add_test("var_set.brick",expected_return_code=13)
 tester.add_test("global_vars.brick",expected_return_code=36)
-
+tester.add_test("output.brick",expected_stdout="Hello, World!\0")
+tester.add_test("fib.brick",expected_return_code=15)
+tester.add_test("strings.brick",expected_stdout="Variant 1\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00variant 2")
+tester.add_test("control.brick",expected_return_code=2)
 tester.run_tests()
 tester.cleanup()
