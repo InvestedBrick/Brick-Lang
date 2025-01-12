@@ -201,6 +201,26 @@ inline void Generator::gen_scope(const node::_statement_scope* scope) {
     }
     scope_end();
 }
+
+inline void Generator::insert_extra_push_pop(){
+    if (this->modified_expr_regs){
+        std::string code = this->m_code.str();
+        std::stringstream push_instructs;
+        std::stringstream pop_instructs;
+        size_t insert_idx = code.find("    mov ebp,esp\n");
+        for (uint i = 0; i < this->m_max_bin_expr_idx; i++){
+            push_instructs << "    push " << this->m_bin_expr_registers[i] << "\n";
+            //pop in reverse order
+            pop_instructs << "\n    pop " << this->m_bin_expr_registers[this->m_max_bin_expr_idx - (i + 1)];
+        }
+        code.insert(insert_idx,push_instructs.str());
+
+        insert_idx = code.find("    pop ebp") - 1; // minus newline
+
+        code.insert(insert_idx,pop_instructs.str());
+        this->m_code.str(code);
+    }
+}
 inline std::optional<std::string> Generator::tok_to_instruc(const Token_type type, bool invert) {
 
     switch(type){
@@ -843,6 +863,10 @@ inline std::string Generator::generic_bin_expr(bin_expr_type* bin_expr,std::stri
     if (str_1 == "eax" || str_1 == "&eax"){
         this->m_code << "    mov "<< this->m_bin_expr_registers[this->m_bin_expr_idx] <<", eax" << std::endl;
         str_1 = this->m_bin_expr_registers[this->m_bin_expr_idx++];
+        this->modified_expr_regs = true;
+        if (this->m_bin_expr_idx > this->m_max_bin_expr_idx){
+            this->m_max_bin_expr_idx = this->m_bin_expr_idx;
+        } 
         if(this->m_bin_expr_idx > 4){
             this->line_err("Too many expressions, Sorry, need to fix this");
         }
@@ -2143,6 +2167,8 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
         void operator()(const node::_main_scope* main_scope) {
             if (!gen->main_proc) {
                 if (!gen->valid_space) {
+                    gen->m_max_bin_expr_idx = 0;
+                    gen->modified_expr_regs = false;
                     gen->valid_space = true;
 #ifdef _WIN32
                     gen->m_code << "_main proc\n";
@@ -2184,6 +2210,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                         gen->gen_stmt(stmt);
                     }
                     gen->scope_end(true, main_scope->stack_space);
+
                     gen->valid_space = false;
                     gen->m_code << "    ret \n" << std::endl; //needed for the optimizer to do it's job correctly
                 }
@@ -2202,71 +2229,72 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                 ss << "Function with the name '" << stmt_func->ident.value.value() << "' was already declared" << std::endl;
                 gen->line_err(ss.str());
             }
-            else {
 
-                if (!gen->valid_space) {
-                    gen->valid_space = true;
-                    std::string save = gen->m_code.str();
-                    gen->m_code.str(std::string()); //clear the stringstream
-                    function func;
-                    func.name = stmt_func->ident.value.value();
+            if (!gen->valid_space) {
+                gen->m_max_bin_expr_idx = 0;
+                gen->modified_expr_regs = false;
+
+                gen->valid_space = true;
+                std::string save = gen->m_code.str();
+                gen->m_code.str(std::string()); //clear the stringstream
+                function func;
+                func.name = stmt_func->ident.value.value();
 #ifdef _WIN32                    
-                    gen->m_code << func.name << " proc" << std::endl;
+                gen->m_code << func.name << " proc" << std::endl;
 #elif __linux__
-                    gen->m_code << func.name << ":" << std::endl;
+                gen->m_code << func.name << ":" << std::endl;
 #endif
-                    int stack_space_add = 0;
-                    for (int i = 0; i < stmt_func->arguments.size(); i++) {
-                        if (stmt_func->arguments[i]->_ptr){
-                            stack_space_add += 4;
-                        }else{
-                            stack_space_add += (gen->str_bit_sizes.find(stmt_func->arguments[i]->type)->second) / 8; //get bit size and divide by 8 for bytes
-                        }
+                int stack_space_add = 0;
+                for (int i = 0; i < stmt_func->arguments.size(); i++) {
+                    if (stmt_func->arguments[i]->_ptr){
+                        stack_space_add += 4;
+                    }else{
+                        stack_space_add += (gen->str_bit_sizes.find(stmt_func->arguments[i]->type)->second) / 8; //get bit size and divide by 8 for bytes
                     }
-                    gen->scope_start(true, stmt_func->stack_space + stack_space_add);
-                    //for each argument, generate a local var
-                    for (int i = 0; i < stmt_func->arguments.size(); i++) {
-                        Var var;
-                        var.type = stmt_func->arguments[i]->type;
-                        if (stmt_func->arguments[i]->_ptr) {
-                            var.ptr_type = var.type;
-                            stmt_func->arguments[i]->ptr_type = var.ptr_type;
-                            var.type = "dword";
-                            stmt_func->arguments[i]->type = "dword";
-                            var.ptr = true;
-                        }
-                        var.name = stmt_func->arguments[i]->ident.value.value();
-                        gen->m_base_ptr_off += gen->asm_type_to_bytes(stmt_func->arguments[i]->type);
-                        gen->m_code << "    mov eax," << gen->m_func_registers[i] << std::endl;
-                        gen->m_code << "    mov" << " " << var.type <<  PTR_KEYWORD << " [ebp - " << gen->m_base_ptr_off << "]" << ", " << gen->get_correct_part_of_register(var.type) << std::endl;
-                        var.base_pointer_offset = gen->m_base_ptr_off;
-
-                        gen->m_vars.push_back(var);
-                        func.arguments.push_back(*stmt_func->arguments[i]);
+                }
+                gen->scope_start(true, stmt_func->stack_space + stack_space_add);
+                //for each argument, generate a local var
+                for (int i = 0; i < stmt_func->arguments.size(); i++) {
+                    Var var;
+                    var.type = stmt_func->arguments[i]->type;
+                    if (stmt_func->arguments[i]->_ptr) {
+                        var.ptr_type = var.type;
+                        stmt_func->arguments[i]->ptr_type = var.ptr_type;
+                        var.type = "dword";
+                        stmt_func->arguments[i]->type = "dword";
+                        var.ptr = true;
                     }
-                    func.ret_type_is_ptr = stmt_func->ret_type_is_ptr;
-                    func.ret_lbl = gen->mk_label();
-                    gen->curr_func_name.push_back(func.name);
-                    gen->m_funcs.push_back(func);
-                    for (const node::_statement* stmt : stmt_func->scope->statements) {
-                        gen->gen_stmt(stmt);
-                    }
-                    gen->m_code << func.ret_lbl << ":" << std::endl;
-                    gen->scope_end(true, stmt_func->stack_space + stack_space_add);
-                    gen->m_code << "    ret " << std::endl;
+                    var.name = stmt_func->arguments[i]->ident.value.value();
+                    gen->m_base_ptr_off += gen->asm_type_to_bytes(stmt_func->arguments[i]->type);
+                    gen->m_code << "    mov eax," << gen->m_func_registers[i] << std::endl;
+                    gen->m_code << "    mov" << " " << var.type <<  PTR_KEYWORD << " [ebp - " << gen->m_base_ptr_off << "]" << ", " << gen->get_correct_part_of_register(var.type) << std::endl;
+                    var.base_pointer_offset = gen->m_base_ptr_off;
+                    gen->m_vars.push_back(var);
+                    func.arguments.push_back(*stmt_func->arguments[i]);
+                }
+                func.ret_type_is_ptr = stmt_func->ret_type_is_ptr;
+                func.ret_lbl = gen->mk_label();
+                gen->curr_func_name.push_back(func.name);
+                gen->m_funcs.push_back(func);
+                for (const node::_statement* stmt : stmt_func->scope->statements) {
+                    gen->gen_stmt(stmt);
+                }
+                gen->m_code << func.ret_lbl << ":" << std::endl;
+                gen->scope_end(true, stmt_func->stack_space + stack_space_add);
+                gen->m_code << "    ret " << std::endl;
+                gen->insert_extra_push_pop();
 #ifdef _WIN32                    
-                    gen->m_code << func.name << " endp" << std::endl;
+                gen->m_code << func.name << " endp" << std::endl;
 #endif
-                    gen->m_func_space << gen->m_code.str() << std::endl;
-                    gen->m_code.str(std::string());
-                    gen->m_code << save;
-                    gen->valid_space = false;
-                    gen->curr_func_name.pop_back();
-                }
-                else {
-                    gen->line_err("Cannot declare a function inside of a function");
-                }
-            } 
+                gen->m_func_space << gen->m_code.str() << std::endl;
+                gen->m_code.str(std::string());
+                gen->m_code << save;
+                gen->valid_space = false;
+                gen->curr_func_name.pop_back();
+            }
+            else {
+                gen->line_err("Cannot declare a function inside of a function");
+            }
         }
         void operator()(const node::_ctrl_statement* _ctrl) {
             gen->gen_ctrl_statement(_ctrl);
