@@ -67,6 +67,7 @@ private:
     std::vector<std::variant<Var,string_buffer,String,Var_array,Struct>> m_global_vars;
     
     bool main_proc = false;
+    bool modified_expr_regs = false;
     bool valid_space = false;
     bool only_allow_int_exprs = false;
     bool generating_struct_vars = false;
@@ -110,9 +111,10 @@ private:
     std::vector<Var_array> m_arrays{};
     std::vector<size_t> m_scope_arrays{};
     std::vector<std::string> filestack{};
-    const std::string m_bin_expr_registers[4] {"ecx","edx","esi","edi"};
+    const std::string m_bin_expr_registers[4] = {"ecx","edx","esi","edi"};
     const std::string m_func_registers[4] = {"edi","esi","edx","ecx"};
     uint m_bin_expr_idx = 0;
+    uint m_max_bin_expr_idx = 0;
     std::unordered_map<std::string, size_t> str_bit_sizes = {
     {"eax",32},
     {"ebx",32},
@@ -149,6 +151,7 @@ private:
     inline std::string mk_label();
     inline std::string mk_str_lit();
     inline std::string mk_str_buf();
+    inline void insert_extra_push_pop();
     inline void reset_labels();
 #ifdef __linux__
     
