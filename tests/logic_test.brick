@@ -1,0 +1,23 @@
+brick return_five {
+    return 5;
+}=>int
+
+brick return_three : int -> x, int -> y{
+    return 3;
+}=>int
+
+brick main{
+    
+    dec x as int -> 0;
+    for dec i as int -> 0; i < 10 and x < 5; i++;{
+        x++;
+    }
+    dec y as int -> 4;
+    dec var as int -> (return_five() + return_three(0,0) * 5) / y;
+    set var to var | 2; // 0b101 | 0b010 == 111 = 7
+    set var to var ^ 3; // 0b111 ^ 0b011 == 100 = 4
+    set var to ~var; // bitwise not 0b100 == 0b011 = 3
+    set var to var & 3; // this ensures leading 0s before the 3.
+
+    exit var;
+}
