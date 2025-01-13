@@ -35,6 +35,11 @@ For Linux:
 
     *Note: if you want to be able to access the compiler, just add `export PATH="$PATH:<\path-to-the-brick-compiler>/Brick-Lang"` to the end of ~/.bashrc on Linux
 
+## Syntax Highlighting
+I am currently working on creating a vscode extention to highlight Brick-Lang keywords, currently you can install `brick-lang-highlighter-0.0.1.vsix` to get some simple but still ugly highlighting
+
+This is work in progress!
+
 ## Documentation
 
 Like in C, your program will start executing at a main function:
