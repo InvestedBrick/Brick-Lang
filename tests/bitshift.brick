@@ -1,0 +1,14 @@
+
+brick main{
+
+
+    dec x as int -> 5;
+
+    set x to (x << 1) * 3;
+    // 30
+    
+    dec y as byte -> 1;
+    set x to x >> y;
+    // 15
+    exit x;
+}
