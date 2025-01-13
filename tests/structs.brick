@@ -1,0 +1,20 @@
+struct my_struct{
+    dec x as int -> 5;
+    dec pointer as int ptr -> null;
+    dec int_arr as array int -> 5;
+}
+
+struct my_struct_1{
+    dec a as int -> 0;
+    dec test as my_struct;
+}
+
+brick main{
+    dec x as int -> 4;
+    dec struct_1 as my_struct_1;
+    set struct_1.test.int_arr[2] to 53;
+
+    set struct_1.a to x;
+
+    exit struct_1.test.int_arr[2] + struct_1.a;
+}
