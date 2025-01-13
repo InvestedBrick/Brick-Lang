@@ -44,6 +44,7 @@ checklist:
 [X] write own malloc / free for Linux
 [X] argc and argv
 [X] small optimzer to optimize the garbage that this compiler outputs
+[X] unit tests
+[ ] add break and continue lol
 [ ] floating points
-[ ] unit tests
 
