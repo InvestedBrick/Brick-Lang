@@ -1,0 +1,6 @@
+#include fib.brick
+
+brick main{
+    exit fib(12);
+}
+
