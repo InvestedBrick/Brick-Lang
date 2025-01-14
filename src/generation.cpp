@@ -80,6 +80,7 @@ inline std::string Generator::get_mov_instruc(const std::string& dest, const std
     const auto source_it = str_bit_sizes.find(source);
     const auto dest_it = str_bit_sizes.find(dest);
     if (source_it->second > dest_it->second) {
+        std::cout << "Source: " << source << " | " << source_it->second << " -- Dest: " << dest << " | " << dest_it->second << std::endl; 
         line_err("Something's wrong I can feel it (how tf did this happen)");
         exit(EXIT_FAILURE); //to make g++ happy
     }
@@ -777,8 +778,9 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
 
                 bool numeric = is_numeric(val);
 
+                // for anyone reading this: for gods sake do not use ebx, it fails when we have this in an expression
                 if (!numeric){
-                    gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(" "))) << " ebx, " << val << std::endl;
+                    gen->m_code << "    " << gen->get_mov_instruc("ecx", val.substr(0, val.find_first_of(" "))) << " ecx, " << val << std::endl;
                 }
 
                 gen->m_code << "    mov eax, dword" << PTR_KEYWORD << base_string << base_offset << "]" << std::endl;
@@ -786,7 +788,7 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                 if (numeric){
                     ss << var.ptr_type <<  PTR_KEYWORD << " [eax + " << std::stoi(val) *  gen->asm_type_to_bytes(var.ptr_type) << "]";
                 }else{
-                    ss << var.ptr_type <<  PTR_KEYWORD << " [eax + ebx * " << gen->asm_type_to_bytes(var.ptr_type) << "]";
+                    ss << var.ptr_type <<  PTR_KEYWORD << " [eax + ecx * " << gen->asm_type_to_bytes(var.ptr_type) << "]";
                 }
 
                 return ss.str();
@@ -918,9 +920,12 @@ inline std::string Generator::generic_bin_expr(bin_expr_type* bin_expr,std::stri
         }
         std::string mov_inst_1, mov_inst_2,str_2_type {};
         str_2_type = str_2.substr(0, str_2.find_first_of(' '));
+
         const bool str_2_is_dword = str_2_type == "dword";
         mov_inst_1 = str_1_numeric || str_1 == (this->m_bin_expr_idx == 0 ? "ecx" : this->m_bin_expr_registers[--this->m_bin_expr_idx]) ? "mov" : this->get_mov_instruc("eax", str_1.substr(0, str_1.find_first_of(' ')));
         mov_inst_2 = str_2_numeric || str_2 == "eax" ? "mov" : this->get_mov_instruc("eax", str_2_type);
+        
+        
         if(!str_2_is_dword){
             this->m_code << "    " << mov_inst_2 << " ebx, " << str_2 << std::endl;
         }
@@ -1665,6 +1670,10 @@ void Generator::var_set_ptr_array(iterator it,var_set array_set,std::string base
             if (index_val != "eax") {
                 this->m_code << "    " << this->get_mov_instruc("eax", index_val.substr(0, index_val.find_first_of(" "))) << " eax, " << index_val << std::endl;
             } // now: index value in eax and expression value in esi or bl
+            if ((*it).ptr_type == "byte" || (*it).ptr_type == "word"){
+                this->m_code << "    mov edx, esi" << std::endl;
+                mov_reg = (*it).ptr_type == "byte" ? "dl" : "dx";
+            }
             this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,mov_reg) << " " << (*it).ptr_type <<  PTR_KEYWORD << " [ecx + eax * " << this->asm_type_to_bytes((*it).ptr_type) << "], "  << mov_reg << std::endl;
         }
     }
