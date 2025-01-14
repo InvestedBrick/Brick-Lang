@@ -1,5 +1,5 @@
 #include memory.brick
-#include funcs.brick
+
 struct dynamic_array{
     dec data as int ptr -> malloc(4);
     dec size as int -> 0;
@@ -38,6 +38,28 @@ brick array_pop : int ptr -> arr_{
     return arr.data[arr.size];
 }=> int
 
+brick array_top : int ptr -> arr_ {
+    dec arr as dynamic_array ptr -> arr_;
+
+    return arr.data[arr.size - 1];
+}=> int
+
+brick array_empty : int ptr -> arr_ {
+    dec arr as dynamic_array ptr -> arr_;
+    
+    if arr.size == 0{
+        return true;
+    }
+
+    return false;
+    
+}=> bool
+
+brick array_cleanup : int ptr -> arr_ {
+    dec arr as dynamic_array ptr -> arr_;
+
+    free(arr.data);
+}
 brick main{
     dec vector as dynamic_array;
     array_append(&vector,4);
@@ -58,8 +80,9 @@ brick main{
     print_array(vector.data,vector.size);
     print_array(vector.data,vector.capacity);
 
+    output "Array Top: ", itoa(array_top(&vector));
     // always free your data
-    free(vector.data);
+    array_cleanup(&vector);
 
     exit 0;
 }
