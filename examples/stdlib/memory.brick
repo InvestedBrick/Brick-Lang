@@ -1,5 +1,4 @@
 #include syscalls.brick
-#include funcs.brick
 brick system_request_memory : int -> n_bytes{
     dec mem as byte ptr -> mmap(n_bytes,1 | 2,1 | 32,-1);
     if mem == -1{
@@ -108,7 +107,7 @@ struct system_test{
 }
 
 brick main{
-    
+    /* 
     dec x as int ptr -> malloc(4 * 4);
 
     set x[0] to 1;
@@ -127,6 +126,6 @@ brick main{
 
     free(x);
     free(my_struct);
-    
+    */
     exit 0;
 }
