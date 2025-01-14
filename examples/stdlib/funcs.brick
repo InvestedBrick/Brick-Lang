@@ -172,6 +172,11 @@ brick print_string : byte ptr -> str{
     }
 }
 
+brick strlen : byte ptr -> str {
+    dec n as int -> 0;
+    while str[n++] != null{}
+}=> int
+
 brick main {
     dec x as int -> 0;
     fib(20);
