@@ -1,0 +1,103 @@
+// A simple, unsafe and errortesting-free brainfuck interpreter
+
+#include stdlib/dynamic_array.brick
+#include stdlib/fileops.brick
+#include stdlib/int_to_ascii.brick
+
+brick strlen : byte ptr -> str {
+    dec n as int -> 0;
+    while str[n++] != null{}
+}=> int
+
+brick build_loop_table : byte ptr -> prog, int ptr -> loop_table, int -> prog_len {
+    dec stack as dynamic_array;
+
+    for dec i as int -> 0; i < prog_len;i++;{
+        if prog[i] == '[' {
+            array_append(&stack,i);
+        }
+        if prog[i] == ']' {
+            dec loop_start as int -> array_pop(&stack);
+            set loop_table[loop_start] to i;
+            set loop_table[i] to loop_start;
+        }
+    }
+
+    array_cleanup(&stack);
+}
+
+brick main{
+    dec TAPE_SIZE as int -> 30000 const;
+    
+    dec program as byte ptr -> malloc(256); // this is enough for now 
+
+    dec name as array byte -> 15 {"hello_world.bf"};
+    dec fd as int -> fopen(&name[0],2);
+
+    dec prog_len as int -> fread(fd,&program[0],256);
+    fclose(fd);
+
+    dec tape as byte ptr -> malloc(TAPE_SIZE); // 30k bytes for free use
+
+    dec cell_idx as int -> 0;
+
+    dec loop_table as array int -> 1024;
+
+    build_loop_table(program,&loop_table[0],prog_len);
+
+    dec ip as int -> 0;
+
+    dec user_input as array byte -> 256;
+    dec input_pos as int -> 0;
+    dec input_len as int -> 0;
+
+    while ip < prog_len {
+
+        dec instruc as byte -> program[ip];
+
+        if instruc == '+' {
+            set tape[cell_idx] to tape[cell_idx] + 1;
+        }
+        if instruc == '-' {
+            set tape[cell_idx] to tape[cell_idx] - 1;
+        }
+        if instruc == '<' {
+            if cell_idx == 0 {
+                set cell_idx to TAPE_SIZE;
+            }
+            cell_idx--;
+        }
+        if instruc == '>' {
+            cell_idx++;
+            if cell_idx >= TAPE_SIZE {
+                set cell_idx to 0;
+            }
+        } 
+        if instruc == '.' {
+            output tape[cell_idx] noend;
+        }
+        if instruc == ',' {
+            if input_pos >= input_len {
+                output "Input: " noend;
+                input user_input;
+                set input_len to strlen(&user_input[0]);
+                set input_pos to 0;
+            }
+            set tape[cell_idx] to user_input[input_pos++];
+        }
+        if instruc == '[' { 
+            if tape[cell_idx] == 0{
+                set ip to loop_table[ip];
+            }
+        }
+        if instruc == ']' {
+            if tape[cell_idx] != 0{
+                set ip to loop_table[ip];
+            }
+        }    
+
+        ip++;
+    }
+
+    exit 0;
+}
