@@ -22,6 +22,7 @@ LOGS:
 23.11.24: about 5530 lines and 909 lines of brick code (Added bitshifting and bitwise not)
 16.12.24: about 5882 lines and 985 lines of brick code (Optimizer is work in progress)
 29.12.24: exactly 6000 lines and 1000 lines of brick  code (optimizer is optimizing something, malloc broken with structs)
+17.01.25: about 6100 lines and 1200 lines of brick code (wrote a brainfuck interpreter in Brick)
 Needs to be refactored
     
 checklist:
