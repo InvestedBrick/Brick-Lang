@@ -358,15 +358,15 @@ std::string Generator::gen_term_struct_ptr(iterator struct_ptr_it, struct_ptr_id
             var.ptr_type = var.type;
             var.type = "dword";
             std::string val = this->gen_expr(struct_ptr_ident_->index_expr).value();
-            this->m_code << "    mov edx, dword" << PTR_KEYWORD << " [edx - " << var.base_pointer_offset << "]" << std::endl;
+            this->m_code << "    mov ecx, dword" << PTR_KEYWORD << " [edx - " << var.base_pointer_offset << "]" << std::endl;
 
             if(is_numeric(val)){
-                this->m_code << "    " << this->get_mov_instruc("eax",var.ptr_type) << " eax, " << var.ptr_type <<  PTR_KEYWORD << " [edx + " << std::stoi(val) * this->asm_type_to_bytes(var.ptr_type) << "]" << std::endl;
+                this->m_code << "    " << this->get_mov_instruc("eax",var.ptr_type) << " eax, " << var.ptr_type <<  PTR_KEYWORD << " [ecx + " << std::stoi(val) * this->asm_type_to_bytes(var.ptr_type) << "]" << std::endl;
             }else{
                 if (val != "eax"){
                     this->m_code << "    " << this->get_mov_instruc("eax",val.substr(0,val.find_first_of(' '))) << " eax, " << val << std::endl;
                 }
-                this->m_code << "    " << this->get_mov_instruc("eax",var.ptr_type) << " eax, " << var.ptr_type << PTR_KEYWORD << " [edx + eax * " << this->asm_type_to_bytes(var.ptr_type) << "]" << std::endl;
+                this->m_code << "    " << this->get_mov_instruc("eax",var.ptr_type) << " eax, " << var.ptr_type << PTR_KEYWORD << " [ecx + eax * " << this->asm_type_to_bytes(var.ptr_type) << "]" << std::endl;
             }
             offset << "eax";
         }else{
