@@ -261,6 +261,10 @@ while my_var != 0 {
     ...
 }
 ```
+You can use `break` in `while` or `for` loops to exit the loop early.
+
+You can use `next` to directly jump to the next iteration of the loop.
+
 
 Supported comparison operators are :
 ```
