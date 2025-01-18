@@ -69,6 +69,7 @@ private:
     bool main_proc = false;
     bool modified_expr_regs = false;
     bool valid_space = false;
+    bool ctrl_space = false;
     bool only_allow_int_exprs = false;
     bool generating_struct_vars = false;
     bool ignore_var_already_exists = false;
@@ -77,6 +78,7 @@ private:
     std::optional<std::string> initial_label_or;
     std::optional<std::string> initial_label_and;
     std::optional<std::string> ending_label;
+    std::vector<std::pair<std::string,std::string>> ctrl_labels {};
     size_t label_counter = 0;
     size_t string_counter = 0;
     size_t string_buffer_counter = 0;
@@ -180,6 +182,7 @@ private:
     inline std::optional<std::string> gen_bin_expr(const node::_bin_expr* bin_expr);
     inline std::optional<std::string> gen_expr(const node::_expr* expr);
 
+    inline void gen_loop_ctrl(const node::_statement_break_next* break_next);
     inline logic_data_packet gen_logical_expr(const node::_logical_expr* logic_expr,std::optional<std::string> provided_scope_lbl,bool invert = false);
     inline logic_data_packet gen_logical_stmt(const node::_logical_stmt* logic_stmt,std::optional<std::string> provided_scope_lbl,bool invert = false);
     inline void gen_ctrl_statement(const node::_ctrl_statement* _ctrl);
