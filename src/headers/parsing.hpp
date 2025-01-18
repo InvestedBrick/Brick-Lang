@@ -56,6 +56,7 @@ private:
     , node::_op_equal*
     , node::_statement_struct*
     , node::_statement_globals*
+    , node::_statement_break_next*
     > var);
 
     inline node::_null_stmt* mk_null_stmt(std::variant<node::_newline*, node::_newfile*, node::_eof*> var);
