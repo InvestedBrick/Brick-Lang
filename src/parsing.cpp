@@ -122,6 +122,7 @@ node::_statement* Parser::mk_stmt(std::variant<
 , node::_op_equal*
 , node::_statement_struct*
 , node::_statement_globals*
+, node::_statement_break_next*
 > var)
 {
     auto stmt = m_Allocator.alloc<node::_statement>();
@@ -1058,6 +1059,17 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
             line_err("Invalid expression in return statement!");
         }
 
+    }
+    else if (peek_type(Token_type::_break) || peek_type(Token_type::_next)){
+        auto break_next = m_Allocator.alloc<node::_statement_break_next>();
+        if (peek_type(Token_type::_break)){
+            break_next->var = m_Allocator.alloc<node::_statement_break>();
+        }else{
+            break_next->var = m_Allocator.alloc<node::_statement_next>();
+        }
+        consume();
+        try_consume(Token_type::_semicolon, "Expected ';'");
+        return mk_stmt(break_next);
     }
     else if (peek_type(Token_type::_open_cur_brac)) {
         if (auto scope = parse_scope()) {
