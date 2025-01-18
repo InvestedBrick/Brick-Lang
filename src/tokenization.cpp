@@ -137,6 +137,16 @@ std::vector<Token> Tokenizer::tokenize()
                 buf.clear();
                 continue;
             }
+            else if (buf == "next"){
+                token_arr.push_back(mk_tok(Token_type::_next));
+                buf.clear();
+                continue;
+            }
+            else if (buf == "break"){
+                token_arr.push_back(mk_tok(Token_type::_break));
+                buf.clear();
+                continue;
+            }
             else if (buf == "int") {
                 token_arr.push_back(mk_tok(Token_type::_int));
                 buf.clear();
