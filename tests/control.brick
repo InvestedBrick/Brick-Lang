@@ -12,11 +12,29 @@ brick main{
         for dec i as int -> 0; i < x + 5 and i != 3; i++;{
             n--;
         }
+        set x to n;
 
-        exit n;    
     }else{
-        exit 2;
+        exit 3;
     }
 
-    exit x;
+    dec n as int -> 0;
+    while true == true {
+
+        for dec i as int -> 0; i < 5; i++; {
+            x--;
+            if x > 0{
+                next;
+            }
+            n++;
+            if x == 0 {
+                break;
+            }
+        }
+        if x == 0{
+            break;
+        }
+    }
+
+    exit x + n;
 }
