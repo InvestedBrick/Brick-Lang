@@ -292,7 +292,11 @@ namespace node {
         std::vector<_statement_var_dec*>  vars{};
         int n_lines;
     };
-
+    struct _statement_break {};
+    struct _statement_next {};
+    struct _statement_break_next {
+        std::variant<_statement_break*,_statement_next*> var;
+    };
     struct _statement
     {
         std::variant<
@@ -312,6 +316,7 @@ namespace node {
         , _op_equal*
         , _statement_struct*
         , _statement_globals*
+        , _statement_break_next*
         > var;
     };
 
