@@ -1035,7 +1035,11 @@ inline Generator::logic_data_packet Generator::gen_logical_expr(const node::_log
         void operator()(const node::_logical_expr_and* logic_and){
             Token_type op = gen->gen_logical_stmt(logic_and->left,provided_scope_lbl,invert_copy).op;
             if(!gen->initial_label_and.has_value()){
-                data.end_lbl = gen->mk_label();
+                if (gen->ctrl_space){
+                    data.end_lbl = gen->ctrl_labels.back().second;
+                }else{
+                    data.end_lbl = gen->mk_label();
+                }
                 gen->initial_label_and = data.end_lbl;
             }else{
                 data.end_lbl = gen->initial_label_and.value();
@@ -1064,7 +1068,11 @@ inline Generator::logic_data_packet Generator::gen_logical_expr(const node::_log
 
             Token_type op1 = gen->gen_logical_stmt(logic_or->right,provided_scope_lbl,invert_copy).op;
             if(!gen->ending_label.has_value()){
-                data.end_lbl = gen->mk_label();
+                if (gen->ctrl_space){
+                    data.end_lbl = gen->ctrl_labels.back().second;
+                }else{
+                    data.end_lbl = gen->mk_label();
+                }
                 gen->ending_label = data.end_lbl;
             }else{
                 data.end_lbl = gen->ending_label.value();
@@ -1192,17 +1200,23 @@ inline void Generator::gen_ctrl_statement(const node::_ctrl_statement* _ctrl) {
         void operator()(const node::_statement_while* stmt_while) {
             std::string scope_lbl = gen->mk_label();
             std::string start_jump = gen->mk_label();
+            std::string end_lbl = gen->mk_label();
+            gen->ctrl_labels.push_back(std::pair<std::string,std::string>{start_jump,end_lbl});
+            gen->ctrl_space = true;
             gen->m_code << "    jmp " << start_jump << std::endl;
             gen->m_code << scope_lbl << ":" << std::endl;
             gen->gen_scope(_ctrl->scope);
             gen->m_code << start_jump << ":" << std::endl;
             logic_data_packet labels = gen->gen_logical_stmt(_ctrl->logic,scope_lbl,false);
             if(labels.end_lbl == ""){ // if there is no and or or --> no returned label
-                labels.end_lbl = gen->mk_label();
                 gen->m_code  << gen->tok_to_instruc(labels.op,false).value() << " " << scope_lbl << std::endl;
             }
+            labels.end_lbl = end_lbl;
             gen->m_code << labels.end_lbl << ":" << std::endl;
-        
+            gen->ctrl_labels.pop_back();
+            if (gen->ctrl_labels.empty()){
+                gen->ctrl_space = false;
+            }
 
         }
         void operator()(const node::_statement_for* stmt_for) {
@@ -1210,6 +1224,9 @@ inline void Generator::gen_ctrl_statement(const node::_ctrl_statement* _ctrl) {
             gen->gen_var_stmt(stmt_for->_stmt_var_dec);
             std::string scope_lbl = gen->mk_label();
             std::string start_jump = gen->mk_label();
+            std::string end_lbl = gen->mk_label();
+            gen->ctrl_labels.push_back(std::pair<std::string,std::string>{start_jump,end_lbl});
+            gen->ctrl_space = true;
             gen->m_code << "    jmp " << start_jump << std::endl;
             gen->m_code << scope_lbl << ":" << std::endl;
             gen->gen_scope(_ctrl->scope);
@@ -1217,11 +1234,15 @@ inline void Generator::gen_ctrl_statement(const node::_ctrl_statement* _ctrl) {
             gen->m_code << start_jump << ":" << std::endl;
             logic_data_packet labels = gen->gen_logical_stmt(_ctrl->logic,scope_lbl,false);
             if(labels.end_lbl == ""){ // if there is no and or or --> no returned label
-                labels.end_lbl = gen->mk_label();
                 gen->m_code  << gen->tok_to_instruc(labels.op,false).value() << " " << scope_lbl << std::endl;
             }
+            labels.end_lbl = end_lbl;
             gen->m_code << labels.end_lbl << ":" << std::endl;
             gen->m_vars.pop_back();//pop the iterator value
+            gen->ctrl_labels.pop_back();
+            if (gen->ctrl_labels.empty()){
+                gen->ctrl_space = false;
+            }
         }
     };
     _crtl_statement_visitor visitor;
@@ -1938,7 +1959,29 @@ inline void Generator::gen_global_vars_recursive(const variant_item last_var){
 
 }
 
-
+inline void Generator::gen_loop_ctrl(const node::_statement_break_next *break_next)
+{
+    struct break_next_visitor{
+        Generator* gen;
+        void operator()(const node::_statement_break* break_){
+            if (!gen->ctrl_space){
+                gen->line_err("Cannot use 'break' statement outside of loop");
+            }
+            std::string end_lbl = gen->ctrl_labels.back().second;
+            gen->m_code << "    jmp " << end_lbl << std::endl;
+        }
+        void operator()(const node::_statement_next* next_){
+            if (!gen->ctrl_space){
+                gen->line_err("Cannot use 'next' statement outside loop");
+            }
+            std::string start_lbl = gen->ctrl_labels.back().first;
+            gen->m_code << "    jmp " << start_lbl << std::endl;
+        }
+    };
+    break_next_visitor visitor;
+    visitor.gen = this;
+    std::visit(visitor,break_next->var);
+}
 inline void Generator::gen_global_vars(const node::_statement_globals* globals){
     if (valid_space){
         this->line_err("Cannot declared global variables inside scope");
@@ -2172,6 +2215,9 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
         }
         void operator()(const node::_statement_globals* globals){
             gen->gen_global_vars(globals);
+        }
+        void operator()(const node::_statement_break_next* break_next){
+            gen->gen_loop_ctrl(break_next);
         }
         void operator()(const node::_main_scope* main_scope) {
             if (!gen->main_proc) {
