@@ -112,7 +112,7 @@ tester.add_test("structs.brick",expected_return_code=57)
 tester.add_test("include.brick",expected_return_code=144)
 tester.add_test("bitshift.brick", expected_return_code=15)
 tester.add_test("logic_test.brick",expected_return_code=3)
-
+tester.add_test("funcs.brick",expected_return_code=9,expected_stdout="TEST\0")
 tester.run_tests()
 if tester.n_failed == 0:
     tester.cleanup()
