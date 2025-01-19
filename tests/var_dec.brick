@@ -1,4 +1,6 @@
 brick main{
     dec a as int -> 3;
-    exit a;
+    dec b as byte -> a * 2 + 3;
+    dec c as int -> b / 3;
+    exit c;
 }
