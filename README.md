@@ -33,7 +33,7 @@ For Linux:
 
 - Then just run the file with `./<filename>` on Linux or `.\filename.exe` on Windows
 
-    *Note: if you want to be able to access the compiler, just add `export PATH="$PATH:<\path-to-the-brick-compiler>/Brick-Lang"` to the end of ~/.bashrc on Linux
+    *Note: if you want to be able to access the compiler, just add `export PATH="$PATH:<\path-to-the-brick-compiler>/Brick-Lang"` to the end of ~/.bashrc on Linux*
 
 ## Syntax Highlighting
 I am currently working on creating a vscode extention to highlight Brick-Lang keywords, currently you can install `brick-lang-highlighter-0.0.2.vsix` found in the syntax-highlighter directory in vscode to get some simple highlighting. 
