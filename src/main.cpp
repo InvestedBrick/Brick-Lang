@@ -109,7 +109,6 @@ int main(int argc, char* argv[]) {
     std::string preprocessed_contents = preprocessor.pre_process();
     if (output_info)
         std::cout << "Finished Preprocessing..." << std::endl;
-    //std::cout << preprocessed_contents << std::endl;
     Tokenizer tokenizer(std::move(preprocessed_contents));
     std::vector<Token> tokens = tokenizer.tokenize();
     if (output_info)
