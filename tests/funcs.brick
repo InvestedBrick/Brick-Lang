@@ -1,0 +1,32 @@
+brick func_1 {
+    output "TEST" noend;
+    return null;
+}
+
+brick func_2 {
+    return 2 * 2;
+}=> int
+
+brick func_3 : int ptr -> p {
+    p++;
+    return p;
+}=> int ptr
+
+brick func_4 : int -> a, int -> b, int -> c, int -> d{
+    return a + b + c + d;
+}
+brick main{
+
+    func_1();
+
+    dec x as int -> func_2();
+    dec p as int ptr -> &x;
+
+    dec p1 as int ptr -> func_3(p);
+
+    if p + 4 == p1 {
+        exit x + func_4(1,2,1,1);
+    }
+
+    exit 0;
+}
