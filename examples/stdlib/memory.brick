@@ -11,7 +11,7 @@ brick system_request_memory : int -> n_bytes{
 struct system_memory_block  {
     dec size as int -> 0;
     dec free as bool -> false;
-    dec next as system_memory_block ptr -> null;
+    dec next_block as system_memory_block ptr -> null;
 }
 
 globals : [
@@ -25,7 +25,7 @@ brick find_free_block : int -> size{
         if current.free == true and current.size >= size{
             return current;
         }
-        set current to current.next;
+        set current to current.next_block;
     }
     return null;
 }=> byte ptr
@@ -37,10 +37,10 @@ brick split_block : int ptr -> block, int -> size{
         dec new_block as system_memory_block ptr -> n; 
         set new_block.size to the_block.size - size - globals::system_memory_block_size;
         set new_block.free to true;
-        set new_block.next to the_block.next;
+        set new_block.next_block to the_block.next_block;
 
         set the_block.size to size;
-        set the_block.next to new_block;
+        set the_block.next_block to new_block;
     }
 }
 /*
@@ -76,7 +76,7 @@ brick malloc : int -> n_bytes{
     set block to block + (globals::system_memory_block_size - 4);
     set block.size to n_bytes; 
     set block.free to false;
-    set block.next to globals::system_free_list;
+    set block.next_block to globals::system_free_list;
     set globals::system_free_list to block;
 
     return block + 4;
@@ -84,9 +84,9 @@ brick malloc : int -> n_bytes{
 
 brick system_merge_blocks : int ptr -> block{
     dec the_block as system_memory_block ptr -> block;
-    while the_block.next != null and the_block.next.free == true{
-        set the_block.size to the_block.size + 9 + the_block.next.size;
-        set the_block.next to the_block.next.next;
+    while the_block.next_block != null and the_block.next_block.free == true{
+        set the_block.size to the_block.size + 9 + the_block.next_block.size;
+        set the_block.next_block to the_block.next_block.next_block;
     }
 }
 
