@@ -1035,7 +1035,7 @@ inline Generator::logic_data_packet Generator::gen_logical_expr(const node::_log
         void operator()(const node::_logical_expr_and* logic_and){
             Token_type op = gen->gen_logical_stmt(logic_and->left,provided_scope_lbl,invert_copy).op;
             if(!gen->initial_label_and.has_value()){
-                if (gen->ctrl_space){
+                if (gen->ctrl_space && gen->ctrl_stack.back()){
                     data.end_lbl = gen->ctrl_labels.back().second;
                 }else{
                     data.end_lbl = gen->mk_label();
@@ -1176,6 +1176,7 @@ inline void Generator::gen_ctrl_statement(const node::_ctrl_statement* _ctrl) {
         Generator* gen;
         const node::_ctrl_statement* _ctrl;
         void operator()(const node::_statement_if* stmt_if) {
+            gen->ctrl_stack.push_back(CTRL_IF);
             logic_data_packet labels = gen->gen_logical_stmt(_ctrl->logic,std::nullopt,true);
             gen->reset_labels();
             if(labels.end_lbl == ""){ // if there is no and or or --> no returned label
@@ -1196,8 +1197,10 @@ inline void Generator::gen_ctrl_statement(const node::_ctrl_statement* _ctrl) {
             else {
                 gen->m_code << labels.end_lbl << ":" << std::endl;
             }
+            gen->ctrl_stack.pop_back();
         }
         void operator()(const node::_statement_while* stmt_while) {
+            gen->ctrl_stack.push_back(CTRL_WHILE);
             std::string scope_lbl = gen->mk_label();
             std::string start_jump = gen->mk_label();
             std::string end_lbl = gen->mk_label();
@@ -1214,13 +1217,14 @@ inline void Generator::gen_ctrl_statement(const node::_ctrl_statement* _ctrl) {
             labels.end_lbl = end_lbl;
             gen->m_code << labels.end_lbl << ":" << std::endl;
             gen->ctrl_labels.pop_back();
+            gen->ctrl_stack.pop_back();
             if (gen->ctrl_labels.empty()){
                 gen->ctrl_space = false;
             }
 
         }
         void operator()(const node::_statement_for* stmt_for) {
-
+            gen->ctrl_stack.push_back(CTRL_FOR);
             gen->gen_var_stmt(stmt_for->_stmt_var_dec);
             std::string scope_lbl = gen->mk_label();
             std::string start_jump = gen->mk_label();
@@ -1240,6 +1244,7 @@ inline void Generator::gen_ctrl_statement(const node::_ctrl_statement* _ctrl) {
             gen->m_code << labels.end_lbl << ":" << std::endl;
             gen->m_vars.pop_back();//pop the iterator value
             gen->ctrl_labels.pop_back();
+            gen->ctrl_stack.pop_back(); // peak 11 pm coding
             if (gen->ctrl_labels.empty()){
                 gen->ctrl_space = false;
             }
