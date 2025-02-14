@@ -13,7 +13,6 @@ brick main{
             n--;
         }
         set x to n;
-
     }else{
         exit 3;
     }
@@ -36,5 +35,12 @@ brick main{
         }
     }
 
-    exit x + n;
+    dec test as int -> 0;
+    while test < 10 {
+        if test < 5 and test > 3 {
+            break;
+        }
+        test++;
+    }
+    exit x + n + test;
 }
