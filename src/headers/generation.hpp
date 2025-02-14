@@ -113,6 +113,12 @@ private:
     std::vector<Var_array> m_arrays{};
     std::vector<size_t> m_scope_arrays{};
     std::vector<std::string> filestack{};
+    // I am writing this stuff at 11 pm while listening to a fcking ed sheeran chemisty parody on valentines day
+    // I have my life under control....
+    #define CTRL_WHILE true
+    #define CTRL_FOR true
+    #define CTRL_IF false
+    std::vector<bool> ctrl_stack {};
     const std::string m_bin_expr_registers[4] = {"ecx","edx","esi","edi"};
     const std::string m_func_registers[4] = {"edi","esi","edx","ecx"};
     uint m_bin_expr_idx = 0;
