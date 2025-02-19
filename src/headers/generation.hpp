@@ -113,8 +113,6 @@ private:
     std::vector<Var_array> m_arrays{};
     std::vector<size_t> m_scope_arrays{};
     std::vector<std::string> filestack{};
-    // I am writing this stuff at 11 pm while listening to a fcking ed sheeran chemisty parody on valentines day
-    // I have my life under control....
     #define CTRL_WHILE true
     #define CTRL_FOR true
     #define CTRL_IF false
