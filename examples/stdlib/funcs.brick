@@ -177,6 +177,20 @@ brick strlen : byte ptr -> str {
     while str[n++] != null{}
 }=> int
 
+brick strcmp : byte ptr -> str1, byte ptr -> str2 {
+    dec n as int -> 0;
+    while 1 == 1 {
+        if str1[n] != str2[n] {
+            return false;
+        }
+        // str1[n] == str2[n]
+
+        if str1[n] == null { // str1 and str2 are both ending here
+            return true;
+        }
+    }
+}=> bool
+
 brick main {
     dec x as int -> 0;
     fib(20);
