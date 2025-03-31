@@ -1,0 +1,14 @@
+#include stdlib/funcs.brick
+
+brick main {
+
+    dec s1 as array byte -> 5 {"Hey!"};
+    dec s2 as array byte -> 5 {"Hey!"};
+
+    if strcmp(&s1[0],&s2[0]) == true{
+        output "Equal!";
+    }else{
+        output "Not equal!";
+    }
+    exit 0;
+}
