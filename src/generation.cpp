@@ -492,7 +492,6 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
             const auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(),
                                          [&](const Var& var) { return var.name == term_ident->ident.value.value(); });
 
-
             if (it != gen->m_vars.cend()) {
                 offset << generate_var_offset(*it,EBP_OFF);
             } else {
@@ -771,7 +770,8 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                 //dont wanna work with messy template stuff for just these few lines
                 std::stringstream ss;
                 std::string val = gen->gen_expr(term_array_idx->index_expr).value();
-
+                TODO: // maybe use m_bin_expr_registers here and then free them when the entire statement is processed
+                
                 if (val.rfind("\"", 0) == 0) {
                     gen->line_err("Cannot use string as an array index");
                 }
@@ -1102,12 +1102,13 @@ inline Generator::logic_data_packet Generator::gen_logical_stmt(const node::_log
            data = gen->gen_logical_expr(logic_expr,provided_scope_lbl,invert_copy);
         }
         void operator()(const node::_boolean_expr* boolean_expr){
-            bool moved = false;
+            int idx = -1;
             std::string expr1 = gen->gen_expr(boolean_expr->left).value();
             if (expr1 == "eax" || expr1 == "&eax"){
-                gen->m_code << "    mov ecx, eax" << std::endl;
-                expr1 = "ecx"; //store the expression in ecx, since it it unused and cannot be overwritten by other code
-                moved = true;
+                std::string reg = gen->m_max_bin_expr_idx < 4 ? gen->m_bin_expr_registers[gen->m_max_bin_expr_idx++] : "ecx"; // we just pray that this does not happen 
+                gen->m_code << "    mov "<< reg  <<", eax" << std::endl;
+                expr1 = reg; //store the expression in ecx, since it is unused and cannot be overwritten by other code
+                idx = gen->m_max_bin_expr_idx - 1;
             }
             std::string expr2 = gen->gen_expr(boolean_expr->right).value();
             if ((expr1.rfind("\"", 0) + expr2.rfind("\"", 0)) == 0) { //both are string literals
@@ -1145,8 +1146,9 @@ inline Generator::logic_data_packet Generator::gen_logical_stmt(const node::_log
                 }
                 std::string mov_var1 = is_numeric(expr1) ? "mov" : gen->get_mov_instruc("ebx", expr1.substr(0, expr1.find_first_of(' ')));
                 std::string mov_var2 = is_numeric(expr2) ? "mov" : gen->get_mov_instruc("eax", expr2.substr(0, expr2.find_first_of(' ')));
-                if (moved) {
-                    gen->m_code << "    mov ebx,ecx" << std::endl;
+                if (idx != -1) {
+                    gen->m_code << "    mov ebx, " << gen->m_bin_expr_registers[idx]  << std::endl;
+                    gen->m_max_bin_expr_idx--;
                 }else{
                     gen->m_code << "    " << mov_var1 << " ebx, " << expr1 << std::endl;
                 }
@@ -2624,43 +2626,43 @@ std::string Generator::gen_program() {
     m_output << m_func_space.str();
 
 #ifdef __linux__
-if(flags.needs_str_cpy_func){
-    m_output << "sys~internal_strcpy:" << std::endl;
-    m_output << "    mov al, [esi]" << std::endl;
-    m_output << "    mov [edi], al" << std::endl;
-    m_output << "    inc esi" << std::endl;
-    m_output << "    inc edi" << std::endl;
-    m_output << "    cmp al, 0" << std::endl;
-    m_output << "    jne sys~internal_strcpy\n" << std::endl;
-    m_output << "    ret \n" << std::endl;
-}
-
-if(flags.needs_str_cout_func){
-    m_output << "sys~internal~str_buf_len:" << std::endl;
-    m_output << "    xor ecx, ecx" << std::endl;
-    m_output << ".loop:" << std::endl; 
-    m_output << "    cmp byte [edi + ecx],0" << std::endl;
-    m_output << "    je .done" << std::endl; 
-    m_output << "    inc ecx" << std::endl;
-    m_output << "    jmp .loop" << std::endl;
-    m_output << ".done:" << std::endl;
-    m_output << "    ret \n" << std::endl;
-}
-
-if(flags.needs_nl_replace_func){
-m_output << "sys~internal_replace_nl_null:" << std::endl;
-m_output << "    ; Loop to find the newline character" << std::endl;
-m_output << "    mov al, 10" << std::endl;
-m_output << "find_newline:" << std::endl;
-m_output << "    cmp byte [edi], al" << std::endl;
-m_output << "    je replace_char" << std::endl;
-m_output << "    inc edi" << std::endl;
-m_output << "    jmp find_newline" << std::endl;
-m_output << "replace_char:" << std::endl;
-m_output << "    mov byte [edi], 0" << std::endl;
-m_output << "    ret \n" << std::endl;                   
-
-}
+    if(flags.needs_str_cpy_func){
+        m_output << "sys~internal_strcpy:" << std::endl;
+        m_output << "    mov al, [esi]" << std::endl;
+        m_output << "    mov [edi], al" << std::endl;
+        m_output << "    inc esi" << std::endl;
+        m_output << "    inc edi" << std::endl;
+        m_output << "    cmp al, 0" << std::endl;
+        m_output << "    jne sys~internal_strcpy\n" << std::endl;
+        m_output << "    ret \n" << std::endl;
+    }
+    
+    if(flags.needs_str_cout_func){
+        m_output << "sys~internal~str_buf_len:" << std::endl;
+        m_output << "    xor ecx, ecx" << std::endl;
+        m_output << ".loop:" << std::endl; 
+        m_output << "    cmp byte [edi + ecx],0" << std::endl;
+        m_output << "    je .done" << std::endl; 
+        m_output << "    inc ecx" << std::endl;
+        m_output << "    jmp .loop" << std::endl;
+        m_output << ".done:" << std::endl;
+        m_output << "    ret \n" << std::endl;
+    }
+    
+    if(flags.needs_nl_replace_func){
+        m_output << "sys~internal_replace_nl_null:" << std::endl;
+        m_output << "    ; Loop to find the newline character" << std::endl;
+        m_output << "    mov al, 10" << std::endl;
+        m_output << "find_newline:" << std::endl;
+        m_output << "    cmp byte [edi], al" << std::endl;
+        m_output << "    je replace_char" << std::endl;
+        m_output << "    inc edi" << std::endl;
+        m_output << "    jmp find_newline" << std::endl;
+        m_output << "replace_char:" << std::endl;
+        m_output << "    mov byte [edi], 0" << std::endl;
+        m_output << "    ret \n" << std::endl;                   
+    
+    }
 #endif
 
 #ifdef _WIN32
