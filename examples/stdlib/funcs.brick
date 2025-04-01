@@ -188,6 +188,7 @@ brick strcmp : byte ptr -> str1, byte ptr -> str2 {
         if str1[n] == null { // str1 and str2 are both ending here
             return true;
         }
+        n++;
     }
 }=> bool
 
