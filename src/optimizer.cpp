@@ -153,7 +153,7 @@ inline void Optimizer::reassemble_asm(){
 }
 
 bool Optimizer::is_end_operation(OpType op){
-    return (op == OpType::_ret  || op == OpType::_call || op == OpType::_jmp);
+    return (op == OpType::_ret  || op == OpType::_call || op == OpType::_jmp || op == OpType::_label);
 }
 
 inline void Optimizer::optimize_tokens()
