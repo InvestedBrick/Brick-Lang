@@ -138,6 +138,8 @@ private:
     };
 
     //methods
+    inline std::string get_expr_reg();
+    inline void free_expr_regs();
     template <typename T>
     void transferElements(std::vector<T>&& source, std::vector<std::variant<Var, string_buffer, String, Var_array, Struct>>& destination, int count);
     void var_set_str();
