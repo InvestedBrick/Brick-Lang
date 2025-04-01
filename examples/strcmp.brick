@@ -2,10 +2,16 @@
 
 brick main {
 
-    dec s1 as array byte -> 5 {"Hey!"};
-    dec s2 as array byte -> 5 {"Hey!"};
+    dec s1 as array byte -> 64;
+    dec s2 as array byte -> 64;
 
-    if strcmp(&s1[0],&s2[0]) == true{
+    
+    output "Enter string 1: " noend;
+    input s1;
+    output "Enter string 2: " noend;
+    input s2;
+    
+    if strcmp(&s1[0],"Hey!") == true{
         output "Equal!";
     }else{
         output "Not equal!";
