@@ -1,0 +1,25 @@
+brick strcmp : byte ptr -> str1, byte ptr -> str2 {
+    dec n as int -> 0;
+    while 1 == 1 {
+        if str1[n] != str2[n] {
+            return false;
+        }
+        // str1[n] == str2[n]
+
+        if str1[n] == null { // str1 and str2 are both ending here
+            return true;
+        }
+        n++;
+    }
+}=> bool
+
+brick main {
+    dec s1 as array byte -> 20 {"Hello, World!"};
+    dec s2 as array byte -> 25 {"Hello, World!"};
+
+    if strcmp(&s1[0],&s2[0]) == true and strcmp("What","What") == true and strcmp(&s1[0],"Hello, World!") == true{
+        exit 0;
+    }
+
+    exit 1;
+}
