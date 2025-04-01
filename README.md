@@ -1,7 +1,6 @@
 **Brick Lang** is a compiled programming language inspired by C and aims to one day be compiled in it self. My original inspiration came from Pixeled on YouTube on which this code is based, but largely expanded. ([GitHub of the inspiration](https://github.com/orosmatthew/hydrogen-cpp)) 
 
 ## Prerequisites
-TEST
 For both variants:
 
 - You need `g++` installed that supports c++ up to `c++17` 
