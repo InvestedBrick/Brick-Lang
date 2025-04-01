@@ -27,6 +27,7 @@ bool is_numeric(const std::string& str) {
     }
     return true;
 }
+
 template <typename T>
 void Generator::transferElements(std::vector<T>&& source, std::vector<std::variant<Var, string_buffer, String, Var_array,Struct>>& destination, int count) {
     for(int i = count; i > 0; i--) {
@@ -37,6 +38,20 @@ void Generator::transferElements(std::vector<T>&& source, std::vector<std::varia
 inline void Generator::line_err(const std::string& err_msg) {
     std::cerr << "Code failed in line " << this->line_counter << "(" << this->filestack.back() << "): " << err_msg << std::endl;
     exit(EXIT_FAILURE);
+}
+inline std::string Generator::get_expr_reg() {
+    if (this->m_bin_expr_idx < 4){
+        return this->m_bin_expr_registers[this->m_bin_expr_idx++];
+    }else{
+        this->line_err("Expression too large, please break up into smaller parts");
+        return std::string();
+    }
+}
+inline void Generator::free_expr_regs(){
+    if (this->m_bin_expr_idx > this->m_max_bin_expr_idx) {
+        this->m_max_bin_expr_idx = this->m_bin_expr_idx;
+    }
+    this->m_bin_expr_idx = 0;
 }
 inline std::string Generator::mk_label() {
     std::stringstream ss;
@@ -647,7 +662,7 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
             }
 
             for (int i = 0; i < (*it).arguments.size(); i++) {
-                const std::string expr = gen->gen_expr(fn_call->arguments[i]).value(); //expr can be: int_lit, eax, type ptr 
+                const std::string expr = gen->gen_expr(fn_call->arguments[i]).value(); //expr can be: int_lit, eax, type ptr, str lit
                 if (expr == "eax" || expr == "&eax") {
                     gen->m_code << "    mov " << gen->m_func_registers[i] << ", eax" << std::endl;
                 }
@@ -656,6 +671,9 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                 }
                 else if (expr.substr(0, expr.find_first_of(" ")) == (*it).arguments[i].type) { 
                     gen->m_code << "    " << gen->get_mov_instruc("eax", (*it).arguments[i].type) << " " << gen->m_func_registers[i] << ", " << expr << std::endl; //eax used as a general 32-bit register
+                }
+                else if (expr.rfind("\"") == 0){
+                    gen->m_code << "    mov " << gen->m_func_registers[i] << ", " << expr.substr(1) << std::endl;
                 }
                 else {
                     gen->line_err("Invalid argument");
@@ -770,17 +788,17 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                 //dont wanna work with messy template stuff for just these few lines
                 std::stringstream ss;
                 std::string val = gen->gen_expr(term_array_idx->index_expr).value();
-                TODO: // maybe use m_bin_expr_registers here and then free them when the entire statement is processed
                 
                 if (val.rfind("\"", 0) == 0) {
                     gen->line_err("Cannot use string as an array index");
                 }
+                std::string reg = gen->m_bin_expr_idx != 0 ? gen->get_expr_reg() : "ecx";
 
                 bool numeric = is_numeric(val);
 
                 // for anyone reading this: for gods sake do not use ebx, it fails when we have this in an expression
                 if (!numeric){
-                    gen->m_code << "    " << gen->get_mov_instruc("ecx", val.substr(0, val.find_first_of(" "))) << " ecx, " << val << std::endl;
+                    gen->m_code << "    " << gen->get_mov_instruc(reg, val.substr(0, val.find_first_of(" "))) << " "<<reg<<", " << val << std::endl;
                 }
 
                 gen->m_code << "    mov eax, dword" << PTR_KEYWORD << base_string << base_offset << "]" << std::endl;
@@ -788,7 +806,7 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
                 if (numeric){
                     ss << var.ptr_type <<  PTR_KEYWORD << " [eax + " << std::stoi(val) *  gen->asm_type_to_bytes(var.ptr_type) << "]";
                 }else{
-                    ss << var.ptr_type <<  PTR_KEYWORD << " [eax + ecx * " << gen->asm_type_to_bytes(var.ptr_type) << "]";
+                    ss << var.ptr_type <<  PTR_KEYWORD << " [eax + "<< reg <<" * " << gen->asm_type_to_bytes(var.ptr_type) << "]";
                 }
 
                 return ss.str();
@@ -1104,11 +1122,15 @@ inline Generator::logic_data_packet Generator::gen_logical_stmt(const node::_log
         void operator()(const node::_boolean_expr* boolean_expr){
             int idx = -1;
             std::string expr1 = gen->gen_expr(boolean_expr->left).value();
-            if (expr1 == "eax" || expr1 == "&eax"){
-                std::string reg = gen->m_max_bin_expr_idx < 4 ? gen->m_bin_expr_registers[gen->m_max_bin_expr_idx++] : "ecx"; // we just pray that this does not happen 
-                gen->m_code << "    mov "<< reg  <<", eax" << std::endl;
-                expr1 = reg; //store the expression in ecx, since it is unused and cannot be overwritten by other code
-                idx = gen->m_max_bin_expr_idx - 1;
+            if (expr1.find("eax") != std::string::npos){
+                std::string reg = gen->get_expr_reg();
+                if (expr1[0] == 'e' || expr1[0] == '&'){ // "eax" or "&eax"
+                    gen->m_code << "    mov "<< reg  <<", eax" << std::endl;
+                }else{ // something else with eax like an array index
+                    gen->m_code << "    " << gen->get_mov_instruc(reg,expr1.substr(0, expr1.find_first_of(' '))) << " " << reg << ", " << expr1 << std::endl;
+                }
+                expr1 = reg; //store the expression in reg, since it is unused and cannot be overwritten by other code
+                idx = gen->m_bin_expr_idx - 1;
             }
             std::string expr2 = gen->gen_expr(boolean_expr->right).value();
             if ((expr1.rfind("\"", 0) + expr2.rfind("\"", 0)) == 0) { //both are string literals
@@ -1148,7 +1170,6 @@ inline Generator::logic_data_packet Generator::gen_logical_stmt(const node::_log
                 std::string mov_var2 = is_numeric(expr2) ? "mov" : gen->get_mov_instruc("eax", expr2.substr(0, expr2.find_first_of(' ')));
                 if (idx != -1) {
                     gen->m_code << "    mov ebx, " << gen->m_bin_expr_registers[idx]  << std::endl;
-                    gen->m_max_bin_expr_idx--;
                 }else{
                     gen->m_code << "    " << mov_var1 << " ebx, " << expr1 << std::endl;
                 }
@@ -1170,6 +1191,7 @@ inline Generator::logic_data_packet Generator::gen_logical_stmt(const node::_log
     visitor.invert_copy = invert;
     visitor.provided_scope_lbl = provided_scope_lbl;
     std::visit(visitor,logic_stmt->var);
+    this->free_expr_regs();
     return visitor.data;
 }
 inline void Generator::gen_ctrl_statement(const node::_ctrl_statement* _ctrl) {
