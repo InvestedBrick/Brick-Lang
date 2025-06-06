@@ -104,21 +104,21 @@ int main(int argc, char* argv[]) {
         std::cerr << "Type 'brick -h' for more help!" << std::endl;
         exit(EXIT_FAILURE);
     }
-    if(argc >= 2){
-        int i = 1;
-        // never would I have thought to actually use do-while
-        do{
-            if(!handle_if_is_arg(argv[i])){
-                std::cerr << "Invalid Argment '" << argv[i] << "' was supplied" << std::endl;
-                exit(EXIT_FAILURE);
-            }
-            i++;
-        } while ( i < argc - 1);
-    }
     std::string filename = argv[argc - 1];
     if (filename.substr(filename.find_last_of(".") + 1) != "brick") {
         std::cerr << "Invalid input file, has to have .brick extension!" << std::endl;
         return EXIT_FAILURE;
+    }
+    if(argc >= 2 && filename != argv[1]){
+        int i = 1;
+        // never would I have thought to actually use do-while
+        do{
+            if(!handle_if_is_arg(argv[i])){
+                std::cerr << "Invalid Argument '" << argv[i] << "' was supplied" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            i++;
+        } while ( i < argc - 1);
     }
     {
         std::ifstream f(filename);
