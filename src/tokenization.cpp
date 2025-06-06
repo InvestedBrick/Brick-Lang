@@ -67,7 +67,7 @@ std::vector<Token> Tokenizer::tokenize()
         if (std::isalpha(peek().value()) || peek().value() == '_')
         {
             buf.push_back(consume());
-            while (peek().has_value() && std::isalnum(peek().value()) || peek().has_value() && peek().value() == '_')
+            while (peek().has_value() && (std::isalnum(peek().value()) || peek().value() == '_'))
             {
                 buf.push_back(consume());
             }
