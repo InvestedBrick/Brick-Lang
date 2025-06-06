@@ -114,6 +114,7 @@ tester.add_test("bitshift.brick", expected_return_code=15)
 tester.add_test("logic_test.brick",expected_return_code=3)
 tester.add_test("funcs.brick",expected_return_code=9,expected_stdout="TEST\0")
 tester.add_test("strcmp.brick")
+tester.add_test("defines.brick",expected_return_code=5)
 tester.run_tests()
 if tester.n_failed == 0:
     tester.cleanup()
