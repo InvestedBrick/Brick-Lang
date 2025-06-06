@@ -451,7 +451,7 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
             ret_val = ss.str();
         }
         void operator()(const node::_term_ident* term_ident) {
-            auto generate_var_offset = [&](const Var& var,const std::string& base_string) {
+            auto generate_var_offset = [&](const Var& var, const std::string& base_string) {
                 std::stringstream offset;
                 offset << var.type << PTR_KEYWORD << base_string << (var.base_pointer_offset) << "]";
                 return offset.str();
@@ -460,96 +460,117 @@ inline std::optional<std::string> Generator::gen_term(const node::_term* term) {
             auto handle_struct_var = [&](const std::variant<Var, string_buffer, String, Var_array, Struct>& var, const std::string& base_string) -> std::string {
                 std::stringstream offset;
                 if (std::holds_alternative<Var>(var)) {
-                    return generate_var_offset(std::get<Var>(var),base_string);
-                } else if (std::holds_alternative<string_buffer>(var)) {
+                    return generate_var_offset(std::get<Var>(var), base_string);
+                }
+                if (std::holds_alternative<string_buffer>(var)) {
                     offset << "\"" << std::get<string_buffer>(var).generated;
                     return offset.str();
-                } else if (std::holds_alternative<String>(var)) {
+                }
+                if (std::holds_alternative<String>(var)) {
                     offset << "\"" << std::get<String>(var).generated;
                     return offset.str();
-                } else if (std::holds_alternative<Var_array>(var)) {
+                }
+                if (std::holds_alternative<Var_array>(var)) {
                     Var_array v_a = std::get<Var_array>(var);
                     offset << v_a.type << PTR_KEYWORD << base_string << (v_a.head_base_pointer_offset) << "]";
                     return offset.str();
-                } 
-
+                }
                 std::cerr << "Should not happen" << std::endl;
                 exit(EXIT_FAILURE);
             };
 
             std::stringstream offset;
-            if (is_global){
 
-                auto global_it  = std::find_if(gen->m_global_vars.cbegin(), gen->m_global_vars.cend(), [&](const auto& var) {
-                            return std::visit([&](const auto& item) { return item.name == term_ident->ident.value.value();}, var);
-                            });
-                
-                if (global_it == gen->m_global_vars.end()){
+            // Handle global variables
+            if (is_global) {
+                auto global_it = std::find_if(
+                    gen->m_global_vars.cbegin(), gen->m_global_vars.cend(),
+                    [&](const auto& var) {
+                        return std::visit([&](const auto& item) {
+                            return item.name == term_ident->ident.value.value();
+                        }, var);
+                    }
+                );
+                if (global_it == gen->m_global_vars.end()) {
                     std::stringstream ss;
-                    ss << "No global Struct '" << term_ident->ident.value.value() << "' found";
-                    gen->line_err(ss.str()); 
-                }                
-
-                if (std::holds_alternative<Struct>(*global_it)){
+                    ss << "No global struct '" << term_ident->ident.value.value() << "' found";
+                    gen->line_err(ss.str());
+                    return;
+                }
+                if (std::holds_alternative<Struct>(*global_it)) {
                     Struct struct_ = std::get<Struct>(*global_it);
                     while (std::holds_alternative<Struct>(struct_.vars[0])) {
-                        struct_= std::get<Struct>(struct_.vars[0]);
+                        struct_ = std::get<Struct>(struct_.vars[0]);
                     }
-                    offset << handle_struct_var(struct_.vars[0],GLOBAL_OFF);
-                        
-                }else{
-                    offset << handle_struct_var(*global_it,GLOBAL_OFF);
+                    offset << handle_struct_var(struct_.vars[0], GLOBAL_OFF);
+                } else {
+                    offset << handle_struct_var(*global_it, GLOBAL_OFF);
                 }
                 ret_val = offset.str();
                 return;
             }
 
-            const auto it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(),
-                                         [&](const Var& var) { return var.name == term_ident->ident.value.value(); });
-
+            // Local variable
+            const auto it = std::find_if(
+                gen->m_vars.cbegin(), gen->m_vars.cend(),
+                [&](const Var& var) { return var.name == term_ident->ident.value.value(); }
+            );
             if (it != gen->m_vars.cend()) {
-                offset << generate_var_offset(*it,EBP_OFF);
-            } else {
-                auto arr_it = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(),
-                                              [&](const Var_array& arr) { return arr.name == term_ident->ident.value.value(); });
-
-                if (arr_it != gen->m_arrays.cend()){
-                    offset << (*arr_it).type << PTR_KEYWORD << " [ebp - " << ((*arr_it).head_base_pointer_offset) << "]";
-
-                }else{                           
-                    auto struct_it = std::find_if(gen->m_structs.begin(), gen->m_structs.end(),
-                                                  [&](const Struct& struct_) { return struct_.name == term_ident->ident.value.value(); });
-
-                    if (struct_it != gen->m_structs.end()) {
-                        while (std::holds_alternative<Struct>((*struct_it).vars[0])) {
-                            (*struct_it) = std::get<Struct>((*struct_it).vars[0]);
-                        }
-                        offset << handle_struct_var((*struct_it).vars[0],EBP_OFF);
-                    } else {
-
-                        const auto str_it = std::find_if(gen->m_strs.cbegin(), gen->m_strs.cend(),
-                                                         [&](const String& var) { return var.name == term_ident->ident.value.value(); });
-
-                        if (str_it != gen->m_strs.cend()) {
-                            offset << "\"" << (*str_it).generated;
-                        } else {
-                            const auto str_buf_it = std::find_if(gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(),
-                                                                 [&](const string_buffer& var) { return var.name == term_ident->ident.value.value(); });
-
-                            if (str_buf_it != gen->m_str_bufs.cend()) {
-                                offset << "\"" << (*str_buf_it).generated;
-                            } else {
-                                std::stringstream ss;
-                                ss << "Identifier '" << term_ident->ident.value.value() << "' was not declared in this scope!" << std::endl;
-                                gen->line_err(ss.str());
-                                return;
-                            }
-                        }
-                    }
-                }
+                offset << generate_var_offset(*it, EBP_OFF);
+                ret_val = offset.str();
+                return;
             }
 
-            ret_val = offset.str();
+            // Array
+            auto arr_it = std::find_if(
+                gen->m_arrays.cbegin(), gen->m_arrays.cend(),
+                [&](const Var_array& arr) { return arr.name == term_ident->ident.value.value(); }
+            );
+            if (arr_it != gen->m_arrays.cend()) {
+                offset << (*arr_it).type << PTR_KEYWORD << " [ebp - " << ((*arr_it).head_base_pointer_offset) << "]";
+                ret_val = offset.str();
+                return;
+            }
+
+            // Struct
+            auto struct_it = std::find_if(
+                gen->m_structs.begin(), gen->m_structs.end(),
+                [&](const Struct& struct_) { return struct_.name == term_ident->ident.value.value(); }
+            );
+            if (struct_it != gen->m_structs.end()) {
+                while (std::holds_alternative<Struct>((*struct_it).vars[0])) {
+                    (*struct_it) = std::get<Struct>((*struct_it).vars[0]);
+                }
+                offset << handle_struct_var((*struct_it).vars[0], EBP_OFF);
+                ret_val = offset.str();
+                return;
+            }
+
+            // String
+            const auto str_it = std::find_if(
+                gen->m_strs.cbegin(), gen->m_strs.cend(),
+                [&](const String& var) { return var.name == term_ident->ident.value.value(); }
+            );
+            if (str_it != gen->m_strs.cend()) {
+                offset << "\"" << (*str_it).generated;
+                ret_val = offset.str();
+                return;
+            }
+
+            // String buffer
+            const auto str_buf_it = std::find_if(
+                gen->m_str_bufs.cbegin(), gen->m_str_bufs.cend(),
+                [&](const string_buffer& var) { return var.name == term_ident->ident.value.value(); }
+            );
+            if (str_buf_it != gen->m_str_bufs.cend()) {
+                offset << "\"" << (*str_buf_it).generated;
+                ret_val = offset.str();
+                return;
+            }
+
+            std::stringstream ss; 
+            ss << "Identifier '" << term_ident->ident.value.value() << "' was not declared in this scope!" << std::endl;
+            gen->line_err(ss.str());
         }
 
         void operator()(node::_term_struct_ident* struct_ident){
@@ -1516,6 +1537,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
 
             gen->generating_struct_vars ? (*gen->generic_struct_vars).push_back(struct_) : gen->m_structs.push_back(struct_);
         }
+        
         void operator()(const node::_var_dec_struct_ptr* var_dec_struct_ptr){
             if (!gen->ignore_var_already_exists){
                 const auto it = std::find_if(gen->m_vars.cbegin(),gen->m_vars.cend(), [&] (const Var& var) {return var.name == var_dec_struct_ptr->ident.value.value();});
@@ -1561,7 +1583,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
                 }else{
                     if(val != "&eax"){
                         //gen->line_err("Pointer cannot be assigned the value of a non-reference");
-                        gen->m_code << "    " << gen->get_mov_instruc("eax",val.substr(0,val.find_first_of(' '))) << " eax, " << val << std::endl;
+                        gen->m_code << "    " << gen->get_mov_instruc("eax",val.substr(0,val.find_first_of(" "))) << " eax, " << val << std::endl;
                     }
 
                     gen->m_code << "    mov dword" << PTR_KEYWORD << " [ebp - " << gen->m_base_ptr_off << "], eax"<< std::endl;
@@ -1711,6 +1733,7 @@ void Generator::var_set_ptr_array(iterator it,var_set array_set,std::string base
                 mov_reg = "bl";
             }
             this->m_code << "    " << this->get_mov_instruc((*it).ptr_type,mov_reg) << " " << (*it).ptr_type <<  PTR_KEYWORD << " [ecx + " << std::stoi(index_val) * this->asm_type_to_bytes((*it).ptr_type) << "], "  << mov_reg << std::endl;
+            
         }
         else {
             if ((*it).bool_limit) {
@@ -1813,7 +1836,7 @@ void Generator::var_set_struct(iterator struct_it,var_set struct_set,std::string
     if(std::holds_alternative<Var>(*it)){
         Var var = std::get<Var>(*it);
         if (var.is_struct_ptr){
-            this->var_set_struct_ptr(&var,struct_set,base_string,true);
+            this->var_set_struct_ptr(&var,struct_set,base_string);
         }else{
             if constexpr (std::is_same<std::remove_pointer_t<var_set>, node::_var_set_array>::value){
                 this->var_set_ptr_array(&var,struct_set,base_string);
@@ -1848,7 +1871,7 @@ void Generator::var_set_struct_ptr(iterator it,var_set struct_ptr_set,std::strin
     //get struct info for the struct type which the pointer is pointing to
     const auto struct_info = std::find_if(this->m_struct_infos.cbegin(),this->m_struct_infos.cend(), 
     [&](const Struct_info& info){return info.name == (*it).ptr_type;});
-    
+
     if (struct_info == this->m_struct_infos.cend()){
         std::stringstream ss;
         ss << "Struct with name '" << (*it).ptr_type << "' not found";
@@ -2144,7 +2167,7 @@ inline void Generator::gen_var_set(const node::_statement_var_set* stmt_var_set)
                 }
             }
             else{
-                const auto  struct_it = std::find_if(gen->m_structs.cbegin(),gen->m_structs.cend(), [&](const Struct& _struct){return _struct.name == struct_set->ident.value.value();});
+                const auto  struct_it = std::find_if(gen->m_structs.cbegin(),gen->m_structs.cend(), [&](Struct _struct){return _struct.name == struct_set->ident.value.value();});
                 if(struct_it == gen->m_structs.cend()){
                     const auto struct_ptr_it = std::find_if(gen->m_vars.cbegin(), gen->m_vars.cend(), [&](const Var& var){return var.name == struct_set->ident.value.value();});
 
@@ -2398,7 +2421,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                 gen->m_code << "    mov eax, " << val << std::endl;
             }
             else if (val != "eax") {
-                gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(" "))) << " eax, " << val << std::endl;
+                gen->m_code << "    " << gen->get_mov_instruc("eax", val.substr(0, val.find_first_of(' '))) << " eax, " << val << std::endl;
             }
             std::stringstream ss;
             ss << (*it).type <<  PTR_KEYWORD << " [ebp - " <<  (*it).base_pointer_offset << "]";
@@ -2554,7 +2577,7 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
                         gen->m_code << "    mov eax," << expr << std::endl;
                     }
                     else if (expr != "eax") {
-                        gen->m_code << "    " << gen->get_mov_instruc("eax", expr.substr(0, expr.find_first_of(" "))) << " eax," << expr << std::endl;
+                        gen->m_code << "    " << gen->get_mov_instruc("eax", expr.substr(0, expr.find_first_of(' '))) << " eax," << expr << std::endl;
                     } // if expr == eax no need to move it
                     gen->m_code << "    jmp " << (*it).ret_lbl << std::endl;
                 }
