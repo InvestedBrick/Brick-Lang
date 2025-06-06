@@ -275,6 +275,24 @@ std::vector<Token> Tokenizer::tokenize()
         }
 
     switch (peek().value()) {
+    case '"':
+        {consume();
+            
+        while (peek().has_value() && peek().value() != '"') {
+            buf.push_back(consume());
+        }
+        consume();
+        token_arr.push_back(mk_tok(Token_type::_str_lit, buf));
+        buf.clear();
+        break;}
+    case '\'':
+        {consume();
+        const char c = consume();
+        if(peek().value() != '\''){line_err("Can only have single character between ' ' ");}
+        token_arr.push_back(mk_tok(Token_type::_int_lit,std::to_string(static_cast<int>(c))));
+        consume();
+        buf.clear();
+        break; }
     case '(':
         {consume();
         token_arr.push_back(mk_tok(Token_type::_open_paren));
@@ -402,7 +420,7 @@ std::vector<Token> Tokenizer::tokenize()
             consume();
             token_arr.push_back(mk_tok(Token_type::_not_same_as));
         } else {
-            line_err("Invalid Syntax!");
+            line_err("Invalid 'S'yntax!");
             exit(EXIT_FAILURE);
         }
         break;}
@@ -461,24 +479,6 @@ std::vector<Token> Tokenizer::tokenize()
             token_arr.push_back(mk_tok(Token_type::_less_as));
         }
         break;}
-    case '"':
-        {consume();
-        //buf.push_back(consume());
-        while (peek().has_value() && peek().value() != '"') {
-            buf.push_back(consume());
-        }
-        consume();
-        token_arr.push_back(mk_tok(Token_type::_str_lit, buf));
-        buf.clear();
-        break;}
-    case '\'':
-        {consume();
-        const char c = consume();
-        if(peek().value() != '\''){line_err("Can only have single character between ' ' ");}
-        token_arr.push_back(mk_tok(Token_type::_int_lit,std::to_string(static_cast<int>(c))));
-        consume();
-        buf.clear();
-        break; }
     case '\n':
         {consume();
         token_arr.push_back(mk_tok(Token_type::_back_n));
