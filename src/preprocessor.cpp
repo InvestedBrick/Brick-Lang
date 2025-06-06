@@ -6,7 +6,6 @@
 
 */
 #include "headers/preprocessor.hpp"
-#include <filesystem>
 inline std::optional<char> PreProcessor::peek(int offset) const {
     if (m_idx + offset >= m_str.length()) {
         return std::nullopt;
