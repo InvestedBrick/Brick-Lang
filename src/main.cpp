@@ -33,6 +33,8 @@ The Compiler for the Brick Programming Language
 #include "headers/preprocessor.hpp"
 #include "headers/generation.hpp"
 bool output_info = false;
+bool assemble_and_link = true;
+bool link = true;
 #ifdef _WIN32
 std::string nologo = "";
 #endif
@@ -44,6 +46,29 @@ bool handle_if_is_arg(std::string arg){
     if(arg == "-info"){
         output_info = true;
         return true;
+    }
+    else if (arg == "-S"){
+        assemble_and_link = false;
+        return true;
+    }
+    else if (arg == "-c"){
+        link = false;
+        return true;
+    }
+    else if(arg == "-h") {
+        std::cout << "Usage: brick [options] file" << std::endl;
+        std::cout << "Options: \n" \
+                  << "   -info           Show compiling info, mainly debugging purposes\n"
+                  << "   -S              Compile only; do not assemble or link\n"
+                  << "   -c              Compile and assemble, but do not link\n"
+                  << "   -h              Show this message\n"
+                  << "   -----WINDOWS EXCLUSIVE-----\n" 
+                  << "   -nomicrosoft    disable microsoft copyright notice when assembling\n"
+                  << "\n"
+                  << "   -----LINUX EXCLUSIVE-----\n" 
+                  << "   -O1             Strip assembly of unused functions\n"
+                  << "   -O2             Perform O1 and make some slight optimizations" << std::endl;
+        exit(EXIT_SUCCESS);
     }
 #ifdef _WIN32
     else if(arg == "-nomicrosoft"){
@@ -76,36 +101,41 @@ int main(int argc, char* argv[]) {
     {
         std::cerr << "Invalid amount of inputs, Correct Usage:" << std::endl;
         std::cerr << "brick <input.brick>" << std::endl;
+        std::cerr << "Type 'brick -h' for more help!" << std::endl;
         exit(EXIT_FAILURE);
     }
-    std::string filename = argv[1];
+    if(argc >= 2){
+        int i = 1;
+        // never would I have thought to actually use do-while
+        do{
+            if(!handle_if_is_arg(argv[i])){
+                std::cerr << "Invalid Argment '" << argv[i] << "' was supplied" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            i++;
+        } while ( i < argc - 1);
+    }
+    std::string filename = argv[argc - 1];
     if (filename.substr(filename.find_last_of(".") + 1) != "brick") {
         std::cerr << "Invalid input file, has to have .brick extension!" << std::endl;
-        return 1;
+        return EXIT_FAILURE;
     }
     {
-        std::ifstream f(argv[1]);
+        std::ifstream f(filename);
         if (!f.good()) {
             std::cerr << "Input file was not found!" << std::endl;
             exit(EXIT_FAILURE);
         }
     }
-    if(argc > 2){
-        for(int i = 2; i < argc; i++){
-            if(!handle_if_is_arg(argv[i])){
-                std::cerr << "Invalid Argment '" << argv[i] << "' was supplied" << std::endl;
-                exit(EXIT_FAILURE);
-            }
-        }
-    }
+    
     std::string contents;
     {
         std::stringstream contents_stream;
-        std::fstream input(argv[1], std::ios::in);
+        std::fstream input(filename, std::ios::in);
         contents_stream << input.rdbuf();//read the file to a string
         contents = contents_stream.str();
     }
-    PreProcessor preprocessor(std::move(contents), argv[1]);
+    PreProcessor preprocessor(std::move(contents), filename);
     std::string preprocessed_contents = preprocessor.pre_process();
     if (output_info)
         std::cout << "Finished Preprocessing..." << std::endl;
@@ -148,21 +178,24 @@ int main(int argc, char* argv[]) {
     auto compile_time = std::chrono::duration_cast<std::chrono::milliseconds>(stop_time - start_time);
     std::cout << "Compilation finished successfully in " << compile_time.count() << "ms " << std::endl;
 
-    std::string assemble_command, link_command;
-#ifdef _WIN32    
-    assemble_command = "C:\\masm32\\bin\\ml.exe /c /coff " + nologo + output_filename.str();
-    link_command = "C:\\masm32\\bin\\link.exe /subsystem:console /entry:_main " + nologo + \
-    filename.substr(0, filename.find_last_of(".")) + ".obj";
+    if (assemble_and_link){
 
-    system(assemble_command.c_str());
-    system(link_command.c_str());
-#elif __linux__
-    assemble_command =  "nasm -f elf32 -o " + filename.substr(0,filename.find_last_of(".") ) + ".o"+ " " + output_filename.str();
-    link_command = "ld -m elf_i386 -o " + filename.substr(0,filename.find_last_of(".")) + " " + filename.substr(0,filename.find_last_of(".") ) + ".o";
-    
-    //ret_val to stop O2 optimizer from complaining
-    int ret_val = system(assemble_command.c_str());
-    ret_val = system(link_command.c_str());
-#endif
+        std::string assemble_command, link_command;
+        #ifdef _WIN32    
+        assemble_command = "C:\\masm32\\bin\\ml.exe /c /coff " + nologo + output_filename.str();
+        link_command = "C:\\masm32\\bin\\link.exe /subsystem:console /entry:_main " + nologo + \
+        filename.substr(0, filename.find_last_of(".")) + ".obj";
+        
+        #elif __linux__
+        assemble_command =  "nasm -f elf32 -o " + filename.substr(0,filename.find_last_of(".") ) + ".o"+ " " + output_filename.str();
+        link_command = "ld -m elf_i386 -o " + filename.substr(0,filename.find_last_of(".")) + " " + filename.substr(0,filename.find_last_of(".") ) + ".o";
+        
+        //ret_val to stop O2 optimizer from complaining
+        #endif
+        int ret_val = system(assemble_command.c_str());
+        if (link){
+            ret_val = system(link_command.c_str());
+        }
+    }
     return 0;
 }
