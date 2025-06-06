@@ -6,6 +6,7 @@
 
 */
 #include "headers/preprocessor.hpp"
+#include <filesystem>
 inline std::optional<char> PreProcessor::peek(int offset) const {
     if (m_idx + offset >= m_str.length()) {
         return std::nullopt;
@@ -83,9 +84,17 @@ inline void PreProcessor::pre_process_directives() {
                 }
                 bool add_stdlib = false;
                 //this is to get rid of things in stdlib from including each other and messing that up
-                std::ifstream f(buf);
+
+                std::string path = ""; // adjust for when calling the compiler from another dir
+                auto r_idx = filename.rfind("/");
+                if (r_idx != std::string::npos){
+                    path += filename.erase(r_idx + 1);
+                }
+                path = path + buf;
+                std::cout << path << std::endl;
+                std::ifstream f(path);   
                 if (!f.good()) {
-                    std::ifstream ifs("stdlib/"+buf);
+                    std::ifstream ifs("stdlib/"+path);
                     if (!ifs.good()){
                         line_err("Input file was not found!");
                     }
@@ -95,7 +104,7 @@ inline void PreProcessor::pre_process_directives() {
                 std::string contents;
                 {
                     std::stringstream contents_stream;
-                    std::fstream input(add_stdlib ? "stdlib/" + buf: buf, std::ios::in);
+                    std::fstream input(add_stdlib ? "stdlib/" + path: path, std::ios::in);
                     contents_stream << input.rdbuf();//read the file to a string
                     contents = contents_stream.str();
                 }
