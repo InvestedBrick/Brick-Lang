@@ -1,4 +1,4 @@
-**Brick Lang** is a compiled programming language inspired by C and aims to one day be compiled in it self. My original inspiration came from Pixeled on YouTube on which this code is based, but largely expanded. ([GitHub of the inspiration](https://github.com/orosmatthew/hydrogen-cpp)) 
+*** **Brick Lang*** ** is a compiled programming language inspired by C and aims to one day be compiled in it self. My original inspiration came from Pixeled on YouTube on which this code is based, but largely expanded. ([GitHub of the inspiration](https://github.com/orosmatthew/hydrogen-cpp)) 
 
 ## Prerequisites
 For both variants:
@@ -54,7 +54,7 @@ the `brick` keyword is hereby the universal function keyword
 By using `exit <exitcode>` you can exit the program from any functionscope;
 
 
-**Comments**
+*** **Comments*** **
 
 Code comments are written like this:
 
@@ -68,7 +68,7 @@ Code comments are written like this:
 */
 ```
 
-**Variables**
+*** **Variables*** **
 
 You can declare Variables as follows:
 
@@ -113,7 +113,7 @@ my_var += 5 * 2;
 my_var /= 10;
 ```
 
-**Global variables**
+*** **Global variables*** **
 
 Even though global variables might be considered bad pactise, Brick-Lang opts for giving the programmer as much freedom as realistically possible.
 
@@ -143,7 +143,7 @@ brick main{
 }
 ```
 
-**Arrays**
+*** **Arrays*** **
 
 To define an array of variables, just write:
 
@@ -163,7 +163,7 @@ The index can be a number literal or a variable
 
 To get the value of an array index, you can just use `my_array[<index>]` in almost any expression.
 
-**Strings**
+*** **Strings*** **
 
 Due to the development timeline of this Language, there are two different ways to create strings:
 
@@ -185,7 +185,7 @@ This just initializes an array of bytes with the individual characters.
 *Note: This feature is only available on Linux, because I only added it recently and don't want to implement every new feature twice...
 If you are using Windows, just use wsl or something and spin up an Ubuntu VM*
 
-*Note 1: It is important to **always** allocate one more byte for the null terminator, which gets automatically added by the compiler*
+*Note 1: It is important to *** **always*** ** allocate one more byte for the null terminator, which gets automatically added by the compiler*
 
 This second variant allows for indexing of the string and manipulating it.
 
@@ -195,7 +195,7 @@ set my_str_2[0] to 'v';
 
 This variant is also the one used when passing strings as arguments.
 
-**String Buffers**
+*** **String Buffers*** **
 
 String buffers are basically a constant block of memory, which can only be used to write a string to:
 
@@ -209,7 +209,7 @@ set buf to my_str_1;
 
 They were added before actually using byte arrays on the stack, so it is no longer good practise to use them.
 
-**Pointers**
+*** **Pointers*** **
 
 Pointers are essential when dealing with low-level byte manipulation or managing memory, in Brick-Lang pointers are declared as follows:
 
@@ -230,7 +230,7 @@ dec x as int -> $my_ptr;
 ```
 
 
-**Control statements**
+*** **Control statements*** **
 
 Brick-Lang supports common control statements, such as `if, for` and `while`
 
@@ -283,7 +283,7 @@ if my_var < 0 and null == false{
 }
 ```
 
-**Including other .brick files**
+*** **Including other .brick files*** **
 
 To include another file, you can simply write
 
@@ -301,7 +301,23 @@ It is important that the pathname is literally just the name without any symbols
 
 *Note: The filename is read until the end of the line*
 
-**Functions**
+
+*** **Preprocessor defines*** **
+
+Similar to how you can define preprocessor replacements, you can write the following:
+```
+#define <name> <expr>
+```
+
+this could be: 
+```
+#define G_PI 3
+```
+This replaces all instances, which do not occur in variable names, of the `<name>` with the `<expr>` in the code.
+
+*Note: There is no restrictions on what words can be replaced, meaning that it is totally legal to define `true` as `false`*
+
+*** **Functions*** **
 
 A function in Brick-Lang is declared using the `brick` keyword.
 
@@ -342,7 +358,7 @@ dec x as int -> 2;
 dec z as int -> my_func_three(x);
 ```
 
-**Structs**
+*** **Structs*** **
 
 Structs are simply a collection of variables, that can be accessed with the `.` operator:
 
@@ -370,7 +386,7 @@ brick main{
 }
 ```
 
-**Input and Output**
+*** **Input and Output*** **
 
 You can write input from the standard console input into either a string buffer or an array of bytes like this:
 
@@ -411,13 +427,13 @@ You can also output stringbuffers like this, as long as they have a value:
 output my_str_buf;
 ```
 
-**Inline Assembly**
+*** **Inline Assembly*** **
 
 Inline assembly is considered bad practise, but needed to write wrappers for system calls.
 
 I advise you to not use it outside of adding to the stdlib
 
-**Bitwise Operations**
+*** **Bitwise Operations*** **
 
 You can use the bitwise operations `and`, `xor` and `or`, which are denoted with `&` , `^` and `|` respectively:
 
@@ -440,7 +456,7 @@ The bitwise operation `not` is denoted with a leading `~`:
 set my_var to ~my_var; // if my_var was 0000 0001 before, it is now 1111 1110
 ```
 
-**Struct Pointers**
+*** **Struct Pointers*** **
 
 Pointers to structs can be defined as the following:
 
@@ -471,7 +487,7 @@ struct node{
 If you want to see more code about struct pointers with some small unit tests, view `examples/struct_pointers.brick` 
 
 
-**Console Arguments**
+*** **Console Arguments*** **
 
 You can access console arguments (which might be known as argc and argv in C) by just writing two variable names after the main function.
 
