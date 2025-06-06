@@ -1,0 +1,10 @@
+
+#define TEST (1 + 4)
+
+
+brick main {
+
+    dec dont_replacetTEST_here_plz as int -> 0;
+
+    exit TEST + dont_replacetTEST_here_plz;
+}
