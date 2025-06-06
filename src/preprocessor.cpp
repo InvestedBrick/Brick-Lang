@@ -22,7 +22,42 @@ void PreProcessor::line_err(const std::string& err_msg) {
     std::cerr << "Code failed in line " << this->line_counter << /*"(" << this->filestack.back() << ")*/": " << err_msg << std::endl;
     exit(1);
 }
-inline void PreProcessor::pre_process_include() {
+
+int PreProcessor::consume_spaces(){
+    int spaces_consumed = 0;
+    while(peek().has_value() && peek().value() == ' '){
+        spaces_consumed++;
+        consume();
+    }
+    return spaces_consumed;
+}
+
+void replace_all(std::string& str, std::string& target, std::string& replacement, size_t start_idx = 0){
+    auto idx = str.find(target, start_idx);
+    if(idx == std::string::npos){
+        return;
+    }
+    bool left_ok = true, right_ok = true;
+    if(idx > 0) {
+        if(isalnum(str[idx - 1]) || str[idx - 1] == '_') left_ok = false;
+    }
+    // Check right boundary
+    if(idx + target.length() < str.length()) {
+        if(isalnum(str[idx + target.length()]) || str[idx + target.length()] == '_') right_ok = false;
+    }
+
+    if(left_ok && right_ok){
+        str.erase(idx, target.length());
+        str.insert(idx, replacement);
+        replace_all(str, target, replacement, idx + replacement.length());
+    } else {
+        replace_all(str, target, replacement, idx + target.length());
+    }
+    return;
+
+}
+
+inline void PreProcessor::pre_process_directives() {
     while (peek().has_value())
     {
         if (peek().value() == '\n') {
@@ -71,6 +106,29 @@ inline void PreProcessor::pre_process_include() {
                 //std::cout << this->m_str << std::endl;
                 //this->filestack.push_back(buf);
             }
+            else if (buf == "define"){
+                buf.clear();
+                std::string expr;
+                int spaces_consumed = 0;
+                spaces_consumed += consume_spaces();
+                // We dont want numbers in our define vars
+                while(peek().has_value() && (std::isalpha(peek().value()) || peek().value() == '_')){
+                    buf.push_back(consume());
+                }
+
+                // spaces between var and expr
+                spaces_consumed += consume_spaces();
+                
+                //expr until end of line
+                while(peek().has_value() && peek().value() != '\n'){
+                    expr.push_back(consume());
+                }
+
+                this->m_str.erase(index,8 + spaces_consumed + buf.length() + expr.length());
+                // replace all instances of buf with expr which are not part of a var name
+                replace_all(this->m_str,buf,expr);
+
+            }
             else {
                 line_err("Invalid PreProcessor Argument");
             }
@@ -117,7 +175,7 @@ std::string PreProcessor::pre_process() {
     this->m_str.insert(0, " FILE " + this->filename + ' ');
     while (this->m_str.find('#') != std::string::npos) {
         this->m_idx = 0;
-        this->pre_process_include();
+        this->pre_process_directives();
 
     }   
     this->rem_included_main_funcs();
