@@ -90,7 +90,6 @@ inline void PreProcessor::pre_process_directives() {
                     path += filename.erase(r_idx + 1);
                 }
                 path = path + buf;
-                std::cout << path << std::endl;
                 std::ifstream f(path);   
                 if (!f.good()) {
                     std::ifstream ifs("stdlib/"+path);
