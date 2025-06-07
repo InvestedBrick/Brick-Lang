@@ -907,6 +907,9 @@ inline std::optional<node::_statement*> Parser::parse_statement() {
     else if (peek_type(Token_type::_asm_tok)) {
         consume();
         auto stmt_asm = m_Allocator.alloc< node::_asm_>();
+        if (try_consume(Token_type::_volatile)){
+            stmt_asm->is_volatile = true;    
+        }
         try_consume(Token_type::_open_cur_brac, "Expected '{'");
         stmt_asm->str_lit = try_consume(Token_type::_str_lit, "Expected string literal");
         try_consume(Token_type::_close_cur_brac, "Expected '}'");
