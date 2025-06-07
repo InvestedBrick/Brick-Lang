@@ -77,6 +77,8 @@ enum class Token_type {
     _shift_left,
     _next,
     _break,
+    _volatile,
+    
 };
 
 #ifdef DEBUG
@@ -153,6 +155,7 @@ inline std::unordered_map<Token_type, std::string> tokenTypeToString = {
     {Token_type::_shift_left, "_bitwise_not"},
     {Token_type::_next, "_next"},
     {Token_type::_break, "_break"},
+    {Token_type::_volatile, "_volatile"},
 
 };
 #endif
