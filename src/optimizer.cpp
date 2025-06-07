@@ -52,6 +52,9 @@ inline char Optimizer::consume() {
     return this->m_asm_code.at(this->m_idx++);
 }
 
+void erase_char(std::string& str, const char target){
+    str.erase(std::remove(str.begin(), str.end(), target), str.end());
+}
 std::string Optimizer::optimize()
 {
 
@@ -65,7 +68,7 @@ std::string Optimizer::optimize()
         }
         this->reassemble_asm();
     }
-
+    erase_char(this->m_asm_code,'&'); // erase volatile markers
     return this->m_asm_code;
 
 }
@@ -133,7 +136,12 @@ inline void Optimizer::reassemble_asm(){
             }
             if (op.op_type == OpType::_jmp){
                 code << "    " << op.op_2.value(); // the saved original jmp instruction
-            }else{
+            }
+            else if (op.op_type == OpType::_unoptimized){
+                code << op.op_1.value() <<"\n";
+                continue;
+            }
+            else{
                 code << "    " << opTypeToString(op.op_type);
             } 
             // regenerate after the format : "    instruct op1, op2 \n"
@@ -153,7 +161,7 @@ inline void Optimizer::reassemble_asm(){
 }
 
 bool Optimizer::is_end_operation(OpType op){
-    return (op == OpType::_ret  || op == OpType::_call || op == OpType::_jmp || op == OpType::_label);
+    return (op == OpType::_ret  || op == OpType::_call || op == OpType::_jmp || op == OpType::_label || op == OpType::_unoptimized);
 }
 
 inline void Optimizer::optimize_tokens()
@@ -226,15 +234,26 @@ inline void Optimizer::tokenize_asm()
     this->m_idx += SIZE_OF_SECTION_DOT_TEXT;
     
     while(peek().has_value()){
+        Operation op;
         buf.clear();
+        if (peek().value() == '&'){ // VOLATILE asm
+            consume();
+            op.op_type = OpType::_unoptimized;
+            std::string line;
+            while(peek().has_value() && peek().value() != '\n'){
+                line.push_back(consume());
+            }
+            consume();
+            op.op_1 = line;
+            operations.push_back(op);
+            continue;
+        }
         while(peek().has_value() && (peek().value() == ' ' || peek().value() == '\n')){
             consume();
         }
         while(peek().has_value() && peek().value() != ' ' && peek().value() != '\n'){
             buf.push_back(consume());
         }
-        Operation op;
-        op.idx = this->m_idx - buf.size();
         if (this->m_idx < m_asm_code.length())
             consume(); // space
         if (buf[buf.size() - 1] == ':'){ // Label
