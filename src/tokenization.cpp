@@ -255,6 +255,11 @@ std::vector<Token> Tokenizer::tokenize()
                 buf.clear();
                 continue;
             }
+            else if (buf == "volatile") {
+                token_arr.push_back(mk_tok(Token_type::_volatile));
+                buf.clear();
+                continue;
+            }
             else {
                 token_arr.push_back(mk_tok(Token_type::_ident, buf));
                 buf.clear();
