@@ -119,8 +119,8 @@ inline void PreProcessor::pre_process_directives() {
                 std::string expr;
                 int spaces_consumed = 0;
                 spaces_consumed += consume_spaces();
-                // We dont want numbers in our define vars
-                while(peek().has_value() && (std::isalpha(peek().value()) || peek().value() == '_')){
+                // Yes, I know that this would make it totally legal to just define 1 as 2 but idc
+                while(peek().has_value() && (std::isalnum(peek().value()) || peek().value() == '_')){
                     buf.push_back(consume());
                 }
 
