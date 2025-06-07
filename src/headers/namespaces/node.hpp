@@ -124,6 +124,7 @@ namespace node {
 
     struct _asm_ {
         Token str_lit;
+        bool is_volatile = false;
     };
     struct _statement_exit
     {
