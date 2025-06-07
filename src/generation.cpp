@@ -1463,6 +1463,7 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
             }
         }
         void operator()(const node::_var_dec_array* var_array) {
+            // TODO: allow for arrays of structs
             if(!gen->ignore_var_already_exists){
                 const auto it  = std::find_if(gen->m_arrays.cbegin(), gen->m_arrays.cend(), [&](const Var_array& arr) {return arr.name == var_array->ident.value.value(); });
                 if (it != gen->m_arrays.cend()) {
@@ -1479,7 +1480,6 @@ inline void Generator::gen_var_stmt(const node::_statement_var_dec* stmt_var_dec
 
             if (gen->only_allow_int_exprs){
                 gen->m_base_ptr_off += (arr.size - 1)  * gen->asm_type_to_bytes(arr.type);
-
             }else{
                 gen->m_base_ptr_off += arr.size  * gen->asm_type_to_bytes(arr.type);
             }
@@ -2260,7 +2260,11 @@ inline void Generator::gen_stmt(const node::_statement* stmt) {
             gen->gen_var_set(stmt_var_set);
         }
         void operator()(const node::_asm_* _asm_) { 
-            gen->m_code << _asm_->str_lit.value.value() << std::endl;
+            gen->m_code <<
+#ifdef __linux__ 
+            (_asm_->is_volatile ? "&" : "") <<
+#endif
+             _asm_->str_lit.value.value() << std::endl;
         }
         void operator()(const node::_statement_scope* statement_scope) {
             gen->gen_scope(statement_scope);
