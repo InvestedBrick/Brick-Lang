@@ -35,7 +35,8 @@ private:
         _imul,
         _idiv,
         _cdq,
-        _label
+        _label,
+        _unoptimized
 
     };
 
@@ -66,9 +67,9 @@ private:
         case OpType::_shl:   return "shl";
         case OpType::_neg:   return "neg";
         case OpType::_not:   return "not";
-        case OpType::_imul:  return "_imul";
-        case OpType::_idiv:  return "_idiv";
-        case OpType::_cdq:   return "_cdq";
+        case OpType::_imul:  return "imul";
+        case OpType::_idiv:  return "idiv";
+        case OpType::_cdq:   return "cdq";
         default:             exit(EXIT_FAILURE); // should not happen
     }
 }
