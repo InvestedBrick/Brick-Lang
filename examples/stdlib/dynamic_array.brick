@@ -52,7 +52,6 @@ brick array_empty : int ptr -> arr_ {
     }
 
     return false;
-    
 }=> bool
 
 brick array_cleanup : int ptr -> arr_ {
